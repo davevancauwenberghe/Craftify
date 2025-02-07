@@ -14,11 +14,12 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
+    @State private var isSearching = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack(path: $navigationPath) {
-                CategoryView(selectedTab: $selectedTab, navigationPath: $navigationPath)
+                CategoryView(selectedTab: $selectedTab, navigationPath: $navigationPath, searchText: $searchText, isSearching: $isSearching)
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
@@ -44,8 +45,10 @@ struct CategoryView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Binding var selectedTab: Int
     @Binding var navigationPath: NavigationPath
+    @Binding var searchText: String
+    @Binding var isSearching: Bool
     @State private var selectedCategory: String? = nil
-    @State private var searchText = ""
+    @State private var recommendedRecipes: [Recipe] = []
     
     var filteredRecipes: [Recipe] {
         let categoryFiltered = selectedCategory == nil ? dataManager.recipes : dataManager.recipes.filter { $0.category == selectedCategory }
@@ -53,7 +56,10 @@ struct CategoryView: View {
         if searchText.isEmpty {
             return categoryFiltered
         } else {
-            return categoryFiltered.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+            return categoryFiltered.filter { recipe in
+                recipe.name.localizedCaseInsensitiveContains(searchText) ||
+                recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
+            }
         }
     }
     
@@ -63,6 +69,7 @@ struct CategoryView: View {
                 HStack {
                     Button(action: { selectedCategory = nil }) {
                         Text("All")
+                            .fontWeight(.bold)
                             .padding()
                             .background(selectedCategory == nil ? Color(hex: "00AA00") : Color.gray.opacity(0.2))
                             .foregroundColor(.white)
@@ -71,6 +78,7 @@ struct CategoryView: View {
                     ForEach(dataManager.categories, id: \ .self) { category in
                         Button(action: { selectedCategory = category }) {
                             Text(category)
+                                .fontWeight(.bold)
                                 .padding()
                                 .background(selectedCategory == category ? Color(hex: "00AA00") : Color.gray.opacity(0.2))
                                 .foregroundColor(.white)
@@ -81,22 +89,60 @@ struct CategoryView: View {
                 .padding(.horizontal)
             }
             
-            List(filteredRecipes) { recipe in
-                NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                    HStack {
-                        Image(recipe.image)
-                            .resizable()
-                            .frame(width: 50, height: 50)
-                        Text(recipe.name)
+            if !recommendedRecipes.isEmpty && !isSearching {
+                VStack(alignment: .leading) {
+                    Text("Craftify Picks")
+                        .font(.title3).bold()
+                        .padding(.horizontal)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(recommendedRecipes, id: \ .id) { recipe in
+                                NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                    VStack {
+                                        Image(recipe.image)
+                                            .resizable()
+                                            .frame(width: 90, height: 90)
+                                            .padding(4)
+                                        Text(recipe.name)
+                                            .font(.caption).bold()
+                                            .lineLimit(1)
+                                            .frame(width: 90)
+                                    }
+                                    .padding()
+                                    .background(Color.gray.opacity(0.2))
+                                    .cornerRadius(12)
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
                     }
                 }
             }
+            
+            List {
+                ForEach(filteredRecipes) { recipe in
+                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                        HStack {
+                            Image(recipe.image)
+                                .resizable()
+                                .frame(width: 60, height: 60)
+                                .padding(4)
+                            
+                            Text(recipe.name)
+                                .font(.headline).bold()
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
             .searchable(text: $searchText, prompt: "Search recipes")
+            .onChange(of: searchText) { _, newValue in isSearching = !newValue.isEmpty }
+            .onAppear {
+                selectedTab = 0
+                recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
+            }
         }
         .navigationTitle("Craftify")
-        .onAppear {
-            selectedTab = 0 // Reset to homepage when Recipes tab is tapped
-        }
     }
 }
 

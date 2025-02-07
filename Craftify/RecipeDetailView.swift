@@ -11,35 +11,36 @@ struct RecipeDetailView: View {
     @EnvironmentObject var dataManager: DataManager
     let recipe: Recipe
     @Binding var navigationPath: NavigationPath
-    @State private var selectedIngredient: String? // Holds the tapped ingredient name
-    
+    @State private var selectedIngredient: String?
+
     var body: some View {
         VStack {
-            Text(recipe.name)
-                .font(.largeTitle)
-                .padding()
+            Spacer()
             
-            HStack {
-                // Crafting Grid
-                VStack {
+            // Crafting Grid & Output Side by Side
+            HStack(alignment: .center, spacing: 16) {
+                // 3x3 Crafting Grid
+                VStack(spacing: 4) {
                     ForEach(0..<3, id: \.self) { row in
-                        HStack {
+                        HStack(spacing: 4) {
                             ForEach(0..<3, id: \.self) { col in
                                 let index = row * 3 + col
                                 if index < recipe.ingredients.count, !recipe.ingredients[index].isEmpty {
                                     Image(recipe.ingredients[index])
                                         .resizable()
-                                        .frame(width: 50, height: 50)
-                                        .background(Color.gray.opacity(0.3))
-                                        .cornerRadius(8)
+                                        .scaledToFit()
+                                        .frame(width: 60, height: 60)
+                                        .background(Color.white)
+                                        .cornerRadius(12)
+                                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                                         .onTapGesture {
                                             selectedIngredient = recipe.ingredients[index]
                                         }
                                 } else {
-                                    Rectangle()
-                                        .frame(width: 50, height: 50)
-                                        .foregroundColor(Color.gray.opacity(0.1)) // Ensure empty slots are visible
-                                        .cornerRadius(8)
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .frame(width: 60, height: 60)
+                                        .foregroundColor(Color.gray.opacity(0.1))
+                                        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
                                 }
                             }
                         }
@@ -48,20 +49,25 @@ struct RecipeDetailView: View {
                 
                 Image(systemName: "arrow.right")
                     .font(.largeTitle)
-                    .padding()
+                    .foregroundColor(.gray)
+                    .frame(width: 40, height: 60)
                 
                 // Output Item
                 VStack {
                     Image(recipe.image)
                         .resizable()
-                        .frame(width: 50, height: 50)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(8)
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                    
                     Text("x\(recipe.output)")
                         .font(.headline)
                 }
             }
-            .padding()
+            
+            Spacer()
             
             // Show ingredient name when tapped
             if let ingredient = selectedIngredient {
@@ -75,28 +81,29 @@ struct RecipeDetailView: View {
                     .animation(.easeInOut, value: selectedIngredient)
             }
             
-            // Favorite Button
-            Button(action: {
-                dataManager.toggleFavorite(recipe: recipe)
-            }) {
-                Image(systemName: dataManager.isFavorite(recipe: recipe) ? "heart.fill" : "heart")
-                    .foregroundColor(.red)
-                    .font(.largeTitle)
-            }
-            .padding()
-            
             // Category Display
             Text("Category: \(recipe.category)")
                 .font(.headline)
                 .padding()
+                .background(Color.white)
+                .cornerRadius(12)
+                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+            
+            Spacer()
         }
+        .padding()
         .navigationTitle(recipe.name)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("Recipes") {
-                    navigationPath = NavigationPath() // Reset navigation to go back to the homepage
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    dataManager.toggleFavorite(recipe: recipe)
+                }) {
+                    Image(systemName: dataManager.isFavorite(recipe: recipe) ? "heart.fill" : "heart")
+                        .foregroundColor(.red)
+                        .font(.title2)
                 }
             }
         }
     }
 }
+
