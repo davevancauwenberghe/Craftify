@@ -5,9 +5,10 @@
         "image": "crafting_table",
         "ingredients": [
             "Planks", "Planks",
-            "Planks", "Planks",
+            "Planks", "Planks"
         ],
-        "output": 1
+        "output": 1,
+        "category": "Utility"
     },
     {
         "id": 2,
@@ -18,6 +19,8 @@
             "Cobblestone", "", "Cobblestone",
             "Cobblestone", "Cobblestone", "Cobblestone"
         ],
-        "output": 1
+        "output": 1,
+        "category": "Smelting"
     }
 ]
+

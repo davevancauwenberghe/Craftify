@@ -10,6 +10,7 @@ import Foundation
 class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []  // List of recipes
     @Published var favorites: [Recipe] = []  // List of favorite recipes
+    @Published var selectedCategory: String? = nil  // Selected category for filtering
 
     // Check if a recipe is in favorites
     func isFavorite(recipe: Recipe) -> Bool {
@@ -27,16 +28,10 @@ class DataManager: ObservableObject {
     
     // Load data from the local JSON file
     func loadData() {
-        // Locate the JSON file in the app bundle
         if let url = Bundle.main.url(forResource: "recipes", withExtension: "json") {
             do {
-                // Read the data from the file
                 let data = try Data(contentsOf: url)
-                
-                // Decode the data into an array of Recipe objects
                 let decodedRecipes = try JSONDecoder().decode([Recipe].self, from: data)
-                
-                // Set the recipes array with the decoded data
                 self.recipes = decodedRecipes
             } catch {
                 print("Error loading data: \(error.localizedDescription)")
@@ -45,4 +40,20 @@ class DataManager: ObservableObject {
             print("Recipe JSON file not found.")
         }
     }
+
+    // Get unique categories from the recipes
+    var categories: [String] {
+        let uniqueCategories = Set(recipes.map { $0.category })
+        return Array(uniqueCategories).sorted()
+    }
+
+    // Get filtered recipes by selected category
+    var filteredRecipes: [Recipe] {
+        if let category = selectedCategory {
+            return recipes.filter { $0.category == category }
+        } else {
+            return recipes
+        }
+    }
 }
+

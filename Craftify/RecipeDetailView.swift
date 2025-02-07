@@ -83,6 +83,11 @@ struct RecipeDetailView: View {
                     .font(.largeTitle)
             }
             .padding()
+            
+            // Category Display
+            Text("Category: \(recipe.category)")
+                .font(.headline)
+                .padding()
         }
         .navigationTitle(recipe.name)
     }
