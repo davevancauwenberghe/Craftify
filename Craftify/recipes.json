@@ -1,0 +1,23 @@
+[
+    {
+        "id": 1,
+        "name": "Crafting Table",
+        "image": "crafting_table",
+        "ingredients": [
+            "Planks", "Planks",
+            "Planks", "Planks",
+        ],
+        "output": 1
+    },
+    {
+        "id": 2,
+        "name": "Furnace",
+        "image": "furnace",
+        "ingredients": [
+            "Cobblestone", "Cobblestone", "Cobblestone",
+            "Cobblestone", "", "Cobblestone",
+            "Cobblestone", "Cobblestone", "Cobblestone"
+        ],
+        "output": 1
+    }
+]
