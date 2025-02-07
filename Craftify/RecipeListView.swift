@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct RecipeListView: View {
-    @EnvironmentObject private var dataManager: DataManager  // Access DataManager via EnvironmentObject
+    @EnvironmentObject private var dataManager: DataManager
+    @Binding var navigationPath: NavigationPath // Voeg navigationPath toe
     @State private var searchText = ""
     
     var filteredRecipes: [Recipe] {
@@ -19,9 +20,8 @@ struct RecipeListView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack(path: $navigationPath) { // Gebruik NavigationStack met path
             VStack {
-                // Category Picker
                 Picker("Category", selection: $dataManager.selectedCategory) {
                     Text("All").tag(nil as String?)
                     ForEach(dataManager.categories, id: \.self) { category in
@@ -32,7 +32,7 @@ struct RecipeListView: View {
                 .padding()
                 
                 List(filteredRecipes) { recipe in
-                    NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
+                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) { // Geef navigationPath mee
                         HStack {
                             Image(recipe.image)
                                 .resizable()
@@ -47,5 +47,3 @@ struct RecipeListView: View {
         }
     }
 }
-
-

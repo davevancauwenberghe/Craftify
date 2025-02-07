@@ -10,6 +10,7 @@ import SwiftUI
 struct RecipeDetailView: View {
     @EnvironmentObject var dataManager: DataManager
     let recipe: Recipe
+    @Binding var navigationPath: NavigationPath
     @State private var selectedIngredient: String? // Holds the tapped ingredient name
     
     var body: some View {
@@ -21,9 +22,9 @@ struct RecipeDetailView: View {
             HStack {
                 // Crafting Grid
                 VStack {
-                    ForEach(0..<3, id: \..self) { row in
+                    ForEach(0..<3, id: \.self) { row in
                         HStack {
-                            ForEach(0..<3, id: \..self) { col in
+                            ForEach(0..<3, id: \.self) { col in
                                 let index = row * 3 + col
                                 if index < recipe.ingredients.count, !recipe.ingredients[index].isEmpty {
                                     Image(recipe.ingredients[index])
@@ -90,5 +91,12 @@ struct RecipeDetailView: View {
                 .padding()
         }
         .navigationTitle(recipe.name)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Recipes") {
+                    navigationPath = NavigationPath() // Reset navigation to go back to the homepage
+                }
+            }
+        }
     }
 }

@@ -9,11 +9,12 @@ import SwiftUI
 
 struct FavoritesView: View {
     @EnvironmentObject var dataManager: DataManager
+    @State private var navigationPath = NavigationPath() // Voeg navigationPath toe
 
     var body: some View {
-        NavigationView {
+        NavigationStack(path: $navigationPath) { // Gebruik NavigationStack met path
             List(dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }) { recipe in
-                NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
+                NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
                     HStack {
                         Image(recipe.image)
                             .resizable()
