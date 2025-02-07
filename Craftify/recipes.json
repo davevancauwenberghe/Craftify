@@ -21,6 +21,53 @@
         ],
         "output": 1,
         "category": "Smelting"
+    },
+    {
+        "id": 3,
+        "name": "Wooden Pickaxe",
+        "image": "wooden_pickaxe",
+        "ingredients": [
+            "Planks", "Planks", "Planks",
+            "", "Stick", "",
+            "", "Stick", ""
+        ],
+        "output": 1,
+        "category": "Tools"
+    },
+    {
+        "id": 4,
+        "name": "Iron Sword",
+        "image": "iron_sword",
+        "ingredients": [
+            "", "Iron Ingot", "",
+            "", "Iron Ingot", "",
+            "", "Stick", ""
+        ],
+        "output": 1,
+        "category": "Weapons"
+    },
+    {
+        "id": 5,
+        "name": "Chest",
+        "image": "chest",
+        "ingredients": [
+            "Planks", "Planks", "Planks",
+            "Planks", "", "Planks",
+            "Planks", "Planks", "Planks"
+        ],
+        "output": 1,
+        "category": "Storage"
+    },
+    {
+        "id": 6,
+        "name": "Torch",
+        "image": "torch",
+        "ingredients": [
+            "", "", "",
+            "", "Coal", "",
+            "", "Stick", ""
+        ],
+        "output": 4,
+        "category": "Lighting"
     }
 ]
-

@@ -11,39 +11,13 @@ struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager  // Access DataManager via EnvironmentObject
     @State private var searchText = ""
 
-    var filteredRecipes: [Recipe] {
-        if searchText.isEmpty {
-            return dataManager.recipes
-        } else {
-            return dataManager.recipes.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
-        }
-    }
-
     var body: some View {
         TabView {
-            NavigationView {
-                List(filteredRecipes) { recipe in
-                    NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
-                        HStack {
-                            Image(recipe.image)
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                            Text(recipe.name)
-                        }
-                    }
-                }
-                .navigationTitle("Craftify")
-                .searchable(text: $searchText, prompt: "Search recipes")
-            }
-            .tabItem {
-                Label("Recipes", systemImage: "list.dash")
-            }
-
             NavigationView {
                 CategoryView()
             }
             .tabItem {
-                Label("Categories", systemImage: "square.grid.2x2")
+                Label("Recipes", systemImage: "square.grid.2x2")
             }
 
             FavoritesView()
@@ -62,12 +36,15 @@ struct ContentView: View {
 struct CategoryView: View {
     @EnvironmentObject private var dataManager: DataManager
     @State private var selectedCategory: String? = nil
+    @State private var searchText = ""
     
     var filteredRecipes: [Recipe] {
-        if let category = selectedCategory {
-            return dataManager.recipes.filter { $0.category == category }
+        let categoryFiltered = selectedCategory == nil ? dataManager.recipes : dataManager.recipes.filter { $0.category == selectedCategory }
+        
+        if searchText.isEmpty {
+            return categoryFiltered
         } else {
-            return dataManager.recipes
+            return categoryFiltered.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
     }
     
@@ -105,7 +82,8 @@ struct CategoryView: View {
                     }
                 }
             }
+            .searchable(text: $searchText, prompt: "Search recipes")
         }
-        .navigationTitle("Categories")
+        .navigationTitle("Craftify")
     }
 }
