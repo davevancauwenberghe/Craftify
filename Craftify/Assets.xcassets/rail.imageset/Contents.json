@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "stone_axe.png",
+      "filename" : "rail.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "stone_axe 1.png",
+      "filename" : "rail 1.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "stone_axe 2.png",
+      "filename" : "rail 2.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

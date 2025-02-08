@@ -233,7 +233,7 @@
       "image": "lantern",
       "ingredients": [
         "Iron Nugget", "Iron Nugget", "Iron Nugget",
-        "Iron Nugget", "Torch", "Iron Nugget",
+        "Iron Nugget", "torch", "Iron Nugget",
         "Iron Nugget", "Iron Nugget", "Iron Nugget"
       ],
       "output": 1,

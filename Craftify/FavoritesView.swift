@@ -29,15 +29,14 @@ struct FavoritesView: View {
         NavigationStack(path: $navigationPath) {
             VStack {
                 // Recommended Favorites (Craftify Picks) section
-                let favoritePicks = sortedFavorites.flatMap { $0.value }.shuffled().prefix(5)
-                if !favoritePicks.isEmpty && !isSearching {
+                if !recommendedRecipes.isEmpty && !isSearching {
                     VStack(alignment: .leading) {
                         Text("Craftify Picks")
                             .font(.title3).bold()
                             .padding(.horizontal)
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
-                                ForEach(favoritePicks) { recipe in
+                                ForEach(recommendedRecipes) { recipe in
                                     NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
                                         VStack {
                                             Image(recipe.image)
