@@ -23,7 +23,6 @@ struct ContentView: View {
                              navigationPath: $navigationPath,
                              searchText: $searchText,
                              isSearching: $isSearching)
-                    .searchable(text: $searchText, prompt: "Search recipes")
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
@@ -36,6 +35,7 @@ struct ContentView: View {
                 }
                 .tag(1)
         }
+        .searchable(text: $searchText, prompt: "Search recipes")
         .onAppear {
             if dataManager.recipes.isEmpty {
                 dataManager.loadData()
@@ -156,9 +156,9 @@ struct CategoryView: View {
                 }
             }
             .searchable(text: $searchText, prompt: "Search recipes")
-            .onChange(of: searchText) { oldValue, newValue in
+            .onChange(of: searchText) { _, newValue in
                 // Provide haptic feedback when starting a search
-                if oldValue.isEmpty && !newValue.isEmpty {
+                if newValue.isEmpty == false {
                     let generator = UIImpactFeedbackGenerator(style: .light)
                     generator.impactOccurred()
                 }
@@ -186,3 +186,4 @@ extension Color {
         self.init(red: red, green: green, blue: blue)
     }
 }
+

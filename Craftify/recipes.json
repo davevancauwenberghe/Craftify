@@ -118,5 +118,113 @@
     ],
     "output": 1,
     "category": "Tools"
+  },
+  {
+    "id": 11,
+    "name": "Stone Pickaxe",
+    "image": "stone_pickaxe",
+    "ingredients": [
+      "Cobblestone", "Cobblestone", "Cobblestone",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 12,
+    "name": "Stone Sword",
+    "image": "stone_sword",
+    "ingredients": [
+      "", "Cobblestone", "",
+      "", "Cobblestone", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Weapons"
+  },
+  {
+    "id": 13,
+    "name": "Stone Shovel",
+    "image": "stone_shovel",
+    "ingredients": [
+      "", "Cobblestone", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 14,
+    "name": "Stone Axe",
+    "image": "stone_axe",
+    "ingredients": [
+      "Cobblestone", "Cobblestone", "",
+      "Cobblestone", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 15,
+    "name": "Stone Hoe",
+    "image": "stone_hoe",
+    "ingredients": [
+      "Cobblestone", "Cobblestone", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 16,
+    "name": "Iron Pickaxe",
+    "image": "iron_pickaxe",
+    "ingredients": [
+      "Iron Ingot", "Iron Ingot", "Iron Ingot",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 17,
+    "name": "Iron Shovel",
+    "image": "iron_shovel",
+    "ingredients": [
+      "", "Iron Ingot", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 18,
+    "name": "Iron Axe",
+    "image": "iron_axe",
+    "ingredients": [
+      "Iron Ingot", "Iron Ingot", "",
+      "Iron Ingot", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 19,
+    "name": "Iron Hoe",
+    "image": "iron_hoe",
+    "ingredients": [
+      "Iron Ingot", "Iron Ingot", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
   }
 ]
