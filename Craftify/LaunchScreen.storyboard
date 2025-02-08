@@ -16,9 +16,13 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="LaunchScreen1" translatesAutoresizingMaskIntoConstraints="NO" id="6sc-Zp-tZM">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" ambiguous="YES" image="LaunchScreen1" translatesAutoresizingMaskIntoConstraints="NO" id="6sc-Zp-tZM">
                                 <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="852" id="1Eb-Ab-If0"/>
+                                    <constraint firstAttribute="width" constant="393" id="7eb-r9-eul"/>
+                                    <constraint firstAttribute="width" secondItem="6sc-Zp-tZM" secondAttribute="height" multiplier="131:284" id="nqF-TV-vwm"/>
+                                </constraints>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>

@@ -45,7 +45,6 @@ struct ContentView: View {
 }
 
 struct CategoryView: View {
-    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @EnvironmentObject private var dataManager: DataManager
     @Binding var selectedTab: Int
     @Binding var navigationPath: NavigationPath
@@ -169,9 +168,6 @@ struct CategoryView: View {
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             }
         }
-        // For iPad: constrain the maximum width and add horizontal padding for a centered appearance.
-        .frame(maxWidth: horizontalSizeClass == .regular ? 700 : .infinity)
-        .padding(.horizontal, horizontalSizeClass == .regular ? 20 : 0)
         .navigationTitle("Craftify")
     }
 }

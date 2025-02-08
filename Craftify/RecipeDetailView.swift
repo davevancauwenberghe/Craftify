@@ -9,7 +9,6 @@ import SwiftUI
 
 struct RecipeDetailView: View {
     @EnvironmentObject var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) var horizontalSizeClass  // For iPad support
     let recipe: Recipe
     @Binding var navigationPath: NavigationPath
     @State private var selectedDetail: String?  // Single state variable for tapped detail
@@ -117,9 +116,6 @@ struct RecipeDetailView: View {
             Spacer()
         }
         .padding()
-        // For iPad: Constrain maximum width and add extra horizontal padding for a centered layout.
-        .frame(maxWidth: horizontalSizeClass == .regular ? 700 : .infinity)
-        .padding(.horizontal, horizontalSizeClass == .regular ? 20 : 0)
         .navigationTitle(recipe.name)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -152,3 +148,4 @@ struct RecipeDetailView: View {
         }
     }
 }
+
