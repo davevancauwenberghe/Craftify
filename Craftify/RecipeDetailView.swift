@@ -11,8 +11,8 @@ struct RecipeDetailView: View {
     @EnvironmentObject var dataManager: DataManager
     let recipe: Recipe
     @Binding var navigationPath: NavigationPath
-    @State private var selectedDetail: String?  // Single state variable for tapped detail
-    @State private var animateHeart = false     // Drives heart animation
+    @State private var selectedDetail: String?
+    @State private var animateHeart = false
 
     var body: some View {
         VStack {
@@ -21,22 +21,22 @@ struct RecipeDetailView: View {
             // Crafting Grid & Output Side by Side
             HStack(alignment: .center, spacing: 16) {
                 // 3x3 Crafting Grid for ingredients
-                VStack(spacing: 4) {
+                VStack(spacing: 6) {
                     ForEach(0..<3, id: \ .self) { row in
-                        HStack(spacing: 4) {
+                        HStack(spacing: 6) {
                             ForEach(0..<3, id: \ .self) { col in
                                 let index = row * 3 + col
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(index < recipe.ingredients.count && !recipe.ingredients[index].isEmpty ? Color(UIColor.systemGray5) : Color(UIColor.systemGray6))
-                                        .frame(width: 60, height: 60)
+                                        .frame(width: 70, height: 70)
                                         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                                     
                                     if index < recipe.ingredients.count, !recipe.ingredients[index].isEmpty {
                                         Image(recipe.ingredients[index])
                                             .resizable()
                                             .aspectRatio(contentMode: .fit)
-                                            .frame(width: 50, height: 50)
+                                            .frame(width: 60, height: 60)
                                     }
                                 }
                                 .onTapGesture {
@@ -62,13 +62,13 @@ struct RecipeDetailView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(Color(UIColor.systemGray5))
-                            .frame(width: 60, height: 60)
+                            .frame(width: 70, height: 70)
                             .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                         
                         Image(recipe.image)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 50, height: 50)
+                            .frame(width: 60, height: 60)
                     }
                     .onTapGesture {
                         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -109,7 +109,7 @@ struct RecipeDetailView: View {
         }
         .padding()
         .navigationTitle(recipe.name)
-        .navigationBarTitleDisplayMode(.large) // Ensures large title under the back button
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {

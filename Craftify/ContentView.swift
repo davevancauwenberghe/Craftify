@@ -23,6 +23,7 @@ struct ContentView: View {
                              navigationPath: $navigationPath,
                              searchText: $searchText,
                              isSearching: $isSearching)
+                    .searchable(text: $searchText, prompt: "Search recipes")
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
@@ -35,7 +36,6 @@ struct ContentView: View {
                 }
                 .tag(1)
         }
-        .searchable(text: $searchText, prompt: "Search recipes")
         .onAppear {
             if dataManager.recipes.isEmpty {
                 dataManager.loadData()
@@ -54,19 +54,17 @@ struct CategoryView: View {
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
     
-    var filteredRecipes: [Recipe] {
+    var sortedRecipes: [String: [Recipe]] {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
             : dataManager.recipes.filter { $0.category == selectedCategory }
         
-        if searchText.isEmpty {
-            return categoryFiltered
-        } else {
-            return categoryFiltered.filter { recipe in
-                recipe.name.localizedCaseInsensitiveContains(searchText) ||
-                recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
-            }
+        let filtered = searchText.isEmpty ? categoryFiltered : categoryFiltered.filter { recipe in
+            recipe.name.localizedCaseInsensitiveContains(searchText) ||
+            recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
         }
+        
+        return Dictionary(grouping: filtered, by: { String($0.name.prefix(1)) }).mapValues { $0.sorted { $0.name < $1.name } }
     }
     
     var body: some View {
@@ -139,29 +137,36 @@ struct CategoryView: View {
             
             // Recipes List with built-in searchable search bar
             List {
-                ForEach(filteredRecipes) { recipe in
-                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                        HStack {
-                            Image(recipe.image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 60, height: 60)
-                                .padding(4)
-                            
-                            Text(recipe.name)
-                                .font(.headline).bold()
+                ForEach(sortedRecipes.keys.sorted(), id: \ .self) { letter in
+                    Section(header: Text(letter)
+                        .font(.headline)
+                        .bold()
+                        .foregroundColor(.primary)
+                        .padding(.vertical, 4)
+                        .background(Color(UIColor.systemGray5).opacity(0.5))
+                        .cornerRadius(8)
+                        .padding(.horizontal, 8)
+                    ) {
+                        ForEach(sortedRecipes[letter] ?? []) { recipe in
+                            NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                HStack {
+                                    Image(recipe.image)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 60, height: 60)
+                                        .padding(4)
+                                    
+                                    Text(recipe.name)
+                                        .font(.headline).bold()
+                                }
+                            }
+                            .padding(.vertical, 4)
                         }
                     }
-                    .padding(.vertical, 4)
                 }
             }
             .searchable(text: $searchText, prompt: "Search recipes")
             .onChange(of: searchText) { _, newValue in
-                // Provide haptic feedback when starting a search
-                if newValue.isEmpty == false {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
-                }
                 isSearching = !newValue.isEmpty
             }
             .onAppear {
@@ -186,4 +191,3 @@ extension Color {
         self.init(red: red, green: green, blue: blue)
     }
 }
-
