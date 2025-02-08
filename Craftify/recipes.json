@@ -228,51 +228,243 @@
     "category": "Tools"
   },
   {
-      "id": 20,
-      "name": "Lantern",
-      "image": "lantern",
-      "ingredients": [
-        "Iron Nugget", "Iron Nugget", "Iron Nugget",
-        "Iron Nugget", "torch", "Iron Nugget",
-        "Iron Nugget", "Iron Nugget", "Iron Nugget"
-      ],
-      "output": 1,
-      "category": "Lighting"
-    },
-    {
-      "id": 21,
-      "name": "Rail",
-      "image": "rail",
-      "ingredients": [
-        "Iron Ingot", "", "Iron Ingot",
-        "Iron Ingot", "Stick", "Iron Ingot",
-        "Iron Ingot", "", "Iron Ingot"
-      ],
-      "output": 16,
-      "category": "Transportation"
-    },
-    {
-      "id": 22,
-      "name": "Minecart",
-      "image": "minecart",
-      "ingredients": [
-        "", "", "",
-        "Iron Ingot", "Iron Ingot", "Iron Ingot",
-        "", "Iron Ingot", ""
-      ],
-      "output": 1,
-      "category": "Transportation"
-    },
-    {
-      "id": 23,
-      "name": "Anvil",
-      "image": "anvil",
-      "ingredients": [
-        "Iron Block", "Iron Block", "Iron Block",
-        "", "Iron Ingot", "",
-        "Iron Ingot", "Iron Ingot", "Iron Ingot"
-      ],
-      "output": 1,
-      "category": "Utility"
-    }
-  ]
+    "id": 20,
+    "name": "Lantern",
+    "image": "lantern",
+    "ingredients": [
+      "Iron Nugget", "Iron Nugget", "Iron Nugget",
+      "Iron Nugget", "Torch", "Iron Nugget",
+      "Iron Nugget", "Iron Nugget", "Iron Nugget"
+    ],
+    "output": 1,
+    "category": "Lighting"
+  },
+  {
+    "id": 21,
+    "name": "Rail",
+    "image": "rail",
+    "ingredients": [
+      "Iron Ingot", "", "Iron Ingot",
+      "Iron Ingot", "Stick", "Iron Ingot",
+      "Iron Ingot", "", "Iron Ingot"
+    ],
+    "output": 16,
+    "category": "Transportation"
+  },
+  {
+    "id": 22,
+    "name": "Minecart",
+    "image": "minecart",
+    "ingredients": [
+      "Iron Ingot", "", "Iron Ingot",
+      "Iron Ingot", "", "Iron Ingot",
+      "", "Iron Ingot", ""
+    ],
+    "output": 1,
+    "category": "Transportation"
+  },
+  {
+    "id": 23,
+    "name": "Anvil",
+    "image": "anvil",
+    "ingredients": [
+      "Iron Block", "Iron Block", "Iron Block",
+      "", "Iron Ingot", "",
+      "Iron Ingot", "Iron Ingot", "Iron Ingot"
+    ],
+    "output": 1,
+    "category": "Utility"
+  },
+  {
+    "id": 24,
+    "name": "Campfire",
+    "image": "campfire",
+    "ingredients": [
+      "Logs", "Logs", "Logs",
+      "", "Coal", "",
+      "Stick", "Stick", "Stick"
+    ],
+    "output": 1,
+    "category": "Utility"
+  },
+  {
+    "id": 25,
+    "name": "Powered Rail",
+    "image": "powered_rail",
+    "ingredients": [
+      "Iron Ingot", "Iron Ingot", "Iron Ingot",
+      "Iron Ingot", "Redstone", "Iron Ingot",
+      "", "Stick", ""
+    ],
+    "output": 6,
+    "category": "Transportation"
+  },
+  {
+    "id": 26,
+    "name": "Activator Rail",
+    "image": "activator_rail",
+    "ingredients": [
+      "Iron Ingot", "", "Iron Ingot",
+      "Iron Ingot", "Redstone", "Iron Ingot",
+      "Iron Ingot", "Stick", "Iron Ingot"
+    ],
+    "output": 6,
+    "category": "Transportation"
+  },
+  {
+    "id": 27,
+    "name": "Detector Rail",
+    "image": "detector_rail",
+    "ingredients": [
+      "", "Iron Ingot", "",
+      "Iron Ingot", "Stone Pressure Plate", "Iron Ingot",
+      "Iron Ingot", "Iron Ingot", "Iron Ingot"
+    ],
+    "output": 6,
+    "category": "Transportation"
+  },
+  {
+    "id": 28,
+    "name": "Enchantment Table",
+    "image": "enchantment_table",
+    "ingredients": [
+      "Obsidian", "Obsidian", "Obsidian",
+      "Obsidian", "Diamond", "Obsidian",
+      "", "Book", ""
+    ],
+    "output": 1,
+    "category": "Utility"
+  },
+  {
+    "id": 29,
+    "name": "Ladder",
+    "image": "ladder",
+    "ingredients": [
+      "Stick", "", "Stick",
+      "Stick", "", "Stick",
+      "Stick", "", "Stick"
+    ],
+    "output": 3,
+    "category": "Utility"
+  },
+  {
+    "id": 30,
+    "name": "Diamond Pickaxe",
+    "image": "diamond_pickaxe",
+    "ingredients": [
+      "Diamond", "Diamond", "Diamond",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 31,
+    "name": "Diamond Sword",
+    "image": "diamond_sword",
+    "ingredients": [
+      "", "Diamond", "",
+      "", "Diamond", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Weapons"
+  },
+  {
+    "id": 32,
+    "name": "Diamond Shovel",
+    "image": "diamond_shovel",
+    "ingredients": [
+      "", "Diamond", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 33,
+    "name": "Diamond Axe",
+    "image": "diamond_axe",
+    "ingredients": [
+      "Diamond", "Diamond", "",
+      "Diamond", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 34,
+    "name": "Diamond Hoe",
+    "image": "diamond_hoe",
+    "ingredients": [
+      "Diamond", "Diamond", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 35,
+    "name": "Golden Pickaxe",
+    "image": "golden_pickaxe",
+    "ingredients": [
+      "Gold Ingot", "Gold Ingot", "Gold Ingot",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 36,
+    "name": "Golden Sword",
+    "image": "golden_sword",
+    "ingredients": [
+      "", "Gold Ingot", "",
+      "", "Gold Ingot", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Weapons"
+  },
+  {
+    "id": 37,
+    "name": "Golden Shovel",
+    "image": "golden_shovel",
+    "ingredients": [
+      "", "Gold Ingot", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 38,
+    "name": "Golden Axe",
+    "image": "golden_axe",
+    "ingredients": [
+      "Gold Ingot", "Gold Ingot", "",
+      "Gold Ingot", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 39,
+    "name": "Golden Hoe",
+    "image": "golden_hoe",
+    "ingredients": [
+      "Gold Ingot", "Gold Ingot", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  }
+]

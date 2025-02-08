@@ -23,6 +23,9 @@ struct ContentView: View {
                              navigationPath: $navigationPath,
                              searchText: $searchText,
                              isSearching: $isSearching)
+                    .navigationTitle("Craftify")
+                    .navigationBarTitleDisplayMode(.large)
+                    // Attach searchable at the NavigationStack level
                     .searchable(text: $searchText, prompt: "Search recipes")
             }
             .tabItem {
@@ -54,6 +57,10 @@ struct CategoryView: View {
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
     
+    // State used to throttle haptics during category scroll.
+    @State private var categoryScrollHapticTriggered = false
+
+    // Computed property: recipes after filtering (grouped by first letter)
     var sortedRecipes: [String: [Recipe]] {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
@@ -64,12 +71,18 @@ struct CategoryView: View {
             recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
         }
         
-        return Dictionary(grouping: filtered, by: { String($0.name.prefix(1)) }).mapValues { $0.sorted { $0.name < $1.name } }
+        return Dictionary(grouping: filtered, by: { String($0.name.prefix(1)) })
+            .mapValues { $0.sorted { $0.name < $1.name } }
+    }
+    
+    // Computed property for the count of recipes that will be displayed.
+    var displayedRecipeCount: Int {
+        sortedRecipes.values.reduce(0) { $0 + $1.count }
     }
     
     var body: some View {
         VStack {
-            // Category selection buttons
+            // Category selection buttons with a drag gesture for haptics
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     Button(action: {
@@ -84,7 +97,7 @@ struct CategoryView: View {
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
-                    ForEach(dataManager.categories, id: \ .self) { category in
+                    ForEach(dataManager.categories, id: \.self) { category in
                         Button(action: {
                             let generator = UIImpactFeedbackGenerator(style: .light)
                             generator.impactOccurred()
@@ -100,6 +113,20 @@ struct CategoryView: View {
                     }
                 }
                 .padding(.horizontal)
+                // Attach a drag gesture to trigger a haptic when scrolling starts.
+                .gesture(
+                    DragGesture(minimumDistance: 10)
+                        .onChanged { _ in
+                            if !categoryScrollHapticTriggered {
+                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                generator.impactOccurred()
+                                categoryScrollHapticTriggered = true
+                            }
+                        }
+                        .onEnded { _ in
+                            categoryScrollHapticTriggered = false
+                        }
+                )
             }
             
             // Recommended Recipes Section (Craftify Picks)
@@ -128,6 +155,13 @@ struct CategoryView: View {
                                     .background(Color.gray.opacity(0.2))
                                     .cornerRadius(12)
                                 }
+                                // Haptic feedback for tapping a recommended recipe.
+                                .simultaneousGesture(
+                                    TapGesture().onEnded {
+                                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                                        generator.impactOccurred()
+                                    }
+                                )
                             }
                         }
                         .padding(.horizontal)
@@ -135,17 +169,25 @@ struct CategoryView: View {
                 }
             }
             
-            // Recipes List with built-in searchable search bar
+            // Recipe counter placed after the Craftify Picks section.
+            Text("\(displayedRecipeCount) recipes available")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+                .padding(.top, 4)
+            
+            // Recipes List with category labels under the recipe names
             List {
-                ForEach(sortedRecipes.keys.sorted(), id: \ .self) { letter in
-                    Section(header: Text(letter)
-                        .font(.headline)
-                        .bold()
-                        .foregroundColor(.primary)
-                        .padding(.vertical, 4)
-                        .background(Color(UIColor.systemGray5).opacity(0.5))
-                        .cornerRadius(8)
-                        .padding(.horizontal, 8)
+                ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
+                    Section(header:
+                        Text(letter)
+                            .font(.headline)
+                            .bold()
+                            .foregroundColor(.primary)
+                            .padding(.vertical, 4)
+                            .background(Color(UIColor.systemGray5).opacity(0.5))
+                            .cornerRadius(8)
+                            .padding(.horizontal, 8)
                     ) {
                         ForEach(sortedRecipes[letter] ?? []) { recipe in
                             NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
@@ -156,25 +198,39 @@ struct CategoryView: View {
                                         .frame(width: 60, height: 60)
                                         .padding(4)
                                     
-                                    Text(recipe.name)
-                                        .font(.headline).bold()
+                                    VStack(alignment: .leading) {
+                                        Text(recipe.name)
+                                            .font(.headline).bold()
+                                        Text(recipe.category)
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                             }
+                            // Haptic feedback for tapping a recipe in the list.
+                            .simultaneousGesture(
+                                TapGesture().onEnded {
+                                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                                    generator.impactOccurred()
+                                }
+                            )
                             .padding(.vertical, 4)
                         }
                     }
                 }
             }
-            .searchable(text: $searchText, prompt: "Search recipes")
+            // Removed inner .searchable so that the NavigationStack's search bar remains active.
             .onChange(of: searchText) { _, newValue in
                 isSearching = !newValue.isEmpty
             }
             .onAppear {
                 selectedTab = 0
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
+                // (Optional) Clear search text on reappear to force a refresh of the navigation bar.
+                // searchText = ""
             }
         }
-        .navigationTitle("Craftify")
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 

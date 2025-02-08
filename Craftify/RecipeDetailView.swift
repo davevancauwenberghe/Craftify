@@ -22,13 +22,17 @@ struct RecipeDetailView: View {
             HStack(alignment: .center, spacing: 16) {
                 // 3x3 Crafting Grid for ingredients
                 VStack(spacing: 6) {
-                    ForEach(0..<3, id: \ .self) { row in
+                    ForEach(0..<3, id: \.self) { row in
                         HStack(spacing: 6) {
-                            ForEach(0..<3, id: \ .self) { col in
+                            ForEach(0..<3, id: \.self) { col in
                                 let index = row * 3 + col
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(index < recipe.ingredients.count && !recipe.ingredients[index].isEmpty ? Color(UIColor.systemGray5) : Color(UIColor.systemGray6))
+                                        .fill(
+                                            index < recipe.ingredients.count && !recipe.ingredients[index].isEmpty
+                                            ? Color(UIColor.systemGray5)
+                                            : Color(UIColor.systemGray6)
+                                        )
                                         .frame(width: 70, height: 70)
                                         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                                     
@@ -96,15 +100,6 @@ struct RecipeDetailView: View {
                     .animation(.easeInOut, value: selectedDetail)
             }
             
-            // Category Display (informational style)
-            Text("Category: \(recipe.category)")
-                .font(.headline)
-                .padding()
-                .background(Color(UIColor.systemGray5))
-                .cornerRadius(12)
-                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-                .foregroundColor(.primary)
-            
             Spacer()
         }
         .padding()
@@ -136,5 +131,21 @@ struct RecipeDetailView: View {
                 }
             }
         }
+        // Overlay the category label at the bottom of the view (just above the tab bar)
+        .overlay(
+            Group {
+                if !recipe.category.isEmpty {
+                    Text("Category: \(recipe.category)")
+                        .font(.subheadline)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .background(Color.gray.opacity(0.2))
+                        .foregroundColor(.primary)
+                        .cornerRadius(20)
+                        .padding(.bottom, 40) // Adjust this padding to position above the tab bar
+                }
+            },
+            alignment: .bottom
+        )
     }
 }
