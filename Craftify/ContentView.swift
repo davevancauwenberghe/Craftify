@@ -23,6 +23,7 @@ struct ContentView: View {
                              navigationPath: $navigationPath,
                              searchText: $searchText,
                              isSearching: $isSearching)
+                    .searchable(text: $searchText, prompt: "Search recipes")
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
@@ -85,7 +86,7 @@ struct CategoryView: View {
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
-                    ForEach(dataManager.categories, id: \.self) { category in
+                    ForEach(dataManager.categories, id: \ .self) { category in
                         Button(action: {
                             let generator = UIImpactFeedbackGenerator(style: .light)
                             generator.impactOccurred()
