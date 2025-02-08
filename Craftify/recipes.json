@@ -1,73 +1,122 @@
 [
-    {
-        "id": 1,
-        "name": "Crafting Table",
-        "image": "crafting_table",
-        "ingredients": [
-            "Planks", "Planks",
-            "Planks", "Planks"
-        ],
-        "output": 1,
-        "category": "Utility"
-    },
-    {
-        "id": 2,
-        "name": "Furnace",
-        "image": "furnace",
-        "ingredients": [
-            "Cobblestone", "Cobblestone", "Cobblestone",
-            "Cobblestone", "", "Cobblestone",
-            "Cobblestone", "Cobblestone", "Cobblestone"
-        ],
-        "output": 1,
-        "category": "Smelting"
-    },
-    {
-        "id": 3,
-        "name": "Wooden Pickaxe",
-        "image": "wooden_pickaxe",
-        "ingredients": [
-            "Planks", "Planks", "Planks",
-            "", "Stick", "",
-            "", "Stick", ""
-        ],
-        "output": 1,
-        "category": "Tools"
-    },
-    {
-        "id": 4,
-        "name": "Iron Sword",
-        "image": "iron_sword",
-        "ingredients": [
-            "", "Iron Ingot", "",
-            "", "Iron Ingot", "",
-            "", "Stick", ""
-        ],
-        "output": 1,
-        "category": "Weapons"
-    },
-    {
-        "id": 5,
-        "name": "Chest",
-        "image": "chest",
-        "ingredients": [
-            "Planks", "Planks", "Planks",
-            "Planks", "", "Planks",
-            "Planks", "Planks", "Planks"
-        ],
-        "output": 1,
-        "category": "Storage"
-    },
-    {
-        "id": 6,
-        "name": "Torch",
-        "image": "torch",
-        "ingredients": [
-            "", "", "",
-            "", "Coal", "",
-            "", "Stick", ""
-        ],
-        "output": 4,
-        "category": "Lighting"
-    }
+  {
+    "id": 1,
+    "name": "Crafting Table",
+    "image": "crafting_table",
+    "ingredients": [
+      "Planks", "Planks", "",
+      "Planks", "Planks", "",
+      "", "", ""
+    ],
+    "output": 1,
+    "category": "Utility"
+  },
+  {
+    "id": 2,
+    "name": "Furnace",
+    "image": "furnace",
+    "ingredients": [
+      "Cobblestone", "Cobblestone", "Cobblestone",
+      "Cobblestone", "", "Cobblestone",
+      "Cobblestone", "Cobblestone", "Cobblestone"
+    ],
+    "output": 1,
+    "category": "Smelting"
+  },
+  {
+    "id": 3,
+    "name": "Wooden Pickaxe",
+    "image": "wooden_pickaxe",
+    "ingredients": [
+      "Planks", "Planks", "Planks",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 4,
+    "name": "Iron Sword",
+    "image": "iron_sword",
+    "ingredients": [
+      "", "Iron Ingot", "",
+      "", "Iron Ingot", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Weapons"
+  },
+  {
+    "id": 5,
+    "name": "Chest",
+    "image": "chest",
+    "ingredients": [
+      "Planks", "Planks", "Planks",
+      "Planks", "", "Planks",
+      "Planks", "Planks", "Planks"
+    ],
+    "output": 1,
+    "category": "Storage"
+  },
+  {
+    "id": 6,
+    "name": "Torch",
+    "image": "torch",
+    "ingredients": [
+      "", "", "",
+      "", "Coal", "",
+      "", "Stick", ""
+    ],
+    "output": 4,
+    "category": "Lighting"
+  },
+  {
+    "id": 7,
+    "name": "Wooden Sword",
+    "image": "wooden_sword",
+    "ingredients": [
+      "", "Planks", "",
+      "", "Planks", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Weapons"
+  },
+  {
+    "id": 8,
+    "name": "Wooden Shovel",
+    "image": "wooden_shovel",
+    "ingredients": [
+      "", "Planks", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 9,
+    "name": "Wooden Axe",
+    "image": "wooden_axe",
+    "ingredients": [
+      "Planks", "Planks", "",
+      "Planks", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  },
+  {
+    "id": 10,
+    "name": "Wooden Hoe",
+    "image": "wooden_hoe",
+    "ingredients": [
+      "Planks", "Planks", "",
+      "", "Stick", "",
+      "", "Stick", ""
+    ],
+    "output": 1,
+    "category": "Tools"
+  }
 ]

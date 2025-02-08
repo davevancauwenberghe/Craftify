@@ -9,10 +9,11 @@ import SwiftUI
 
 struct RecipeListView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @Binding var navigationPath: NavigationPath // Voeg navigationPath toe
+    @Binding var navigationPath: NavigationPath // Binding for navigation control
     @State private var searchText = ""
     
     var filteredRecipes: [Recipe] {
+        // Use dataManager.filteredRecipes as a base, then filter by searchText if needed.
         let filtered = searchText.isEmpty ? dataManager.filteredRecipes : dataManager.filteredRecipes.filter {
             $0.name.localizedCaseInsensitiveContains(searchText)
         }
@@ -20,8 +21,9 @@ struct RecipeListView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $navigationPath) { // Gebruik NavigationStack met path
+        NavigationStack(path: $navigationPath) { // NavigationStack with bound path
             VStack {
+                // Picker for category selection
                 Picker("Category", selection: $dataManager.selectedCategory) {
                     Text("All").tag(nil as String?)
                     ForEach(dataManager.categories, id: \.self) { category in
@@ -31,8 +33,9 @@ struct RecipeListView: View {
                 .pickerStyle(.segmented)
                 .padding()
                 
+                // List of filtered recipes with NavigationLink to detail view
                 List(filteredRecipes) { recipe in
-                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) { // Geef navigationPath mee
+                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
                         HStack {
                             Image(recipe.image)
                                 .resizable()
@@ -47,3 +50,4 @@ struct RecipeListView: View {
         }
     }
 }
+

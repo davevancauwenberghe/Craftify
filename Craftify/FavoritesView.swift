@@ -30,6 +30,7 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack {
+                // Recommended Recipes (Craftify Picks) section
                 if !recommendedRecipes.isEmpty && !isSearching {
                     VStack(alignment: .leading) {
                         Text("Craftify Picks")
@@ -37,11 +38,12 @@ struct FavoritesView: View {
                             .padding(.horizontal)
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
-                                ForEach(recommendedRecipes, id: \ .id) { recipe in
+                                ForEach(recommendedRecipes) { recipe in
                                     NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
                                         VStack {
                                             Image(recipe.image)
                                                 .resizable()
+                                                .scaledToFit()
                                                 .frame(width: 90, height: 90)
                                                 .padding(4)
                                             Text(recipe.name)
@@ -60,12 +62,14 @@ struct FavoritesView: View {
                     }
                 }
                 
+                // Favorites List
                 List {
                     ForEach(filteredFavorites) { recipe in
                         NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
                             HStack {
                                 Image(recipe.image)
                                     .resizable()
+                                    .scaledToFit()
                                     .frame(width: 60, height: 60)
                                     .padding(4)
                                 Text(recipe.name)
@@ -76,7 +80,9 @@ struct FavoritesView: View {
                     }
                 }
                 .searchable(text: $searchText, prompt: "Search favorites")
-                .onChange(of: searchText) { _, newValue in isSearching = !newValue.isEmpty }
+                .onChange(of: searchText) { _, newValue in
+                    isSearching = !newValue.isEmpty
+                }
                 .onAppear {
                     recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
                 }

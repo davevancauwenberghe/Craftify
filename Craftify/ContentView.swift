@@ -19,7 +19,10 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack(path: $navigationPath) {
-                CategoryView(selectedTab: $selectedTab, navigationPath: $navigationPath, searchText: $searchText, isSearching: $isSearching)
+                CategoryView(selectedTab: $selectedTab,
+                             navigationPath: $navigationPath,
+                             searchText: $searchText,
+                             isSearching: $isSearching)
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
@@ -42,6 +45,7 @@ struct ContentView: View {
 }
 
 struct CategoryView: View {
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @EnvironmentObject private var dataManager: DataManager
     @Binding var selectedTab: Int
     @Binding var navigationPath: NavigationPath
@@ -51,7 +55,9 @@ struct CategoryView: View {
     @State private var recommendedRecipes: [Recipe] = []
     
     var filteredRecipes: [Recipe] {
-        let categoryFiltered = selectedCategory == nil ? dataManager.recipes : dataManager.recipes.filter { $0.category == selectedCategory }
+        let categoryFiltered = selectedCategory == nil
+            ? dataManager.recipes
+            : dataManager.recipes.filter { $0.category == selectedCategory }
         
         if searchText.isEmpty {
             return categoryFiltered
@@ -65,9 +71,14 @@ struct CategoryView: View {
     
     var body: some View {
         VStack {
+            // Category selection buttons
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
-                    Button(action: { selectedCategory = nil }) {
+                    Button(action: {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred()
+                        selectedCategory = nil
+                    }) {
                         Text("All")
                             .fontWeight(.bold)
                             .padding()
@@ -75,8 +86,12 @@ struct CategoryView: View {
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
-                    ForEach(dataManager.categories, id: \ .self) { category in
-                        Button(action: { selectedCategory = category }) {
+                    ForEach(dataManager.categories, id: \.self) { category in
+                        Button(action: {
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred()
+                            selectedCategory = category
+                        }) {
                             Text(category)
                                 .fontWeight(.bold)
                                 .padding()
@@ -89,18 +104,21 @@ struct CategoryView: View {
                 .padding(.horizontal)
             }
             
+            // Recommended Recipes Section (Craftify Picks)
             if !recommendedRecipes.isEmpty && !isSearching {
                 VStack(alignment: .leading) {
                     Text("Craftify Picks")
                         .font(.title3).bold()
                         .padding(.horizontal)
+                    
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
-                            ForEach(recommendedRecipes, id: \ .id) { recipe in
+                            ForEach(recommendedRecipes) { recipe in
                                 NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
                                     VStack {
                                         Image(recipe.image)
                                             .resizable()
+                                            .scaledToFit()
                                             .frame(width: 90, height: 90)
                                             .padding(4)
                                         Text(recipe.name)
@@ -119,12 +137,14 @@ struct CategoryView: View {
                 }
             }
             
+            // Recipes List with built-in searchable search bar
             List {
                 ForEach(filteredRecipes) { recipe in
                     NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
                         HStack {
                             Image(recipe.image)
                                 .resizable()
+                                .scaledToFit()
                                 .frame(width: 60, height: 60)
                                 .padding(4)
                             
@@ -136,12 +156,22 @@ struct CategoryView: View {
                 }
             }
             .searchable(text: $searchText, prompt: "Search recipes")
-            .onChange(of: searchText) { _, newValue in isSearching = !newValue.isEmpty }
+            .onChange(of: searchText) { oldValue, newValue in
+                // Provide haptic feedback when starting a search
+                if oldValue.isEmpty && !newValue.isEmpty {
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred()
+                }
+                isSearching = !newValue.isEmpty
+            }
             .onAppear {
                 selectedTab = 0
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             }
         }
+        // For iPad: constrain the maximum width and add horizontal padding for a centered appearance.
+        .frame(maxWidth: horizontalSizeClass == .regular ? 700 : .infinity)
+        .padding(.horizontal, horizontalSizeClass == .regular ? 20 : 0)
         .navigationTitle("Craftify")
     }
 }
