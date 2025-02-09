@@ -29,7 +29,7 @@ struct RecipeDetailView: View {
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(
-                                            index < recipe.ingredients.count && !recipe.ingredients[index].isEmpty
+                                            (index < recipe.ingredients.count && !recipe.ingredients[index].isEmpty)
                                             ? Color(UIColor.systemGray5)
                                             : Color(UIColor.systemGray6)
                                         )
@@ -44,10 +44,18 @@ struct RecipeDetailView: View {
                                     }
                                 }
                                 .onTapGesture {
-                                    if index < recipe.ingredients.count, !recipe.ingredients[index].isEmpty {
-                                        let generator = UIImpactFeedbackGenerator(style: .light)
-                                        generator.impactOccurred()
-                                        selectedDetail = recipe.ingredients[index]
+                                    guard index < recipe.ingredients.count,
+                                          !recipe.ingredients[index].isEmpty else { return }
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred()
+                                    // Update immediately with a smooth animation:
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        // If tapped the same item, dismiss it; otherwise update.
+                                        if selectedDetail == recipe.ingredients[index] {
+                                            selectedDetail = nil
+                                        } else {
+                                            selectedDetail = recipe.ingredients[index]
+                                        }
                                     }
                                 }
                             }
@@ -77,7 +85,14 @@ struct RecipeDetailView: View {
                     .onTapGesture {
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
-                        selectedDetail = recipe.name
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            // Toggle the output pop-up.
+                            if selectedDetail == recipe.name {
+                                selectedDetail = nil
+                            } else {
+                                selectedDetail = recipe.name
+                            }
+                        }
                     }
                     
                     Text("x\(recipe.output)")
@@ -91,11 +106,13 @@ struct RecipeDetailView: View {
             // Display tapped detail (ingredient or output) if available.
             if let detail = selectedDetail {
                 Text(detail)
-                    .font(.title2).bold()
+                    .font(.title2)
+                    .bold()
                     .padding()
                     .background(Color(UIColor.systemGray3))
                     .foregroundColor(.white)
                     .cornerRadius(12)
+                    .shadow(radius: 4)
                     .transition(.opacity)
                     .animation(.easeInOut, value: selectedDetail)
             }
@@ -131,7 +148,21 @@ struct RecipeDetailView: View {
                 }
             }
         }
-        // Overlay the category label at the bottom of the view (just above the tab bar)
+        // Overlay to dismiss the pop-up if tapped outside.
+        .overlay(
+            Group {
+                if selectedDetail != nil {
+                    Color.black.opacity(0.001)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedDetail = nil
+                            }
+                        }
+                }
+            }
+        )
+        // Category label overlay at the bottom.
         .overlay(
             Group {
                 if !recipe.category.isEmpty {
@@ -142,7 +173,7 @@ struct RecipeDetailView: View {
                         .background(Color.gray.opacity(0.2))
                         .foregroundColor(.primary)
                         .cornerRadius(20)
-                        .padding(.bottom, 40) // Adjust this padding to position above the tab bar
+                        .padding(.bottom, 40)
                 }
             },
             alignment: .bottom

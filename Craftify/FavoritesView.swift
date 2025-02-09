@@ -18,6 +18,7 @@ struct FavoritesView: View {
     @State private var selectedCategory: String? = nil
     @State private var categoryScrollHapticTriggered = false
 
+    // Filter and group favorited recipes by their first letter.
     var sortedFavorites: [String: [Recipe]] {
         let favorites = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
         let categoryFiltered = selectedCategory == nil ? favorites : favorites.filter { $0.category == selectedCategory }
@@ -29,6 +30,7 @@ struct FavoritesView: View {
             .mapValues { $0.sorted { $0.name < $1.name } }
     }
     
+    // Compute the available favorite categories from favorited recipes.
     var favoriteCategories: [String] {
         let favorites = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
         let categories = favorites.compactMap { $0.category.isEmpty ? nil : $0.category }
@@ -38,6 +40,7 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack {
+                // Horizontal category selection (if there are any favorite categories)
                 if !favoriteCategories.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
@@ -85,12 +88,14 @@ struct FavoritesView: View {
                     }
                 }
                 
+                // Recommended Recipes Section (Craftify Picks)
                 if !recommendedRecipes.isEmpty && !isSearching {
                     VStack(alignment: .leading) {
                         Text("Craftify Picks")
                             .font(.title3)
                             .bold()
                             .padding(.horizontal)
+                        
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 ForEach(recommendedRecipes) { recipe in
@@ -111,19 +116,15 @@ struct FavoritesView: View {
                                         .background(Color.gray.opacity(0.2))
                                         .cornerRadius(12)
                                     }
-                                    .simultaneousGesture(
-                                        TapGesture().onEnded {
-                                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                                            generator.impactOccurred()
-                                        }
-                                    )
+                                    // Removed extra simultaneous gestures to ensure reliable navigation.
                                 }
                             }
                             .padding(.horizontal)
                         }
                     }
                 }
-
+                
+                // Recipes List (grouped by the first letter)
                 List {
                     ForEach(sortedFavorites.keys.sorted(), id: \.self) { letter in
                         Section(header:
@@ -157,12 +158,7 @@ struct FavoritesView: View {
                                         }
                                     }
                                 }
-                                .simultaneousGesture(
-                                    TapGesture().onEnded {
-                                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                                        generator.impactOccurred()
-                                    }
-                                )
+                                // Removed simultaneous gesture here so that tapping reliably triggers navigation.
                                 .padding(.vertical, 4)
                             }
                         }
@@ -172,6 +168,7 @@ struct FavoritesView: View {
                     isSearching = !newValue.isEmpty
                 }
                 .onAppear {
+                    // Load 5 random favorited recipes for the recommended section.
                     recommendedRecipes = Array(dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
                         .shuffled()
                         .prefix(5))

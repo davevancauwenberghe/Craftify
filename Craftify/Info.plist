@@ -1,24 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>CFBundleSupportedPlatforms</key>
-	<array>
-		<string>iPhoneOS</string>
-	</array>
-	<key>MinimumOSVersion</key>
-	<string>17.0</string>
-	<key>NSUbiquitousContainers</key>
-	<dict>
-		<key>iCloud.be.ghentphotography.www/Craftify</key>
-		<dict>
-			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
-			<true/>
-			<key>NSUbiquitousContainerName</key>
-			<string>Craftify</string>
-			<key>NSUbiquitousContainerSupportedFolderLevels</key>
-			<string>All</string>
-		</dict>
-	</dict>
-</dict>
+  <dict>
+    <!-- General App Information -->
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>be.ghentphotography.www/Craftify</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>Craftify</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+
+    <!-- Set the minimum OS version to 17.0 -->
+    <key>MinimumOSVersion</key>
+    <string>17.0</string>
+    
+    <!-- Force full screen (disables iPad multitasking) -->
+    <key>UIRequiresFullScreen</key>
+    <true/>
+    
+    <!-- Launch Screen configuration using a storyboard -->
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+
+    <!-- Device and Orientation Settings -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+      <string>arm64</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+      <string>UIInterfaceOrientationPortrait</string>
+      <string>UIInterfaceOrientationLandscapeLeft</string>
+      <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+      <string>iPhoneOS</string>
+    </array>
+
+    <!-- CloudKit Configuration (used for transferring saved favorite recipes) -->
+    <key>NSUbiquitousContainers</key>
+    <dict>
+      <key>iCloud.be.ghentphotography.www/Craftify</key>
+      <dict>
+        <key>NSUbiquitousContainerIsDocumentScopePublic</key>
+        <true/>
+        <key>NSUbiquitousContainerSupportedFolderLevels</key>
+        <string>All</string>
+        <key>NSUbiquitousContainerName</key>
+        <string>Craftify</string>
+      </dict>
+    </dict>
+  </dict>
 </plist>

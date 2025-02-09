@@ -60,6 +60,17 @@ struct ContentView: View {
                 dataManager.loadData()
             }
             dataManager.syncFavorites()
+            
+            // Use the system's default tab bar appearance.
+            // This configuration will let the tab bar show slight translucency when scrolling,
+            // as per the default SwiftUI design.
+            let tabBarAppearance = UITabBarAppearance()
+            tabBarAppearance.configureWithDefaultBackground()
+            UITabBar.appearance().standardAppearance = tabBarAppearance
+            if #available(iOS 15.0, *) {
+                // Setting scrollEdgeAppearance to nil lets the system apply the default behavior.
+                UITabBar.appearance().scrollEdgeAppearance = nil
+            }
         }
     }
 }
@@ -73,10 +84,10 @@ struct CategoryView: View {
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
     
-    // State used to throttle haptics during category scroll.
+    // State used to throttle haptics during category scrolling.
     @State private var categoryScrollHapticTriggered = false
 
-    // Computed property: recipes after filtering (grouped by first letter)
+    // Computed property: recipes after filtering, grouped by first letter
     var sortedRecipes: [String: [Recipe]] {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
@@ -129,7 +140,7 @@ struct CategoryView: View {
                     }
                 }
                 .padding(.horizontal)
-                // Use simultaneousGesture so scrolling works.
+                // Use a simultaneous gesture on the scrolling area to trigger haptics on scroll.
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 10)
                         .onChanged { _ in
@@ -173,12 +184,7 @@ struct CategoryView: View {
                                     .background(Color.gray.opacity(0.2))
                                     .cornerRadius(12)
                                 }
-                                .simultaneousGesture(
-                                    TapGesture().onEnded {
-                                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                                        generator.impactOccurred()
-                                    }
-                                )
+                                // Removed extra gesture on the recommended recipes to avoid interfering with NavigationLink activation.
                             }
                         }
                         .padding(.horizontal)
@@ -186,7 +192,7 @@ struct CategoryView: View {
                 }
             }
             
-            // Attach the recipe counter as the first row of the List so it scrolls away.
+            // Recipes List (with recipe counter as the first row)
             List {
                 Text("\(displayedRecipeCount) recipes available")
                     .font(.subheadline)
@@ -224,12 +230,7 @@ struct CategoryView: View {
                                     }
                                 }
                             }
-                            .simultaneousGesture(
-                                TapGesture().onEnded {
-                                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                                    generator.impactOccurred()
-                                }
-                            )
+                            // Removed the simultaneous gesture here so that the NavigationLink is reliably triggered.
                             .padding(.vertical, 4)
                         }
                     }
