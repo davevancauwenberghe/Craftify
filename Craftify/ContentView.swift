@@ -10,8 +10,11 @@ import Combine
 import CloudKit
 
 struct ContentView: View {
-    @EnvironmentObject private var dataManager: DataManager  // Access DataManager via EnvironmentObject
+    @EnvironmentObject var dataManager: DataManager  // Access DataManager via EnvironmentObject
+    
+    // Persist the user's appearance preference ("system", "light", or "dark")
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
+    
     @State private var searchText = ""
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
@@ -19,6 +22,7 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
+            // Recipes Tab using CategoryView
             NavigationStack(path: $navigationPath) {
                 CategoryView(selectedTab: $selectedTab,
                              navigationPath: $navigationPath,
@@ -26,27 +30,27 @@ struct ContentView: View {
                              isSearching: $isSearching)
                     .navigationTitle("Craftify")
                     .navigationBarTitleDisplayMode(.large)
-                    // Attach searchable at the NavigationStack level
                     .searchable(text: $searchText, prompt: "Search recipes")
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
             }
             .tag(0)
-
+            
+            // Favorites Tab
             FavoritesView()
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
                 .tag(1)
             
-            MoreView()  // New tab for "More"
+            // More Tab
+            MoreView()
                 .tabItem {
                     Label("More", systemImage: "ellipsis.circle")
                 }
                 .tag(2)
         }
-        
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
             (colorSchemePreference == "light" ? .light : .dark)
@@ -61,7 +65,7 @@ struct ContentView: View {
 }
 
 struct CategoryView: View {
-    @EnvironmentObject private var dataManager: DataManager
+    @EnvironmentObject var dataManager: DataManager
     @Binding var selectedTab: Int
     @Binding var navigationPath: NavigationPath
     @Binding var searchText: String
@@ -94,7 +98,7 @@ struct CategoryView: View {
     
     var body: some View {
         VStack {
-            // Category selection buttons with a drag gesture for haptics
+            // Horizontal category selection with haptics
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     Button(action: {
@@ -125,8 +129,8 @@ struct CategoryView: View {
                     }
                 }
                 .padding(.horizontal)
-                // Attach a drag gesture to trigger a haptic when scrolling starts.
-                .gesture(
+                // Use simultaneousGesture so scrolling works.
+                .simultaneousGesture(
                     DragGesture(minimumDistance: 10)
                         .onChanged { _ in
                             if !categoryScrollHapticTriggered {
@@ -145,7 +149,8 @@ struct CategoryView: View {
             if !recommendedRecipes.isEmpty && !isSearching {
                 VStack(alignment: .leading) {
                     Text("Craftify Picks")
-                        .font(.title3).bold()
+                        .font(.title3)
+                        .bold()
                         .padding(.horizontal)
                     
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -159,7 +164,8 @@ struct CategoryView: View {
                                             .frame(width: 90, height: 90)
                                             .padding(4)
                                         Text(recipe.name)
-                                            .font(.caption).bold()
+                                            .font(.caption)
+                                            .bold()
                                             .lineLimit(1)
                                             .frame(width: 90)
                                     }
@@ -167,7 +173,6 @@ struct CategoryView: View {
                                     .background(Color.gray.opacity(0.2))
                                     .cornerRadius(12)
                                 }
-                                // Haptic feedback for tapping a recommended recipe.
                                 .simultaneousGesture(
                                     TapGesture().onEnded {
                                         let generator = UIImpactFeedbackGenerator(style: .medium)
@@ -181,15 +186,12 @@ struct CategoryView: View {
                 }
             }
             
-            // Recipe counter placed after the Craftify Picks section.
-            Text("\(displayedRecipeCount) recipes available")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
-                .padding(.top, 4)
-            
-            // Recipes List with category labels under the recipe names
+            // Attach the recipe counter as the first row of the List so it scrolls away.
             List {
+                Text("\(displayedRecipeCount) recipes available")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .listRowSeparator(.hidden)
                 ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
                     Section(header:
                         Text(letter)
@@ -212,14 +214,16 @@ struct CategoryView: View {
                                     
                                     VStack(alignment: .leading) {
                                         Text(recipe.name)
-                                            .font(.headline).bold()
-                                        Text(recipe.category)
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
+                                            .font(.headline)
+                                            .bold()
+                                        if !recipe.category.isEmpty {
+                                            Text(recipe.category)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
                                     }
                                 }
                             }
-                            // Haptic feedback for tapping a recipe in the list.
                             .simultaneousGesture(
                                 TapGesture().onEnded {
                                     let generator = UIImpactFeedbackGenerator(style: .medium)
@@ -231,17 +235,15 @@ struct CategoryView: View {
                     }
                 }
             }
-            // Removed inner .searchable so that the NavigationStack's search bar remains active.
             .onChange(of: searchText) { _, newValue in
                 isSearching = !newValue.isEmpty
             }
             .onAppear {
-                selectedTab = 0
+                // Set recommendedRecipes to 5 random recipes from all recipes.
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
-                // (Optional) Clear search text on reappear to force a refresh of the navigation bar.
-                // searchText = ""
             }
         }
+        .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
     }
 }
@@ -251,12 +253,9 @@ extension Color {
         let scanner = Scanner(string: hex)
         var rgbValue: UInt64 = 0
         scanner.scanHexInt64(&rgbValue)
-        
         let red = Double((rgbValue >> 16) & 0xFF) / 255.0
         let green = Double((rgbValue >> 8) & 0xFF) / 255.0
         let blue = Double(rgbValue & 0xFF) / 255.0
-        
         self.init(red: red, green: green, blue: blue)
     }
 }
-

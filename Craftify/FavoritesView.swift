@@ -15,8 +15,8 @@ struct FavoritesView: View {
     @State private var searchText = ""
     @State private var isSearching = false
     @State private var recommendedRecipes: [Recipe] = []
-    @State private var selectedCategory: String? = nil  // For category filtering
-    @State private var categoryScrollHapticTriggered = false  // For drag haptics
+    @State private var selectedCategory: String? = nil
+    @State private var categoryScrollHapticTriggered = false
 
     var sortedFavorites: [String: [Recipe]] {
         let favorites = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
@@ -38,7 +38,6 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack {
-                // Horizontal category selection with haptics
                 if !favoriteCategories.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
@@ -70,7 +69,7 @@ struct FavoritesView: View {
                             }
                         }
                         .padding(.horizontal)
-                        .gesture(
+                        .simultaneousGesture(
                             DragGesture(minimumDistance: 10)
                                 .onChanged { _ in
                                     if !categoryScrollHapticTriggered {
@@ -86,7 +85,6 @@ struct FavoritesView: View {
                     }
                 }
                 
-                // Recommended Favorites (Craftify Picks) with haptics
                 if !recommendedRecipes.isEmpty && !isSearching {
                     VStack(alignment: .leading) {
                         Text("Craftify Picks")
@@ -125,8 +123,7 @@ struct FavoritesView: View {
                         }
                     }
                 }
-                
-                // Favorites List with haptic feedback on taps
+
                 List {
                     ForEach(sortedFavorites.keys.sorted(), id: \.self) { letter in
                         Section(header:
@@ -174,16 +171,15 @@ struct FavoritesView: View {
                 .onChange(of: searchText) { _, newValue in
                     isSearching = !newValue.isEmpty
                 }
+                .onAppear {
+                    recommendedRecipes = Array(dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
+                        .shuffled()
+                        .prefix(5))
+                }
             }
-            .navigationTitle("Favorite Recipes")
+            .navigationTitle("Favorite recipes")
             .navigationBarTitleDisplayMode(.large)
-            .onAppear {
-                recommendedRecipes = Array(dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
-                    .shuffled()
-                    .prefix(5))
-            }
         }
-        // Attach searchable at the NavigationStack level.
         .searchable(text: $searchText, prompt: "Search favorites")
     }
 }
