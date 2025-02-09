@@ -11,6 +11,7 @@ import CloudKit
 
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager  // Access DataManager via EnvironmentObject
+    @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @State private var searchText = ""
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
@@ -38,7 +39,18 @@ struct ContentView: View {
                     Label("Favorites", systemImage: "heart.fill")
                 }
                 .tag(1)
+            
+            MoreView()  // New tab for "More"
+                .tabItem {
+                    Label("More", systemImage: "ellipsis.circle")
+                }
+                .tag(2)
         }
+        
+        .preferredColorScheme(
+            colorSchemePreference == "system" ? nil :
+            (colorSchemePreference == "light" ? .light : .dark)
+        )
         .onAppear {
             if dataManager.recipes.isEmpty {
                 dataManager.loadData()
@@ -247,3 +259,4 @@ extension Color {
         self.init(red: red, green: green, blue: blue)
     }
 }
+

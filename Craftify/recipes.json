@@ -62,7 +62,7 @@
   {
     "id": 6,
     "name": "Torch",
-    "image": "torch",
+    "image": "Torch",
     "ingredients": [
       "", "", "",
       "", "Coal", "",
@@ -280,7 +280,7 @@
     "name": "Campfire",
     "image": "campfire",
     "ingredients": [
-      "Logs", "Logs", "Logs",
+      "Any Log", "Any Log", "Any Log",
       "", "Coal", "",
       "Stick", "Stick", "Stick"
     ],
@@ -292,9 +292,9 @@
     "name": "Powered Rail",
     "image": "powered_rail",
     "ingredients": [
-      "Iron Ingot", "Iron Ingot", "Iron Ingot",
-      "Iron Ingot", "Redstone", "Iron Ingot",
-      "", "Stick", ""
+      "Gold Ingot", "", "Gold Ingot",
+      "Gold Ingot", "Stick", "Gold Ingot",
+      "Gold Ingot", "Redstone Dust", "Gold Ingot"
     ],
     "output": 6,
     "category": "Transportation"
@@ -304,8 +304,8 @@
     "name": "Activator Rail",
     "image": "activator_rail",
     "ingredients": [
-      "Iron Ingot", "", "Iron Ingot",
-      "Iron Ingot", "Redstone", "Iron Ingot",
+      "Iron Ingot", "Stick", "Iron Ingot",
+      "Iron Ingot", "Redstone Torch", "Iron Ingot",
       "Iron Ingot", "Stick", "Iron Ingot"
     ],
     "output": 6,
@@ -316,9 +316,9 @@
     "name": "Detector Rail",
     "image": "detector_rail",
     "ingredients": [
-      "", "Iron Ingot", "",
+      "Iron Ingot", "", "Iron Ingot",
       "Iron Ingot", "Stone Pressure Plate", "Iron Ingot",
-      "Iron Ingot", "Iron Ingot", "Iron Ingot"
+      "Iron Ingot", "Redstone Dust", "Iron Ingot"
     ],
     "output": 6,
     "category": "Transportation"
@@ -328,9 +328,9 @@
     "name": "Enchantment Table",
     "image": "enchantment_table",
     "ingredients": [
-      "Obsidian", "Obsidian", "Obsidian",
-      "Obsidian", "Diamond", "Obsidian",
-      "", "Book", ""
+      "", "Book", "",
+      "Diamond", "Obsidian", "Diamond",
+      "Obsidian", "Obsidian", "Obsidian"
     ],
     "output": 1,
     "category": "Utility"
@@ -341,7 +341,7 @@
     "image": "ladder",
     "ingredients": [
       "Stick", "", "Stick",
-      "Stick", "", "Stick",
+      "Stick", "Stick", "Stick",
       "Stick", "", "Stick"
     ],
     "output": 3,
