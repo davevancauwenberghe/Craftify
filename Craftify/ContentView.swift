@@ -19,18 +19,27 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
+    @State private var isLoading = true // State to track loading status
 
     var body: some View {
         TabView(selection: $selectedTab) {
             // Recipes Tab using CategoryView
             NavigationStack(path: $navigationPath) {
-                CategoryView(selectedTab: $selectedTab,
-                             navigationPath: $navigationPath,
-                             searchText: $searchText,
-                             isSearching: $isSearching)
-                    .navigationTitle("Craftify")
-                    .navigationBarTitleDisplayMode(.large)
-                    .searchable(text: $searchText, prompt: "Search recipes")
+                ZStack {
+                    if isLoading {
+                        ProgressView("Loading Recipes...")
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .padding()
+                    } else {
+                        CategoryView(selectedTab: $selectedTab,
+                                     navigationPath: $navigationPath,
+                                     searchText: $searchText,
+                                     isSearching: $isSearching)
+                    }
+                }
+                .navigationTitle("Craftify")
+                .navigationBarTitleDisplayMode(.large)
+                .searchable(text: $searchText, prompt: "Search recipes")
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
@@ -57,23 +66,20 @@ struct ContentView: View {
         )
         .onAppear {
             if dataManager.recipes.isEmpty {
-                dataManager.loadData()
-            }
-            dataManager.syncFavorites()
-            
-            // Use the system's default tab bar appearance.
-            // This configuration will let the tab bar show slight translucency when scrolling,
-            // as per the default SwiftUI design.
-            let tabBarAppearance = UITabBarAppearance()
-            tabBarAppearance.configureWithDefaultBackground()
-            UITabBar.appearance().standardAppearance = tabBarAppearance
-            if #available(iOS 15.0, *) {
-                // Setting scrollEdgeAppearance to nil lets the system apply the default behavior.
-                UITabBar.appearance().scrollEdgeAppearance = nil
+                dataManager.loadData {
+                    dataManager.syncFavorites()
+                    DispatchQueue.main.async {
+                        isLoading = false // Hide loading indicator once data is loaded
+                    }
+                }
+            } else {
+                dataManager.syncFavorites()
+                isLoading = false
             }
         }
     }
 }
+
 
 struct CategoryView: View {
     @EnvironmentObject var dataManager: DataManager
