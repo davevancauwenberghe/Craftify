@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import Combine
+import CloudKit
 
 struct RecipeDetailView: View {
     @EnvironmentObject var dataManager: DataManager
@@ -44,18 +46,13 @@ struct RecipeDetailView: View {
                                     }
                                 }
                                 .onTapGesture {
-                                    guard index < recipe.ingredients.count,
-                                          !recipe.ingredients[index].isEmpty else { return }
+                                    guard index < recipe.ingredients.count, !recipe.ingredients[index].isEmpty else { return }
                                     let generator = UIImpactFeedbackGenerator(style: .light)
                                     generator.impactOccurred()
-                                    // Update immediately with a smooth animation:
                                     withAnimation(.easeInOut(duration: 0.2)) {
-                                        // If tapped the same item, dismiss it; otherwise update.
-                                        if selectedDetail == recipe.ingredients[index] {
-                                            selectedDetail = nil
-                                        } else {
-                                            selectedDetail = recipe.ingredients[index]
-                                        }
+                                        // Always set the pop-up to the tapped value;
+                                        // do not toggle it off if the same item is tapped.
+                                        selectedDetail = recipe.ingredients[index]
                                     }
                                 }
                             }
@@ -86,12 +83,7 @@ struct RecipeDetailView: View {
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            // Toggle the output pop-up.
-                            if selectedDetail == recipe.name {
-                                selectedDetail = nil
-                            } else {
-                                selectedDetail = recipe.name
-                            }
+                            selectedDetail = recipe.name
                         }
                     }
                     
@@ -148,21 +140,7 @@ struct RecipeDetailView: View {
                 }
             }
         }
-        // Overlay to dismiss the pop-up if tapped outside.
-        .overlay(
-            Group {
-                if selectedDetail != nil {
-                    Color.black.opacity(0.001)
-                        .ignoresSafeArea()
-                        .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedDetail = nil
-                            }
-                        }
-                }
-            }
-        )
-        // Category label overlay at the bottom.
+        // Removed overlay that might intercept taps—now taps on grid cells update the pop-up immediately.
         .overlay(
             Group {
                 if !recipe.category.isEmpty {
