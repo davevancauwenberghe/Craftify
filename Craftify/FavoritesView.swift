@@ -30,14 +30,14 @@ struct FavoritesView: View {
             .mapValues { $0.sorted { $0.name < $1.name } }
     }
     
-    // Favorite categories for horizontal filtering.
+    // Compute the available favorite categories.
     var favoriteCategories: [String] {
         let favorites = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
         let categories = favorites.compactMap { $0.category.isEmpty ? nil : $0.category }
         return Array(Set(categories)).sorted()
     }
     
-    // Total count of favorite recipes after filtering.
+    // Total count of favorite recipes (after filtering).
     var recipeCount: Int {
         sortedFavorites.values.reduce(0) { $0 + $1.count }
     }
@@ -45,7 +45,7 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack {
-                // Horizontal category selection with haptics.
+                // Horizontal category selection.
                 if !favoriteCategories.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
@@ -93,7 +93,7 @@ struct FavoritesView: View {
                     }
                 }
                 
-                // Recommended Favorites (Craftify Picks) section.
+                // Recommended Favorites ("Craftify Picks")
                 if !recommendedRecipes.isEmpty && !isSearching {
                     VStack(alignment: .leading) {
                         Text("Craftify Picks")
@@ -136,15 +136,14 @@ struct FavoritesView: View {
                 
                 // Favorite Recipes List with a recipe counter at the top.
                 List {
-                    // Recipe counter row.
-                    Text("\(recipeCount) favorite recipes")
+                    // Recipe counter row (updated label).
+                    Text("\(recipeCount) favorite recipes available")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .listRowSeparator(.hidden)
                     
                     ForEach(sortedFavorites.keys.sorted(), id: \.self) { letter in
                         Section(header:
-                            // Section header: plain text without extra background.
                             Text(letter)
                                 .font(.headline)
                                 .bold()
@@ -182,6 +181,12 @@ struct FavoritesView: View {
                                 .padding(.vertical, 4)
                             }
                         }
+                    }
+                }
+                // Pull-to-refresh is applied only on the List.
+                .refreshable {
+                    dataManager.loadData {
+                        dataManager.syncFavorites()
                     }
                 }
                 .onChange(of: searchText) { _, newValue in

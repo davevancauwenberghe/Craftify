@@ -23,7 +23,7 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Recipes Tab (using CategoryView)
+            // Recipes Tab using CategoryView
             NavigationStack(path: $navigationPath) {
                 ZStack {
                     if isLoading {
@@ -40,28 +40,20 @@ struct ContentView: View {
                 .navigationTitle("Craftify")
                 .navigationBarTitleDisplayMode(.large)
                 .searchable(text: $searchText, prompt: "Search recipes")
-                // Pull-to-refresh: refresh CloudKit data.
-                .refreshable {
-                    isLoading = true
-                    dataManager.loadData {
-                        dataManager.syncFavorites()
-                        isLoading = false
-                    }
-                }
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
             }
             .tag(0)
             
-            // Favorites Tab
+            // Favorites Tab (unchanged)
             FavoritesView()
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
                 .tag(1)
             
-            // More Tab
+            // More Tab (unchanged)
             MoreView()
                 .tabItem {
                     Label("More", systemImage: "ellipsis.circle")
@@ -76,7 +68,7 @@ struct ContentView: View {
             if dataManager.recipes.isEmpty {
                 dataManager.loadData {
                     dataManager.syncFavorites()
-                    isLoading = false // Hide loading indicator once data is loaded
+                    isLoading = false // Hide loader once data is loaded
                 }
             } else {
                 dataManager.syncFavorites()
