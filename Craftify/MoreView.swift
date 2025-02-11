@@ -12,6 +12,16 @@ struct MoreView: View {
     // Allowed values: "system", "light", or "dark"
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     
+    @EnvironmentObject var dataManager: DataManager
+
+    // A date formatter to display the last sync time.
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
+    }()
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -28,7 +38,20 @@ struct MoreView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
-                .padding(.bottom, 16) // Increased spacing
+                .padding(.bottom, 8) // Slightly reduced bottom padding for header
+                
+                // Sync Status View
+                Group {
+                    if let lastUpdated = dataManager.lastUpdated {
+                        Text("Recipes synced: \(lastUpdated, formatter: Self.dateFormatter)")
+                    } else {
+                        Text("Recipes not yet synced")
+                    }
+                }
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
                 
                 // Settings List
                 List {
@@ -59,7 +82,7 @@ struct MoreView: View {
                                 Image(systemName: "envelope.fill")
                                     .font(.title2)
                                     .foregroundColor(Color(hex: "00AA00"))
-                                Text("Report Missing Recipe")
+                                Text("Report missing recipe")
                                     .font(.headline)
                                     .foregroundColor(.primary)
                                 Spacer()
@@ -86,17 +109,20 @@ struct MoreView: View {
                                     .font(.headline)
                                     .foregroundColor(.primary)
                                 Spacer()
-                                // Rely on the system disclosure indicator (only one chevron will appear).
+                                Image(systemName: "chevron.right")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
                             }
                             .padding(.vertical, 8)
                             .frame(maxWidth: .infinity)
                         }
+                        .buttonStyle(PlainButtonStyle())
                         .listRowBackground(Color(UIColor.systemGray5))
                     }
                 }
                 .listStyle(InsetGroupedListStyle())
             }
-            .navigationTitle("") // Custom header serves as the title.
+            .navigationTitle("") // Custom header serves as title.
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
@@ -105,13 +131,14 @@ struct MoreView: View {
     }
 }
 
+// Stub view for AboutView – expand as needed.
 struct AboutView: View {
     var body: some View {
         VStack(spacing: 16) {
             Text("Craftify for Minecraft")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            Text("Version 1.0 - Build 12")
+            Text("Version 1.0 - Build 13")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
@@ -146,6 +173,7 @@ struct AboutView: View {
     }
 }
 
+// Stub view for ReleaseNotesView – expand as needed.
 struct ReleaseNotesView: View {
     var body: some View {
         ScrollView {
@@ -153,6 +181,14 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                Text("Version 1.0 - Build 13")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text("""
+                    - Added: Pull to refresh
+                    - Added: Local cache
+                    - Added: Sync info in More
+                    """)
                 Text("Version 1.0 - Build 12")
                     .font(.headline)
                     .foregroundColor(.secondary)
@@ -165,7 +201,7 @@ struct ReleaseNotesView: View {
                 Text("""
                     - CloudKit support added
                     """)
-                Text("Version 1.0 - Build 10")
+                Text("Version 1.0 - Build 1-10")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Text("""

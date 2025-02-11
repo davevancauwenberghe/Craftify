@@ -19,7 +19,7 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
-    @State private var isLoading = true // State to track loading status
+    @State private var isLoading = true // Track loading status
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -27,7 +27,7 @@ struct ContentView: View {
             NavigationStack(path: $navigationPath) {
                 ZStack {
                     if isLoading {
-                        ProgressView("Loading Recipes...")
+                        ProgressView("Loading recipes from Cloud...")
                             .progressViewStyle(CircularProgressViewStyle())
                             .padding()
                     } else {
@@ -40,6 +40,14 @@ struct ContentView: View {
                 .navigationTitle("Craftify")
                 .navigationBarTitleDisplayMode(.large)
                 .searchable(text: $searchText, prompt: "Search recipes")
+                // Pull-to-refresh: when pulled, reload data from CloudKit.
+                .refreshable {
+                    isLoading = true
+                    dataManager.loadData {
+                        dataManager.syncFavorites()
+                        isLoading = false
+                    }
+                }
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
@@ -68,9 +76,7 @@ struct ContentView: View {
             if dataManager.recipes.isEmpty {
                 dataManager.loadData {
                     dataManager.syncFavorites()
-                    DispatchQueue.main.async {
-                        isLoading = false // Hide loading indicator once data is loaded
-                    }
+                    isLoading = false // Hide loading indicator once data is loaded
                 }
             } else {
                 dataManager.syncFavorites()
