@@ -20,21 +20,20 @@ struct RecipeListView: View {
             recipe.name.localizedCaseInsensitiveContains(searchText) ||
             recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
         }
-        return Dictionary(grouping: filtered, by: { String($0.name.prefix(1)) }).mapValues { $0.sorted { $0.name < $1.name } }
+        return Dictionary(grouping: filtered, by: { String($0.name.prefix(1)) })
+            .mapValues { $0.sorted { $0.name < $1.name } }
     }
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
             List {
-                ForEach(sortedRecipes.keys.sorted(), id: \ .self) { letter in
-                    Section(header: Text(letter)
-                        .font(.headline)
-                        .bold()
-                        .foregroundColor(.primary)
-                        .padding(.vertical, 4)
-                        .background(Color(UIColor.systemGray5).opacity(0.5))
-                        .cornerRadius(8)
-                        .padding(.horizontal, 8)
+                ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
+                    Section(header:
+                        Text(letter)
+                            .font(.headline)
+                            .bold()
+                            .foregroundColor(.primary)
+                            .padding(.vertical, 4)
                     ) {
                         ForEach(sortedRecipes[letter] ?? []) { recipe in
                             NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
@@ -47,7 +46,8 @@ struct RecipeListView: View {
                                     
                                     VStack(alignment: .leading) {
                                         Text(recipe.name)
-                                            .font(.headline).bold()
+                                            .font(.headline)
+                                            .bold()
                                         Text(recipe.category)
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)

@@ -8,13 +8,11 @@
 import SwiftUI
 
 struct MoreView: View {
-    // Persist the appearance selection using AppStorage.
-    // Allowed values: "system", "light", or "dark"
+    // Persist the user's appearance preference ("system", "light", or "dark")
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
-    
     @EnvironmentObject var dataManager: DataManager
 
-    // A date formatter to display the last sync time.
+    // Date formatter for the last updated timestamp.
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
@@ -25,12 +23,12 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                // Header with an icon and custom title.
+                // Header with icon and custom title.
                 HStack {
                     Image(systemName: "gearshape.fill")
                         .font(.largeTitle)
                         .foregroundColor(Color(hex: "00AA00"))
-                    Text("More")
+                    Text("Wheel & More Options")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
@@ -38,27 +36,30 @@ struct MoreView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
-                .padding(.bottom, 8) // Slightly reduced bottom padding for header
+                .padding(.bottom, 8)
                 
-                // Sync Status View
-                Group {
+                // Sync Status and Recipe Count View
+                VStack(spacing: 4) {
                     if let lastUpdated = dataManager.lastUpdated {
                         Text("Recipes synced: \(lastUpdated, formatter: Self.dateFormatter)")
                     } else {
                         Text("Recipes not yet synced")
                     }
+                    Text("\(dataManager.recipes.count) recipes available")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
                 }
-                .font(.subheadline)
-                .foregroundColor(.secondary)
                 .padding(.horizontal)
                 .padding(.bottom, 8)
                 
                 // Settings List
                 List {
                     // Appearance Section
-                    Section(header: Text("Appearance")
-                                .font(.headline)
-                                .foregroundColor(.primary)) {
+                    Section(header:
+                        Text("Appearance")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                    ) {
                         Picker("Appearance", selection: $colorSchemePreference) {
                             Text("System").tag("system")
                             Text("Light").tag("light")
@@ -68,9 +69,11 @@ struct MoreView: View {
                     }
                     
                     // "Need help?" Section
-                    Section(header: Text("Need help?")
-                                .font(.headline)
-                                .foregroundColor(.primary)) {
+                    Section(header:
+                        Text("Need help?")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                    ) {
                         Button(action: {
                             let generator = UIImpactFeedbackGenerator(style: .medium)
                             generator.impactOccurred()
@@ -97,9 +100,11 @@ struct MoreView: View {
                     }
                     
                     // About Section
-                    Section(header: Text("About")
-                                .font(.headline)
-                                .foregroundColor(.primary)) {
+                    Section(header:
+                        Text("About")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                    ) {
                         NavigationLink(destination: AboutView()) {
                             HStack {
                                 Image(systemName: "info.circle.fill")
@@ -122,7 +127,7 @@ struct MoreView: View {
                 }
                 .listStyle(InsetGroupedListStyle())
             }
-            .navigationTitle("") // Custom header serves as title.
+            .navigationTitle("") // Custom header already provided.
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
@@ -145,7 +150,7 @@ struct AboutView: View {
                 .multilineTextAlignment(.center)
                 .padding()
             
-            // New Release Notes button
+            // New Release Notes button.
             NavigationLink(destination: ReleaseNotesView()) {
                 HStack {
                     Image(systemName: "doc.text.fill")
@@ -181,6 +186,12 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                Text("Version 1.0 - Build 14")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text("""
+                    - UI fixes
+                    """)
                 Text("Version 1.0 - Build 13")
                     .font(.headline)
                     .foregroundColor(.secondary)

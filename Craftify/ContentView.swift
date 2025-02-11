@@ -23,7 +23,7 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Recipes Tab using CategoryView
+            // Recipes Tab (using CategoryView)
             NavigationStack(path: $navigationPath) {
                 ZStack {
                     if isLoading {
@@ -40,7 +40,7 @@ struct ContentView: View {
                 .navigationTitle("Craftify")
                 .navigationBarTitleDisplayMode(.large)
                 .searchable(text: $searchText, prompt: "Search recipes")
-                // Pull-to-refresh: when pulled, reload data from CloudKit.
+                // Pull-to-refresh: refresh CloudKit data.
                 .refreshable {
                     isLoading = true
                     dataManager.loadData {
@@ -86,7 +86,6 @@ struct ContentView: View {
     }
 }
 
-
 struct CategoryView: View {
     @EnvironmentObject var dataManager: DataManager
     @Binding var selectedTab: Int
@@ -96,10 +95,10 @@ struct CategoryView: View {
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
     
-    // State used to throttle haptics during category scrolling.
+    // State to throttle haptics during horizontal scrolling.
     @State private var categoryScrollHapticTriggered = false
 
-    // Computed property: recipes after filtering, grouped by first letter
+    // Group recipes by the first letter.
     var sortedRecipes: [String: [Recipe]] {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
@@ -114,14 +113,10 @@ struct CategoryView: View {
             .mapValues { $0.sorted { $0.name < $1.name } }
     }
     
-    // Computed property for the count of recipes that will be displayed.
-    var displayedRecipeCount: Int {
-        sortedRecipes.values.reduce(0) { $0 + $1.count }
-    }
-    
+    // The body displays the horizontal category selector, Craftify Picks, and the recipe list.
     var body: some View {
         VStack {
-            // Horizontal category selection with haptics
+            // Horizontal category selection.
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     Button(action: {
@@ -152,7 +147,6 @@ struct CategoryView: View {
                     }
                 }
                 .padding(.horizontal)
-                // Use a simultaneous gesture on the scrolling area to trigger haptics on scroll.
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 10)
                         .onChanged { _ in
@@ -168,7 +162,7 @@ struct CategoryView: View {
                 )
             }
             
-            // Recommended Recipes Section (Craftify Picks)
+            // Recommended Recipes Section ("Craftify Picks")
             if !recommendedRecipes.isEmpty && !isSearching {
                 VStack(alignment: .leading) {
                     Text("Craftify Picks")
@@ -196,7 +190,6 @@ struct CategoryView: View {
                                     .background(Color.gray.opacity(0.2))
                                     .cornerRadius(12)
                                 }
-                                // Removed extra gesture on the recommended recipes to avoid interfering with NavigationLink activation.
                             }
                         }
                         .padding(.horizontal)
@@ -204,12 +197,8 @@ struct CategoryView: View {
                 }
             }
             
-            // Recipes List (with recipe counter as the first row)
+            // Recipes List: The alphabetical grouping (without a recipe counter now).
             List {
-                Text("\(displayedRecipeCount) recipes available")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .listRowSeparator(.hidden)
                 ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
                     Section(header:
                         Text(letter)
@@ -217,8 +206,6 @@ struct CategoryView: View {
                             .bold()
                             .foregroundColor(.primary)
                             .padding(.vertical, 4)
-                            .background(Color(UIColor.systemGray5).opacity(0.5))
-                            .cornerRadius(8)
                             .padding(.horizontal, 8)
                     ) {
                         ForEach(sortedRecipes[letter] ?? []) { recipe in
@@ -242,17 +229,22 @@ struct CategoryView: View {
                                     }
                                 }
                             }
-                            // Removed the simultaneous gesture here so that the NavigationLink is reliably triggered.
                             .padding(.vertical, 4)
                         }
                     }
+                }
+            }
+            // Pull-to-refresh applied only on the List.
+            .refreshable {
+                dataManager.loadData {
+                    dataManager.syncFavorites()
                 }
             }
             .onChange(of: searchText) { _, newValue in
                 isSearching = !newValue.isEmpty
             }
             .onAppear {
-                // Set recommendedRecipes to 5 random recipes from all recipes.
+                // Set recommendedRecipes to 5 random recipes.
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             }
         }

@@ -18,7 +18,7 @@ struct FavoritesView: View {
     @State private var selectedCategory: String? = nil  // For category filtering
     @State private var categoryScrollHapticTriggered = false  // For drag haptics
 
-    // Filter and group favorited recipes by their first letter.
+    // Group and filter favorite recipes alphabetically.
     var sortedFavorites: [String: [Recipe]] {
         let favorites = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
         let categoryFiltered = selectedCategory == nil ? favorites : favorites.filter { $0.category == selectedCategory }
@@ -30,14 +30,14 @@ struct FavoritesView: View {
             .mapValues { $0.sorted { $0.name < $1.name } }
     }
     
-    // Compute the available favorite categories from favorited recipes.
+    // Favorite categories for horizontal filtering.
     var favoriteCategories: [String] {
         let favorites = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
         let categories = favorites.compactMap { $0.category.isEmpty ? nil : $0.category }
         return Array(Set(categories)).sorted()
     }
     
-    // Total count of favorited recipes (after filtering)
+    // Total count of favorite recipes after filtering.
     var recipeCount: Int {
         sortedFavorites.values.reduce(0) { $0 + $1.count }
     }
@@ -45,7 +45,7 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack {
-                // Horizontal category selection with haptics
+                // Horizontal category selection with haptics.
                 if !favoriteCategories.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
@@ -77,7 +77,6 @@ struct FavoritesView: View {
                             }
                         }
                         .padding(.horizontal)
-                        // Use simultaneousGesture so scrolling works normally.
                         .simultaneousGesture(
                             DragGesture(minimumDistance: 10)
                                 .onChanged { _ in
@@ -94,13 +93,14 @@ struct FavoritesView: View {
                     }
                 }
                 
-                // Recommended Favorites (Craftify Picks) with haptics
+                // Recommended Favorites (Craftify Picks) section.
                 if !recommendedRecipes.isEmpty && !isSearching {
                     VStack(alignment: .leading) {
                         Text("Craftify Picks")
                             .font(.title3)
                             .bold()
                             .padding(.horizontal)
+                        
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 ForEach(recommendedRecipes) { recipe in
@@ -134,23 +134,22 @@ struct FavoritesView: View {
                     }
                 }
                 
-                // Recipes List with recipe counter as the first row (scrolls away)
+                // Favorite Recipes List with a recipe counter at the top.
                 List {
-                    // Recipe counter row
-                    Text("\(recipeCount) recipes available")
+                    // Recipe counter row.
+                    Text("\(recipeCount) favorite recipes")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .listRowSeparator(.hidden)
                     
                     ForEach(sortedFavorites.keys.sorted(), id: \.self) { letter in
                         Section(header:
+                            // Section header: plain text without extra background.
                             Text(letter)
                                 .font(.headline)
                                 .bold()
                                 .foregroundColor(.primary)
                                 .padding(.vertical, 4)
-                                .background(Color(UIColor.systemGray5).opacity(0.5))
-                                .cornerRadius(8)
                                 .padding(.horizontal, 8)
                         ) {
                             ForEach(sortedFavorites[letter] ?? []) { recipe in
@@ -189,9 +188,12 @@ struct FavoritesView: View {
                     isSearching = !newValue.isEmpty
                 }
                 .onAppear {
-                    recommendedRecipes = Array(dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
+                    // Set recommendedRecipes to 5 random favorite recipes.
+                    recommendedRecipes = Array(
+                        dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
                         .shuffled()
-                        .prefix(5))
+                        .prefix(5)
+                    )
                 }
             }
             .navigationTitle("Favorite recipes")
