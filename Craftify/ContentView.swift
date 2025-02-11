@@ -35,6 +35,15 @@ struct ContentView: View {
                                      navigationPath: $navigationPath,
                                      searchText: $searchText,
                                      isSearching: $isSearching)
+                            .refreshable {
+                                isLoading = true
+                                dataManager.loadData {
+                                    dataManager.syncFavorites()
+                                    DispatchQueue.main.async {
+                                        isLoading = false
+                                    }
+                                }
+                            }
                     }
                 }
                 .navigationTitle("Craftify")
@@ -46,14 +55,14 @@ struct ContentView: View {
             }
             .tag(0)
             
-            // Favorites Tab (unchanged)
+            // Favorites Tab
             FavoritesView()
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
                 .tag(1)
             
-            // More Tab (unchanged)
+            // More Tab
             MoreView()
                 .tabItem {
                     Label("More", systemImage: "ellipsis.circle")
@@ -68,7 +77,9 @@ struct ContentView: View {
             if dataManager.recipes.isEmpty {
                 dataManager.loadData {
                     dataManager.syncFavorites()
-                    isLoading = false // Hide loader once data is loaded
+                    DispatchQueue.main.async {
+                        isLoading = false // Hide loading indicator once data is loaded
+                    }
                 }
             } else {
                 dataManager.syncFavorites()

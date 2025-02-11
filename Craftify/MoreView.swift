@@ -12,13 +12,16 @@ struct MoreView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @EnvironmentObject var dataManager: DataManager
 
-    // Date formatter for the last updated timestamp.
+    // Date formatter for displaying the last updated timestamp.
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter
     }()
+    
+    // Local state to track syncing status (for showing an activity indicator on the button)
+    @State private var isSyncing: Bool = false
     
     var body: some View {
         NavigationStack {
@@ -28,7 +31,7 @@ struct MoreView: View {
                     Image(systemName: "gearshape.fill")
                         .font(.largeTitle)
                         .foregroundColor(Color(hex: "00AA00"))
-                    Text("Wheel & More Options")
+                    Text("More")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
@@ -38,12 +41,16 @@ struct MoreView: View {
                 .padding(.top)
                 .padding(.bottom, 8)
                 
-                // Sync Status and Recipe Count View
+                // Sync Status and Recipe Count View.
                 VStack(spacing: 4) {
                     if let lastUpdated = dataManager.lastUpdated {
                         Text("Recipes synced: \(lastUpdated, formatter: Self.dateFormatter)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     } else {
                         Text("Recipes not yet synced")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
                     Text("\(dataManager.recipes.count) recipes available")
                         .font(.footnote)
@@ -52,9 +59,39 @@ struct MoreView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 8)
                 
+                // "Sync recipes" Button.
+                Button(action: {
+                    isSyncing = true
+                    dataManager.loadData {
+                        dataManager.syncFavorites()
+                        isSyncing = false
+                    }
+                }) {
+                    HStack {
+                        if isSyncing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                                .padding(.trailing, 4)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.title2)
+                                .foregroundColor(Color(hex: "00AA00"))
+                        }
+                        Text("Sync recipes")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Spacer()
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color(UIColor.systemGray5))
+                    .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                
                 // Settings List
                 List {
-                    // Appearance Section
+                    // Appearance Section.
                     Section(header:
                         Text("Appearance")
                             .font(.headline)
@@ -68,7 +105,7 @@ struct MoreView: View {
                         .pickerStyle(SegmentedPickerStyle())
                     }
                     
-                    // "Need help?" Section
+                    // "Need help?" Section.
                     Section(header:
                         Text("Need help?")
                             .font(.headline)
@@ -99,7 +136,7 @@ struct MoreView: View {
                         .listRowBackground(Color(UIColor.systemGray5))
                     }
                     
-                    // About Section
+                    // About Section.
                     Section(header:
                         Text("About")
                             .font(.headline)
@@ -186,7 +223,7 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                Text("Version 1.0 - Build 14")
+                Text("Version 1.0 - Build 14-16")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Text("""
@@ -223,6 +260,7 @@ struct ReleaseNotesView: View {
                     """)
                     .font(.body)
                 Spacer()
+                Spacer()
             }
             .padding()
         }
@@ -230,3 +268,4 @@ struct ReleaseNotesView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
