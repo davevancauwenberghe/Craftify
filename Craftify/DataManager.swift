@@ -27,15 +27,22 @@ class DataManager: ObservableObject {
             object: NSUbiquitousKeyValueStore.default
         )
 
+        // Load from local cache first.
         if let localRecipes = loadRecipesFromLocalCache() {
+            print("Loaded \(localRecipes.count) recipes from local cache.")
             self.recipes = localRecipes
             self.syncFavorites()
+        } else {
+            print("No local cache found; will fetch from CloudKit.")
         }
 
+        // Then fetch from CloudKit.
         loadData { [weak self] in
             self?.syncFavorites()
         }
     }
+
+    // MARK: - Favorite Handling
 
     func isFavorite(recipe: Recipe) -> Bool {
         return favorites.contains { $0.id == recipe.id }
@@ -66,6 +73,8 @@ class DataManager: ObservableObject {
         syncFavorites()
     }
 
+    // MARK: - CloudKit & Local File Caching
+
     func loadData(completion: @escaping () -> Void) {
         let container = CKContainer(identifier: "iCloud.craftifydb")
         let publicDatabase = container.publicCloudDatabase
@@ -88,6 +97,7 @@ class DataManager: ObservableObject {
                 DispatchQueue.main.async {
                     self.errorMessage = "Error fetching record \(recordID.recordName): \(error.localizedDescription)"
                 }
+                print("Error fetching record \(recordID.recordName): \(error.localizedDescription)")
             }
         }
 
@@ -102,6 +112,7 @@ class DataManager: ObservableObject {
                     completion()
                 case .failure(let error):
                     self.errorMessage = "Error fetching recipes: \(error.localizedDescription)"
+                    print("Error fetching recipes: \(error.localizedDescription)")
                     completion()
                 }
             }
@@ -112,16 +123,30 @@ class DataManager: ObservableObject {
 
     // MARK: - Local File Cache Methods
 
+    // Always use "recipes.json" regardless of the environment.
+    private func localCacheFileName() -> String {
+        return "recipes.json"
+    }
+
     private func loadRecipesFromLocalCache() -> [Recipe]? {
-        let fileURL = getDocumentsDirectory().appendingPathComponent("recipes.json")
-        guard let data = try? Data(contentsOf: fileURL) else { return nil }
+        let fileURL = getDocumentsDirectory().appendingPathComponent(localCacheFileName())
+        print("Attempting to load local cache from: \(fileURL.path)")
+        guard let data = try? Data(contentsOf: fileURL) else {
+            print("No data found at \(fileURL.path)")
+            return nil
+        }
         return try? JSONDecoder().decode([Recipe].self, from: data)
     }
 
     private func saveRecipesToLocalCache(_ recipes: [Recipe]) {
-        let fileURL = getDocumentsDirectory().appendingPathComponent("recipes.json")
+        let fileURL = getDocumentsDirectory().appendingPathComponent(localCacheFileName())
         if let data = try? JSONEncoder().encode(recipes) {
-            try? data.write(to: fileURL)
+            do {
+                try data.write(to: fileURL)
+                print("Saved \(recipes.count) recipes to local cache at \(fileURL.path)")
+            } catch {
+                print("Error saving recipes to local cache: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -132,7 +157,7 @@ class DataManager: ObservableObject {
     // MARK: - Clear Cache
 
     func clearCache(completion: @escaping (Bool) -> Void) {
-        let fileURL = getDocumentsDirectory().appendingPathComponent("recipes.json")
+        let fileURL = getDocumentsDirectory().appendingPathComponent(localCacheFileName())
         do {
             try FileManager.default.removeItem(at: fileURL)
             DispatchQueue.main.async {
@@ -148,20 +173,24 @@ class DataManager: ObservableObject {
         }
     }
 
+    // MARK: - Record Conversion
+
     private func convertRecordToRecipe(_ record: CKRecord) -> Recipe? {
         guard let name = record["name"] as? String,
               let image = record["image"] as? String,
               let ingredients = record["ingredients"] as? [String],
               let outputInt64 = record["output"] as? Int64,
               let category = record["category"] as? String else {
+            print("Missing field in record \(record.recordID.recordName)")
             return nil
         }
 
         let id = Int(record.recordID.recordName) ?? 0
         let output = Int(outputInt64)
-
         return Recipe(id: id, name: name, image: image, ingredients: ingredients, output: output, category: category)
     }
+
+    // MARK: - Helper Properties
 
     var categories: [String] {
         let uniqueCategories = Set(recipes.map { $0.category })
