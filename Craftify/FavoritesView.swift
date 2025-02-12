@@ -17,9 +17,8 @@ struct FavoritesView: View {
     @State private var recommendedRecipes: [Recipe] = []
     @State private var selectedCategory: String? = nil  // For category filtering
     @State private var categoryScrollHapticTriggered = false  // For drag haptics
-    @State private var isLoading = false // Track loading status
 
-    // Group and filter favorite recipes alphabetically.
+    // Group and filter favorited recipes by their first letter.
     var sortedFavorites: [String: [Recipe]] {
         let favorites = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
         let categoryFiltered = selectedCategory == nil ? favorites : favorites.filter { $0.category == selectedCategory }
@@ -38,7 +37,7 @@ struct FavoritesView: View {
         return Array(Set(categories)).sorted()
     }
     
-    // Total count of favorite recipes (after filtering).
+    // Total count of favorited recipes (after filtering).
     var recipeCount: Int {
         sortedFavorites.values.reduce(0) { $0 + $1.count }
     }
@@ -46,74 +45,149 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack {
-                if isLoading {
-                    ProgressView("Loading recipes from Cloud...")
-                        .progressViewStyle(CircularProgressViewStyle())
-                        .padding()
-                } else {
-                    List {
-                        // Recipe counter row (updated label).
-                        Text("\(recipeCount) favorite recipes available")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .listRowSeparator(.hidden)
-                        
-                        ForEach(sortedFavorites.keys.sorted(), id: \ .self) { letter in
-                            Section(header:
-                                Text(letter)
-                                    .font(.headline)
-                                    .bold()
-                                    .foregroundColor(.primary)
-                                    .padding(.vertical, 4)
-                                    .padding(.horizontal, 8)
-                            ) {
-                                ForEach(sortedFavorites[letter] ?? []) { recipe in
-                                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                        HStack {
-                                            Image(recipe.image)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 60, height: 60)
-                                                .padding(4)
-                                            
-                                            VStack(alignment: .leading) {
-                                                Text(recipe.name)
-                                                    .font(.headline)
-                                                    .bold()
-                                                if !recipe.category.isEmpty {
-                                                    Text(recipe.category)
-                                                        .font(.subheadline)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    .padding(.vertical, 4)
+                // Horizontal category selection with haptics.
+                if !favoriteCategories.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            Button(action: {
+                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                generator.impactOccurred()
+                                selectedCategory = nil
+                            }) {
+                                Text("All")
+                                    .fontWeight(.bold)
+                                    .padding()
+                                    .background(selectedCategory == nil ? Color(hex: "00AA00") : Color.gray.opacity(0.2))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                            }
+                            ForEach(favoriteCategories, id: \.self) { category in
+                                Button(action: {
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred()
+                                    selectedCategory = category
+                                }) {
+                                    Text(category)
+                                        .fontWeight(.bold)
+                                        .padding()
+                                        .background(selectedCategory == category ? Color(hex: "00AA00") : Color.gray.opacity(0.2))
+                                        .foregroundColor(.white)
+                                        .cornerRadius(10)
                                 }
                             }
                         }
+                        .padding(.horizontal)
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 10)
+                                .onChanged { _ in
+                                    if !categoryScrollHapticTriggered {
+                                        let generator = UIImpactFeedbackGenerator(style: .light)
+                                        generator.impactOccurred()
+                                        categoryScrollHapticTriggered = true
+                                    }
+                                }
+                                .onEnded { _ in
+                                    categoryScrollHapticTriggered = false
+                                }
+                        )
                     }
-                    .refreshable {
-                        isLoading = true
-                        dataManager.loadData {
-                            dataManager.syncFavorites()
-                            DispatchQueue.main.async {
-                                isLoading = false
+                }
+                
+                // Recommended Favorites ("Craftify Picks") with haptics.
+                if !recommendedRecipes.isEmpty && !isSearching {
+                    VStack(alignment: .leading) {
+                        Text("Craftify Picks")
+                            .font(.title3)
+                            .bold()
+                            .padding(.horizontal)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                ForEach(recommendedRecipes) { recipe in
+                                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                        VStack {
+                                            Image(recipe.image)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 90, height: 90)
+                                                .padding(4)
+                                            Text(recipe.name)
+                                                .font(.caption)
+                                                .bold()
+                                                .lineLimit(1)
+                                                .frame(width: 90)
+                                        }
+                                        .padding()
+                                        .background(Color.gray.opacity(0.2))
+                                        .cornerRadius(12)
+                                    }
+                                    .simultaneousGesture(
+                                        TapGesture().onEnded {
+                                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                                            generator.impactOccurred()
+                                        }
+                                    )
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                }
+                
+                // Centered recipe counter text.
+                Text("\(recipeCount) favorite recipes available")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                
+                // Favorite Recipes List (alphabetical grouping).
+                List {
+                    ForEach(sortedFavorites.keys.sorted(), id: \.self) { letter in
+                        Section(header:
+                            Text(letter)
+                                .font(.headline)
+                                .bold()
+                                .foregroundColor(.primary)
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 8)
+                        ) {
+                            ForEach(sortedFavorites[letter] ?? []) { recipe in
+                                NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                    HStack {
+                                        Image(recipe.image)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 60, height: 60)
+                                            .padding(4)
+                                        
+                                        VStack(alignment: .leading) {
+                                            Text(recipe.name)
+                                                .font(.headline)
+                                                .bold()
+                                            if !recipe.category.isEmpty {
+                                                Text(recipe.category)
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                    }
+                                }
+                                .simultaneousGesture(
+                                    TapGesture().onEnded {
+                                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                                        generator.impactOccurred()
+                                    }
+                                )
+                                .padding(.vertical, 4)
                             }
                         }
                     }
                 }
-            }
-            .navigationTitle("Favorite recipes")
-            .navigationBarTitleDisplayMode(.large)
-        }
-        .searchable(text: $searchText, prompt: "Search favorites")
-        .onAppear {
-            isLoading = true
-            dataManager.loadData {
-                dataManager.syncFavorites()
-                DispatchQueue.main.async {
-                    isLoading = false
+                .onChange(of: searchText) { _, newValue in
+                    isSearching = !newValue.isEmpty
+                }
+                .onAppear {
                     recommendedRecipes = Array(
                         dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
                         .shuffled()
@@ -121,6 +195,9 @@ struct FavoritesView: View {
                     )
                 }
             }
+            .navigationTitle("Favorite recipes")
+            .navigationBarTitleDisplayMode(.large)
         }
+        .searchable(text: $searchText, prompt: "Search favorites")
     }
 }

@@ -8,25 +8,14 @@
 import SwiftUI
 
 struct MoreView: View {
-    // Persist the user's appearance preference ("system", "light", or "dark")
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @EnvironmentObject var dataManager: DataManager
-
-    // Date formatter for displaying the last updated timestamp.
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter
-    }()
-    
-    // Local state to track syncing status (for showing an activity indicator on the button)
     @State private var isSyncing: Bool = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                // Header with icon and custom title.
+                // Header with icon and title.
                 HStack {
                     Image(systemName: "gearshape.fill")
                         .font(.largeTitle)
@@ -41,62 +30,10 @@ struct MoreView: View {
                 .padding(.top)
                 .padding(.bottom, 8)
                 
-                // Sync Status and Recipe Count View.
-                VStack(spacing: 4) {
-                    if let lastUpdated = dataManager.lastUpdated {
-                        Text("Recipes synced: \(lastUpdated, formatter: Self.dateFormatter)")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("Recipes not yet synced")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    Text("\(dataManager.recipes.count) recipes available")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-                
-                // "Sync recipes" Button.
-                Button(action: {
-                    isSyncing = true
-                    dataManager.loadData {
-                        dataManager.syncFavorites()
-                        isSyncing = false
-                    }
-                }) {
-                    HStack {
-                        if isSyncing {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle())
-                                .padding(.trailing, 4)
-                        } else {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.title2)
-                                .foregroundColor(Color(hex: "00AA00"))
-                        }
-                        Text("Sync recipes")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        Spacer()
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color(UIColor.systemGray5))
-                    .cornerRadius(10)
-                }
-                .padding(.horizontal)
-                
                 // Settings List
                 List {
                     // Appearance Section.
-                    Section(header:
-                        Text("Appearance")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                    ) {
+                    Section(header: Text("Appearance").font(.headline)) {
                         Picker("Appearance", selection: $colorSchemePreference) {
                             Text("System").tag("system")
                             Text("Light").tag("light")
@@ -106,11 +43,7 @@ struct MoreView: View {
                     }
                     
                     // "Need help?" Section.
-                    Section(header:
-                        Text("Need help?")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                    ) {
+                    Section(header: Text("Need help?").font(.headline)) {
                         Button(action: {
                             let generator = UIImpactFeedbackGenerator(style: .medium)
                             generator.impactOccurred()
@@ -131,17 +64,12 @@ struct MoreView: View {
                                     .foregroundColor(.secondary)
                             }
                             .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity)
                         }
                         .listRowBackground(Color(UIColor.systemGray5))
                     }
                     
                     // About Section.
-                    Section(header:
-                        Text("About")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                    ) {
+                    Section(header: Text("About").font(.headline)) {
                         NavigationLink(destination: AboutView()) {
                             HStack {
                                 Image(systemName: "info.circle.fill")
@@ -156,15 +84,84 @@ struct MoreView: View {
                                     .foregroundColor(.secondary)
                             }
                             .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(PlainButtonStyle())
                         .listRowBackground(Color(UIColor.systemGray5))
                     }
+                    
+                    // Sync Status and Recipe Count View (Fixed Alignment)
+                    Section(header: Text("Data Management").font(.headline)) {
+                        VStack(alignment: .center, spacing: 10) { // Ensuring center alignment
+                            Text("\(dataManager.recipes.count) recipes available")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+
+                            // Sync Recipes Button
+                            Button(action: {
+                                let generator = UIImpactFeedbackGenerator(style: .medium)
+                                generator.impactOccurred()
+                                isSyncing = true
+                                dataManager.loadData {
+                                    dataManager.syncFavorites()
+                                    isSyncing = false
+                                }
+                            }) {
+                                HStack {
+                                    if isSyncing {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle())
+                                            .padding(.trailing, 4)
+                                    } else {
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.title2)
+                                            .foregroundColor(Color(hex: "00AA00"))
+                                    }
+                                    Text("Sync recipes")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color(UIColor.systemGray5))
+                                .cornerRadius(10)
+                            }
+
+                            // Clear Cache Button
+                            Button(action: {
+                                let generator = UIImpactFeedbackGenerator(style: .medium)
+                                generator.impactOccurred()
+                                dataManager.clearCache { success in
+                                    if success {
+                                        print("Cache cleared successfully.")
+                                    } else {
+                                        print("Failed to clear cache.")
+                                    }
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "trash.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.red)
+                                    Text("Clear Cache")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color(UIColor.systemGray5))
+                                .cornerRadius(10)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center) // Ensuring everything is centered
+                        .padding(.vertical, 4)
+                    }
                 }
                 .listStyle(InsetGroupedListStyle())
             }
-            .navigationTitle("") // Custom header already provided.
+            .navigationTitle("")
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
@@ -180,7 +177,7 @@ struct AboutView: View {
             Text("Craftify for Minecraft")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            Text("Version 1.0 - Build 13")
+            Text("Version 1.0 - Build 17")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
@@ -223,10 +220,11 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                Text("Version 1.0 - Build 14-16")
+                Text("Version 1.0 - Build 14-17")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Text("""
+                    - Added: Data management in More
                     - UI fixes
                     """)
                 Text("Version 1.0 - Build 13")
@@ -268,4 +266,3 @@ struct ReleaseNotesView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-

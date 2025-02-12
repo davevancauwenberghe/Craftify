@@ -35,20 +35,19 @@ struct ContentView: View {
                                      navigationPath: $navigationPath,
                                      searchText: $searchText,
                                      isSearching: $isSearching)
-                            .refreshable {
-                                isLoading = true
-                                dataManager.loadData {
-                                    dataManager.syncFavorites()
-                                    DispatchQueue.main.async {
-                                        isLoading = false
-                                    }
-                                }
-                            }
                     }
                 }
                 .navigationTitle("Craftify")
                 .navigationBarTitleDisplayMode(.large)
                 .searchable(text: $searchText, prompt: "Search recipes")
+                // Pull-to-refresh updates the entire recipes data (affecting CategoryView and Craftify Picks).
+                .refreshable {
+                    isLoading = true
+                    dataManager.loadData {
+                        dataManager.syncFavorites()
+                        isLoading = false
+                    }
+                }
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
@@ -77,9 +76,7 @@ struct ContentView: View {
             if dataManager.recipes.isEmpty {
                 dataManager.loadData {
                     dataManager.syncFavorites()
-                    DispatchQueue.main.async {
-                        isLoading = false // Hide loading indicator once data is loaded
-                    }
+                    isLoading = false // Hide loader when data is loaded
                 }
             } else {
                 dataManager.syncFavorites()
