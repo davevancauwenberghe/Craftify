@@ -472,8 +472,8 @@
         "name": "Oak Boat",
         "image": "oak_boat",
         "ingredients": [
-          "Planks", "Planks", "",
-          "Planks", "", "Planks",
+          "Oak Planks", "Oak Planks", "",
+          "Oak Planks", "", "Oak Planks",
           "", "", ""
         ],
         "output": 1,

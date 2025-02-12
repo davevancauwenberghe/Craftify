@@ -123,7 +123,7 @@ class DataManager: ObservableObject {
 
     // MARK: - Local File Cache Methods
 
-    // Always use "recipes.json" regardless of the environment.
+    // Always use "recipes.json" regardless of environment.
     private func localCacheFileName() -> String {
         return "recipes.json"
     }
@@ -184,7 +184,6 @@ class DataManager: ObservableObject {
             print("Missing field in record \(record.recordID.recordName)")
             return nil
         }
-
         let id = Int(record.recordID.recordName) ?? 0
         let output = Int(outputInt64)
         return Recipe(id: id, name: name, image: image, ingredients: ingredients, output: output, category: category)

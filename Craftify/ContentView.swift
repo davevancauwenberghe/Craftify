@@ -23,7 +23,7 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Recipes Tab using CategoryView
+            // Recipes Tab using CategoryView.
             NavigationStack(path: $navigationPath) {
                 ZStack {
                     if isLoading {
@@ -31,6 +31,9 @@ struct ContentView: View {
                             .progressViewStyle(CircularProgressViewStyle())
                             .padding()
                     } else {
+                        // The CategoryView is responsible for displaying the horizontal sections
+                        // (category selector & Craftify Picks) as well as the alphabetical recipe List.
+                        // (Assume that the pull-to-refresh modifier is applied only to the List inside CategoryView.)
                         CategoryView(selectedTab: $selectedTab,
                                      navigationPath: $navigationPath,
                                      searchText: $searchText,
@@ -40,28 +43,20 @@ struct ContentView: View {
                 .navigationTitle("Craftify")
                 .navigationBarTitleDisplayMode(.large)
                 .searchable(text: $searchText, prompt: "Search recipes")
-                // Pull-to-refresh updates the entire recipes data (affecting CategoryView and Craftify Picks).
-                .refreshable {
-                    isLoading = true
-                    dataManager.loadData {
-                        dataManager.syncFavorites()
-                        isLoading = false
-                    }
-                }
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
             }
             .tag(0)
             
-            // Favorites Tab
+            // Favorites Tab remains unchanged.
             FavoritesView()
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
                 .tag(1)
             
-            // More Tab
+            // More Tab remains unchanged.
             MoreView()
                 .tabItem {
                     Label("More", systemImage: "ellipsis.circle")
@@ -76,7 +71,7 @@ struct ContentView: View {
             if dataManager.recipes.isEmpty {
                 dataManager.loadData {
                     dataManager.syncFavorites()
-                    isLoading = false // Hide loader when data is loaded
+                    isLoading = false // Hide loader once data is loaded.
                 }
             } else {
                 dataManager.syncFavorites()
@@ -113,7 +108,6 @@ struct CategoryView: View {
             .mapValues { $0.sorted { $0.name < $1.name } }
     }
     
-    // The body displays the horizontal category selector, Craftify Picks, and the recipe list.
     var body: some View {
         VStack {
             // Horizontal category selection.
@@ -197,7 +191,7 @@ struct CategoryView: View {
                 }
             }
             
-            // Recipes List: The alphabetical grouping (without a recipe counter now).
+            // Recipes List: The alphabetical grouping.
             List {
                 ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
                     Section(header:
@@ -234,7 +228,7 @@ struct CategoryView: View {
                     }
                 }
             }
-            // Pull-to-refresh applied only on the List.
+            // Pull-to-refresh is applied only on the List.
             .refreshable {
                 dataManager.loadData {
                     dataManager.syncFavorites()
@@ -244,7 +238,7 @@ struct CategoryView: View {
                 isSearching = !newValue.isEmpty
             }
             .onAppear {
-                // Set recommendedRecipes to 5 random recipes.
+                // Set recommendedRecipes to 5 random recipes from the full favorites.
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             }
         }
