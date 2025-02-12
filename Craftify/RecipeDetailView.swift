@@ -15,14 +15,20 @@ struct RecipeDetailView: View {
     @Binding var navigationPath: NavigationPath
     @State private var selectedDetail: String?
     @State private var animateHeart = false
+    @State private var isShareSheetPresented = false  // Controls share sheet presentation
 
+    // Compose a shareable text for the recipe.
+    var shareText: String {
+        "Check out this recipe: \(recipe.name). Ingredients: \(recipe.ingredients.joined(separator: ", ")). Output: x\(recipe.output)."
+    }
+    
     var body: some View {
         VStack {
             Spacer()
             
             // Crafting Grid & Output Side by Side
             HStack(alignment: .center, spacing: 16) {
-                // 3x3 Crafting Grid for ingredients
+                // 3x3 Crafting Grid for ingredients.
                 VStack(spacing: 6) {
                     ForEach(0..<3, id: \.self) { row in
                         HStack(spacing: 6) {
@@ -50,8 +56,7 @@ struct RecipeDetailView: View {
                                     let generator = UIImpactFeedbackGenerator(style: .light)
                                     generator.impactOccurred()
                                     withAnimation(.easeInOut(duration: 0.2)) {
-                                        // Always set the pop-up to the tapped value;
-                                        // do not toggle it off if the same item is tapped.
+                                        // Always set the pop-up to the tapped value.
                                         selectedDetail = recipe.ingredients[index]
                                     }
                                 }
@@ -60,13 +65,13 @@ struct RecipeDetailView: View {
                     }
                 }
                 
-                // Arrow indicator between grid and output
+                // Arrow indicator between grid and output.
                 Image(systemName: "arrow.right")
                     .font(.largeTitle)
                     .foregroundColor(.gray)
                     .frame(width: 40, height: 60)
                 
-                // Output Item styled similarly to grid cells
+                // Output Item styled similarly to grid cells.
                 VStack {
                     ZStack {
                         RoundedRectangle(cornerRadius: 12)
@@ -115,6 +120,17 @@ struct RecipeDetailView: View {
         .navigationTitle(recipe.name)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
+            // Share button: placed on the leading side.
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    isShareSheetPresented = true
+                }) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.title2)
+                        .foregroundColor(.blue)
+                }
+            }
+            // Favorite (heart) button: placed on the trailing side.
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
                     let generator = UINotificationFeedbackGenerator()
@@ -140,7 +156,11 @@ struct RecipeDetailView: View {
                 }
             }
         }
-        // Removed overlay that might intercept taps—now taps on grid cells update the pop-up immediately.
+        // Present the share sheet when isShareSheetPresented is true.
+        .sheet(isPresented: $isShareSheetPresented) {
+            ShareSheet(activityItems: [shareText])
+        }
+        // Overlay to display the recipe category at the bottom.
         .overlay(
             Group {
                 if !recipe.category.isEmpty {
@@ -158,3 +178,18 @@ struct RecipeDetailView: View {
         )
     }
 }
+
+// A simple ShareSheet view to wrap UIActivityViewController.
+struct ShareSheet: UIViewControllerRepresentable {
+    var activityItems: [Any]
+    var applicationActivities: [UIActivity]? = nil
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
+        // Nothing to update.
+    }
+}
+
