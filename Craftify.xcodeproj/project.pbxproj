@@ -54,11 +54,28 @@
 			);
 			target = 55BEFB212D55A73000587E5B /* Craftify */;
 		};
+		55FE1B332D5F9E810098D3C2 /* Exceptions for "Craftify-MacOS" folder in "Craftify-MacOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Untitled.swift,
+			);
+			target = 554C16A32D5F914C00DDBE27 /* Craftify-MacOS */;
+		};
+		55FE1B352D5F9EA80098D3C2 /* Exceptions for "Craftify" folder in "Craftify-MacOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				CraftifyApp.swift,
+			);
+			target = 554C16A32D5F914C00DDBE27 /* Craftify-MacOS */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		554C16A52D5F914C00DDBE27 /* Craftify-MacOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				55FE1B332D5F9E810098D3C2 /* Exceptions for "Craftify-MacOS" folder in "Craftify-MacOS" target */,
+			);
 			path = "Craftify-MacOS";
 			sourceTree = "<group>";
 		};
@@ -76,6 +93,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				55CB3BB02D55BC4200CB4402 /* Exceptions for "Craftify" folder in "Craftify" target */,
+				55FE1B352D5F9EA80098D3C2 /* Exceptions for "Craftify" folder in "Craftify-MacOS" target */,
 			);
 			path = Craftify;
 			sourceTree = "<group>";

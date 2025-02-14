@@ -210,57 +210,11 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                Text("Version 1.0 - Build 21")
+                Text("Version 1.0 - Build 1")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Text("""
-                    - Added: Collapsible Craftify Picks
-                    - Added: Image assets
-                    - Removed: Share button in the RecipeDetailView
-                    """)
-                Text("Version 1.0 - Build 20")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                Text("""
-                    - Added: Updated Favorites when no favorites are added yet
-                    - Update Image assets naming
-                    """)
-                Text("Version 1.0 - Build 14-19")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                Text("""
-                    - Added: Data management in More
-                    - Added: Image Assets
-                    - UI fixes
-                    """)
-                Text("Version 1.0 - Build 13")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                Text("""
-                    - Added: Pull to refresh
-                    - Added: Local cache
-                    - Added: Sync info in More
-                    """)
-                Text("Version 1.0 - Build 12")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                Text("""
-                    - CloudKit update
-                    """)
-                Text("Version 1.0 - Build 11")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                Text("""
-                    - CloudKit support added
-                    """)
-                Text("Version 1.0 - Build 1-10")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                Text("""
-                    - Initial release of Craftify for Minecraft.
-                    - Recipe management and favorite syncing via CloudKit.
-                    - Improved UI for crafting grid and recipe details.
-                    - Enhanced haptic feedback and smooth transitions.
+                    - Initial release of Craftify for MacOS.
                     """)
                     .font(.body)
                 Spacer()
