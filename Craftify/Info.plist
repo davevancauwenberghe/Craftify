@@ -2,37 +2,32 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleSupportedPlatforms</key>
-    <array>
-        <string>iPhoneOS</string>
-    </array>
-    <key>MinimumOSVersion</key>
-    <string>17.0</string>
-    <key>NSUbiquitousContainers</key>
-    <dict>
-        <key>iCloud.be.ghentphotography.www/Craftify</key>
-        <dict>
-            <key>NSUbiquitousContainerIsDocumentScopePublic</key>
-            <true/>
-            <key>NSUbiquitousContainerName</key>
-            <string>Craftify</string>
-            <key>NSUbiquitousContainerSupportedFolderLevels</key>
-            <string>All</string>
-        </dict>
-    </dict>
-    
-    <!-- Updated Launch Screen Configuration -->
-    <key>UILaunchScreen</key>
-    <dict>
-        <key>UIColorName</key>
-        <string>Black</string> <!-- Set background color to black -->
-        
-        <key>UIImageName</key>
-        <string>LaunchScreen</string> <!-- Make sure LaunchScreen is in Assets -->
-        
-        <key>UIImageContentMode</key>
-        <string>scaleAspectFit</string> <!-- Ensures proper scaling -->
-    </dict>
-
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>iPhoneOS</string>
+	</array>
+	<key>MinimumOSVersion</key>
+	<string>17.0</string>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.be.ghentphotography.www/Craftify</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Craftify</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>All</string>
+		</dict>
+	</dict>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>#000000</string>
+		<key>UIImageName</key>
+		<string>LaunchScreen</string>
+		<key>UIImageContentMode</key>
+		<string>scaleAspectFit</string>
+	</dict>
 </dict>
 </plist>

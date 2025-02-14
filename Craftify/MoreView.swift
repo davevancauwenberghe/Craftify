@@ -177,7 +177,7 @@ struct AboutView: View {
             Text("Craftify for Minecraft")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            Text("Version 1.0 - Build 20")
+            Text("Version 1.0 - Build 21")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
@@ -220,6 +220,14 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                Text("Version 1.0 - Build 21")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text("""
+                    - Added: Collapsible Craftify Picks
+                    - Added: Image assets
+                    - Removed: Share button in the RecipeDetailView
+                    """)
                 Text("Version 1.0 - Build 20")
                     .font(.headline)
                     .foregroundColor(.secondary)

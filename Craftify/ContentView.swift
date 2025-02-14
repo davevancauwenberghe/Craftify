@@ -10,20 +10,18 @@ import Combine
 import CloudKit
 
 struct ContentView: View {
-    @EnvironmentObject var dataManager: DataManager  // Access DataManager via EnvironmentObject
+    @EnvironmentObject private var dataManager: DataManager  // Access DataManager via EnvironmentObject
     
-    // Persist the user's appearance preference ("system", "light", or "dark")
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     
     @State private var searchText = ""
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
-    @State private var isLoading = true // Track loading status
+    @State private var isLoading = true
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Recipes Tab using CategoryView.
             NavigationStack(path: $navigationPath) {
                 ZStack {
                     if isLoading {
@@ -31,9 +29,6 @@ struct ContentView: View {
                             .progressViewStyle(CircularProgressViewStyle())
                             .padding()
                     } else {
-                        // The CategoryView is responsible for displaying the horizontal sections
-                        // (category selector & Craftify Picks) as well as the alphabetical recipe List.
-                        // (Assume that the pull-to-refresh modifier is applied only to the List inside CategoryView.)
                         CategoryView(selectedTab: $selectedTab,
                                      navigationPath: $navigationPath,
                                      searchText: $searchText,
@@ -49,14 +44,12 @@ struct ContentView: View {
             }
             .tag(0)
             
-            // Favorites Tab remains unchanged.
             FavoritesView()
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
                 .tag(1)
             
-            // More Tab remains unchanged.
             MoreView()
                 .tabItem {
                     Label("More", systemImage: "ellipsis.circle")
@@ -71,7 +64,7 @@ struct ContentView: View {
             if dataManager.recipes.isEmpty {
                 dataManager.loadData {
                     dataManager.syncFavorites()
-                    isLoading = false // Hide loader once data is loaded.
+                    isLoading = false
                 }
             } else {
                 dataManager.syncFavorites()
@@ -89,11 +82,8 @@ struct CategoryView: View {
     @Binding var isSearching: Bool
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
-    
-    // State to throttle haptics during horizontal scrolling.
-    @State private var categoryScrollHapticTriggered = false
+    @State private var isCraftifyPicksExpanded = true
 
-    // Group recipes by the first letter.
     var sortedRecipes: [String: [Recipe]] {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
@@ -101,6 +91,7 @@ struct CategoryView: View {
         
         let filtered = searchText.isEmpty ? categoryFiltered : categoryFiltered.filter { recipe in
             recipe.name.localizedCaseInsensitiveContains(searchText) ||
+            recipe.category.localizedCaseInsensitiveContains(searchText) ||
             recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
         }
         
@@ -110,14 +101,9 @@ struct CategoryView: View {
     
     var body: some View {
         VStack {
-            // Horizontal category selection.
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
-                    Button(action: {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
-                        selectedCategory = nil
-                    }) {
+                    Button(action: { selectedCategory = nil }) {
                         Text("All")
                             .fontWeight(.bold)
                             .padding()
@@ -125,12 +111,8 @@ struct CategoryView: View {
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
-                    ForEach(dataManager.categories, id: \.self) { category in
-                        Button(action: {
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
-                            selectedCategory = category
-                        }) {
+                    ForEach(dataManager.categories, id: \ .self) { category in
+                        Button(action: { selectedCategory = category }) {
                             Text(category)
                                 .fontWeight(.bold)
                                 .padding()
@@ -141,59 +123,56 @@ struct CategoryView: View {
                     }
                 }
                 .padding(.horizontal)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 10)
-                        .onChanged { _ in
-                            if !categoryScrollHapticTriggered {
-                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                generator.impactOccurred()
-                                categoryScrollHapticTriggered = true
-                            }
-                        }
-                        .onEnded { _ in
-                            categoryScrollHapticTriggered = false
-                        }
-                )
             }
             
-            // Recommended Recipes Section ("Craftify Picks")
             if !recommendedRecipes.isEmpty && !isSearching {
-                VStack(alignment: .leading) {
-                    Text("Craftify Picks")
-                        .font(.title3)
-                        .bold()
-                        .padding(.horizontal)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Button(action: { withAnimation { isCraftifyPicksExpanded.toggle() } }) {
+                            Image(systemName: isCraftifyPicksExpanded ? "chevron.down" : "chevron.right")
+                                .font(.title2)
+                                .foregroundColor(.gray)
+                        }
+                        
+                        Text("Craftify Picks")
+                            .font(.title3)
+                            .bold()
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal)
                     
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            ForEach(recommendedRecipes) { recipe in
-                                NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                    VStack {
-                                        Image(recipe.image)
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 90, height: 90)
-                                            .padding(4)
-                                        Text(recipe.name)
-                                            .font(.caption)
-                                            .bold()
-                                            .lineLimit(1)
-                                            .frame(width: 90)
+                    if isCraftifyPicksExpanded {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                ForEach(recommendedRecipes) { recipe in
+                                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                        VStack {
+                                            Image(recipe.image)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 90, height: 90)
+                                                .padding(4)
+                                            Text(recipe.name)
+                                                .font(.caption)
+                                                .bold()
+                                                .lineLimit(1)
+                                                .frame(width: 90)
+                                        }
+                                        .padding()
+                                        .background(Color.gray.opacity(0.2))
+                                        .cornerRadius(12)
                                     }
-                                    .padding()
-                                    .background(Color.gray.opacity(0.2))
-                                    .cornerRadius(12)
                                 }
                             }
+                            .padding(.horizontal)
                         }
-                        .padding(.horizontal)
                     }
                 }
             }
             
-            // Recipes List: The alphabetical grouping.
             List {
-                ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
+                ForEach(sortedRecipes.keys.sorted(), id: \ .self) { letter in
                     Section(header:
                         Text(letter)
                             .font(.headline)
@@ -228,17 +207,7 @@ struct CategoryView: View {
                     }
                 }
             }
-            // Pull-to-refresh is applied only on the List.
-            .refreshable {
-                dataManager.loadData {
-                    dataManager.syncFavorites()
-                }
-            }
-            .onChange(of: searchText) { _, newValue in
-                isSearching = !newValue.isEmpty
-            }
             .onAppear {
-                // Set recommendedRecipes to 5 random recipes from the full favorites.
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             }
         }
