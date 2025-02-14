@@ -24,9 +24,9 @@ struct RecipeDetailView: View {
             HStack(alignment: .center, spacing: 16) {
                 // 3x3 Crafting Grid for ingredients
                 VStack(spacing: 6) {
-                    ForEach(0..<3, id: \.self) { row in
+                    ForEach(0..<3, id: \ .self) { row in
                         HStack(spacing: 6) {
-                            ForEach(0..<3, id: \.self) { col in
+                            ForEach(0..<3, id: \ .self) { col in
                                 let index = row * 3 + col
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 12)
@@ -50,8 +50,6 @@ struct RecipeDetailView: View {
                                     let generator = UIImpactFeedbackGenerator(style: .light)
                                     generator.impactOccurred()
                                     withAnimation(.easeInOut(duration: 0.2)) {
-                                        // Always set the pop-up to the tapped value;
-                                        // do not toggle it off if the same item is tapped.
                                         selectedDetail = recipe.ingredients[index]
                                     }
                                 }
@@ -140,21 +138,5 @@ struct RecipeDetailView: View {
                 }
             }
         }
-        // Removed overlay that might intercept taps—now taps on grid cells update the pop-up immediately.
-        .overlay(
-            Group {
-                if !recipe.category.isEmpty {
-                    Text("Category: \(recipe.category)")
-                        .font(.subheadline)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(Color.gray.opacity(0.2))
-                        .foregroundColor(.primary)
-                        .cornerRadius(20)
-                        .padding(.bottom, 40)
-                }
-            },
-            alignment: .bottom
-        )
     }
 }
