@@ -14,6 +14,7 @@ struct ContentView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     
     @State private var searchText = ""
+    @State private var sidebarSelection: String? = "Recipes"
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
     @State private var isLoading = true
@@ -21,8 +22,8 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            // Sidebar: navigation and category selection.
-            List {
+            // Sidebar: Navigation and Categories.
+            List(selection: $sidebarSelection) {
                 Section(header: Text("Navigation").bold()) {
                     NavigationLink(value: "Recipes") {
                         Label("Recipes", systemImage: "square.grid.2x2")
@@ -58,10 +59,19 @@ struct ContentView: View {
                         .progressViewStyle(CircularProgressViewStyle())
                         .padding()
                 } else {
-                    CategoryView(navigationPath: $navigationPath,
-                                 searchText: $searchText,
-                                 isSearching: $isSearching,
-                                 selectedCategory: $selectedCategory)
+                    // Show the view based on the sidebar selection.
+                    if sidebarSelection == "Recipes" {
+                        CategoryView(navigationPath: $navigationPath,
+                                     searchText: $searchText,
+                                     isSearching: $isSearching,
+                                     selectedCategory: $selectedCategory)
+                    } else if sidebarSelection == "Favorites" {
+                        FavoritesView()
+                    } else if sidebarSelection == "More" {
+                        MoreView()
+                    } else {
+                        Text("Select an option from the sidebar.")
+                    }
                 }
             }
             .searchable(text: $searchText, prompt: "Search recipes")
@@ -79,7 +89,8 @@ struct ContentView: View {
         }
         .frame(minWidth: 800, minHeight: 600)
         .preferredColorScheme(
-            colorSchemePreference == "system" ? nil : (colorSchemePreference == "light" ? .light : .dark)
+            colorSchemePreference == "system" ? nil :
+            (colorSchemePreference == "light" ? .light : .dark)
         )
     }
 }
