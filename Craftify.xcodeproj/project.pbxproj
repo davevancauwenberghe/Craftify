@@ -65,6 +65,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				CraftifyApp.swift,
+				DataManager.swift,
 			);
 			target = 554C16A32D5F914C00DDBE27 /* Craftify-MacOS */;
 		};

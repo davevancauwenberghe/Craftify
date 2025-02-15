@@ -129,7 +129,7 @@ class DataManager: ObservableObject {
     }
 
     private func loadRecipesFromLocalCache() -> [Recipe]? {
-        let fileURL = getDocumentsDirectory().appendingPathComponent(localCacheFileName())
+        let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
         print("Attempting to load local cache from: \(fileURL.path)")
         guard let data = try? Data(contentsOf: fileURL) else {
             print("No data found at \(fileURL.path)")
@@ -139,7 +139,7 @@ class DataManager: ObservableObject {
     }
 
     private func saveRecipesToLocalCache(_ recipes: [Recipe]) {
-        let fileURL = getDocumentsDirectory().appendingPathComponent(localCacheFileName())
+        let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
         if let data = try? JSONEncoder().encode(recipes) {
             do {
                 try data.write(to: fileURL)
@@ -150,14 +150,25 @@ class DataManager: ObservableObject {
         }
     }
 
-    private func getDocumentsDirectory() -> URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    // Use Application Support on macOS; use Documents on iOS.
+    private func getCacheDirectory() -> URL {
+        #if os(macOS)
+        let urls = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+        if let appSupport = urls.first {
+            // Ensure the directory exists.
+            try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
+            return appSupport
+        }
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        #else
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        #endif
     }
 
     // MARK: - Clear Cache
 
     func clearCache(completion: @escaping (Bool) -> Void) {
-        let fileURL = getDocumentsDirectory().appendingPathComponent(localCacheFileName())
+        let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
         do {
             try FileManager.default.removeItem(at: fileURL)
             DispatchQueue.main.async {

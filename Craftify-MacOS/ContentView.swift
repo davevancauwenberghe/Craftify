@@ -17,22 +17,40 @@ struct ContentView: View {
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
     @State private var isLoading = true
-    
+    @State private var selectedCategory: String? = nil  // Managed by the sidebar
+
     var body: some View {
         NavigationSplitView {
+            // Sidebar: navigation and category selection.
             List {
-                NavigationLink(destination: CategoryView(navigationPath: $navigationPath, searchText: $searchText, isSearching: $isSearching)) {
-                    Label("Recipes", systemImage: "square.grid.2x2")
+                Section(header: Text("Navigation").bold()) {
+                    NavigationLink(value: "Recipes") {
+                        Label("Recipes", systemImage: "square.grid.2x2")
+                    }
+                    NavigationLink(value: "Favorites") {
+                        Label("Favorites", systemImage: "heart.fill")
+                    }
+                    NavigationLink(value: "More") {
+                        Label("More", systemImage: "ellipsis.circle")
+                    }
                 }
-                NavigationLink(destination: FavoritesView()) {
-                    Label("Favorites", systemImage: "heart.fill")
-                }
-                NavigationLink(destination: MoreView()) {
-                    Label("More", systemImage: "ellipsis.circle")
+                Section(header: Text("Categories").bold()) {
+                    Button("All") {
+                        selectedCategory = nil
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    ForEach(dataManager.categories, id: \.self) { category in
+                        Button(category) {
+                            selectedCategory = category
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
             }
             .listStyle(SidebarListStyle())
             .navigationTitle("Craftify")
+            .searchable(text: $searchText, prompt: "Search categories")
         } detail: {
             ZStack {
                 if isLoading {
@@ -40,7 +58,10 @@ struct ContentView: View {
                         .progressViewStyle(CircularProgressViewStyle())
                         .padding()
                 } else {
-                    CategoryView(navigationPath: $navigationPath, searchText: $searchText, isSearching: $isSearching)
+                    CategoryView(navigationPath: $navigationPath,
+                                 searchText: $searchText,
+                                 isSearching: $isSearching,
+                                 selectedCategory: $selectedCategory)
                 }
             }
             .searchable(text: $searchText, prompt: "Search recipes")
@@ -57,6 +78,9 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 800, minHeight: 600)
+        .preferredColorScheme(
+            colorSchemePreference == "system" ? nil : (colorSchemePreference == "light" ? .light : .dark)
+        )
     }
 }
 
@@ -65,75 +89,109 @@ struct CategoryView: View {
     @Binding var navigationPath: NavigationPath
     @Binding var searchText: String
     @Binding var isSearching: Bool
-    @State private var selectedCategory: String? = nil
+    @Binding var selectedCategory: String?  // Passed from ContentView
     @State private var recommendedRecipes: [Recipe] = []
     @State private var isCraftifyPicksExpanded = true
 
     var sortedRecipes: [String: [Recipe]] {
-        let categoryFiltered = selectedCategory == nil
-            ? dataManager.recipes
-            : dataManager.recipes.filter { $0.category == selectedCategory }
+        let categoryFiltered: [Recipe] = {
+            if let category = selectedCategory {
+                return dataManager.recipes.filter { $0.category == category }
+            } else {
+                return dataManager.recipes
+            }
+        }()
         
-        let filtered = searchText.isEmpty ? categoryFiltered : categoryFiltered.filter { recipe in
-            recipe.name.localizedCaseInsensitiveContains(searchText) ||
-            recipe.category.localizedCaseInsensitiveContains(searchText) ||
-            recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
-        }
+        let filtered: [Recipe] = {
+            if searchText.isEmpty {
+                return categoryFiltered
+            } else {
+                return categoryFiltered.filter { recipe in
+                    recipe.name.localizedCaseInsensitiveContains(searchText) ||
+                    recipe.category.localizedCaseInsensitiveContains(searchText) ||
+                    recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
+                }
+            }
+        }()
         
-        return Dictionary(grouping: filtered, by: { String($0.name.prefix(1)) })
-            .mapValues { $0.sorted { $0.name < $1.name } }
+        let grouped = Dictionary(grouping: filtered, by: { String($0.name.prefix(1)) })
+        return grouped.mapValues { $0.sorted { $0.name < $1.name } }
     }
     
     var body: some View {
-        VStack {
-            List {
-                Section(header: Text("Categories").bold()) {
-                    Button("All") { selectedCategory = nil }
-                    ForEach(dataManager.categories, id: \ .self) { category in
-                        Button(category) { selectedCategory = category }
-                    }
+        VStack(alignment: .leading, spacing: 12) {
+            // Show the current category in a header.
+            HStack {
+                Text("Category:")
+                    .font(.headline)
+                if let cat = selectedCategory {
+                    Text(cat)
+                        .font(.headline)
+                        .bold()
+                } else {
+                    Text("All")
+                        .font(.headline)
+                        .bold()
                 }
-                
-                if !recommendedRecipes.isEmpty && !isSearching {
-                    Section(header: HStack {
+                Spacer()
+            }
+            .padding(.horizontal)
+            
+            // Recommended Recipes ("Craftify Picks") Section.
+            if !recommendedRecipes.isEmpty && !isSearching {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
                         Button(action: { withAnimation { isCraftifyPicksExpanded.toggle() } }) {
                             Image(systemName: isCraftifyPicksExpanded ? "chevron.down" : "chevron.right")
                                 .font(.title2)
                                 .foregroundColor(.gray)
                         }
-                        Text("Craftify Picks").bold()
-                    }) {
-                        if isCraftifyPicksExpanded {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
-                                    ForEach(recommendedRecipes) { recipe in
-                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                            VStack {
-                                                Image(recipe.image)
-                                                    .resizable()
-                                                    .scaledToFit()
-                                                    .frame(width: 90, height: 90)
-                                                    .padding(4)
-                                                Text(recipe.name)
-                                                    .font(.caption)
-                                                    .bold()
-                                                    .lineLimit(1)
-                                                    .frame(width: 90)
-                                            }
-                                            .padding()
-                                            .background(Color.gray.opacity(0.2))
-                                            .cornerRadius(12)
+                        Text("Craftify Picks")
+                            .font(.title3)
+                            .bold()
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    
+                    if isCraftifyPicksExpanded {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                ForEach(recommendedRecipes) { recipe in
+                                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                        VStack {
+                                            Image(recipe.image)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 90, height: 90)
+                                                .padding(4)
+                                            Text(recipe.name)
+                                                .font(.caption)
+                                                .bold()
+                                                .lineLimit(1)
+                                                .frame(width: 90)
                                         }
+                                        .padding()
+                                        .cornerRadius(12)
                                     }
                                 }
-                                .padding(.horizontal)
                             }
+                            .padding(.horizontal)
                         }
                     }
                 }
-                
-                ForEach(sortedRecipes.keys.sorted(), id: \ .self) { letter in
-                    Section(header: Text(letter).bold()) {
+            }
+            
+            // Main Recipes List.
+            List {
+                ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
+                    Section(header:
+                        Text(letter)
+                            .font(.headline)
+                            .bold()
+                            .foregroundColor(.primary)
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                    ) {
                         ForEach(sortedRecipes[letter] ?? []) { recipe in
                             NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
                                 HStack {
@@ -143,7 +201,9 @@ struct CategoryView: View {
                                         .frame(width: 60, height: 60)
                                         .padding(4)
                                     VStack(alignment: .leading) {
-                                        Text(recipe.name).bold()
+                                        Text(recipe.name)
+                                            .font(.headline)
+                                            .bold()
                                         if !recipe.category.isEmpty {
                                             Text(recipe.category)
                                                 .font(.subheadline)
@@ -152,13 +212,16 @@ struct CategoryView: View {
                                     }
                                 }
                             }
+                            .padding(.vertical, 4)
                         }
                     }
                 }
             }
-            .onAppear { recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5)) }
+            .onAppear {
+                recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
+            }
         }
-        .navigationTitle("Craftify")
+        // Removed an extra navigationTitle here to let the parent view manage it.
     }
 }
 
