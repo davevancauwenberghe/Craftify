@@ -38,39 +38,41 @@ struct FavoritesView: View {
     @State private var recommendedRecipes: [Recipe] = []
     @State private var selectedCategory: String? = nil
     @State private var categoryScrollHapticTriggered = false
-    @State private var isCraftifyPicksExpanded: Bool = true  // Added missing state variable
+    @State private var isCraftifyPicksExpanded = true
 
     // MARK: - Computed Properties
-    
+
     // Group and filter favorited recipes by their first letter.
     var sortedFavorites: [String: [Recipe]] {
-        // Step 1: Filter recipes that are favorites.
+        // Filter recipes that are favorites.
         let favoriteRecipes = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
         
-        // Step 2: Filter by selected category if one is chosen.
-        let categoryFiltered: [Recipe]
-        if let category = selectedCategory {
-            categoryFiltered = favoriteRecipes.filter { $0.category == category }
-        } else {
-            categoryFiltered = favoriteRecipes
-        }
-        
-        // Step 3: Further filter based on search text.
-        let filteredFavorites: [Recipe]
-        if searchText.isEmpty {
-            filteredFavorites = categoryFiltered
-        } else {
-            filteredFavorites = categoryFiltered.filter { recipe in
-                recipe.name.localizedCaseInsensitiveContains(searchText) ||
-                recipe.category.localizedCaseInsensitiveContains(searchText) ||
-                recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
+        // Filter by selected category if one is chosen.
+        let categoryFiltered: [Recipe] = {
+            if let category = selectedCategory {
+                return favoriteRecipes.filter { $0.category == category }
+            } else {
+                return favoriteRecipes
             }
-        }
+        }()
         
-        // Step 4: Group recipes by the first letter of their name.
+        // Further filter based on search text.
+        let filteredFavorites: [Recipe] = {
+            if searchText.isEmpty {
+                return categoryFiltered
+            } else {
+                return categoryFiltered.filter { recipe in
+                    recipe.name.localizedCaseInsensitiveContains(searchText) ||
+                    recipe.category.localizedCaseInsensitiveContains(searchText) ||
+                    recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
+                }
+            }
+        }()
+        
+        // Group recipes by the first letter of their name.
         let grouped = Dictionary(grouping: filteredFavorites, by: { String($0.name.prefix(1)) })
         
-        // Step 5: Sort each group alphabetically.
+        // Sort each group alphabetically.
         var sortedGrouped: [String: [Recipe]] = [:]
         for (key, recipes) in grouped {
             sortedGrouped[key] = recipes.sorted { $0.name < $1.name }
@@ -111,7 +113,6 @@ struct FavoritesView: View {
                                     .scaledToFit()
                                     .frame(width: 60, height: 60)
                                     .padding(4)
-                                
                                 VStack(alignment: .leading) {
                                     Text(recipe.name)
                                         .font(.headline)
@@ -170,7 +171,6 @@ struct FavoritesView: View {
                         .simultaneousGesture(
                             DragGesture(minimumDistance: 10)
                                 .onChanged { _ in
-                                    // On macOS, you might omit haptic feedback or use NSHapticFeedbackManager.
                                     if !categoryScrollHapticTriggered {
                                         let generator = NSHapticFeedbackManager.defaultPerformer
                                         generator.perform(.alignment, performanceTime: .default)
@@ -188,9 +188,7 @@ struct FavoritesView: View {
                 if !recommendedRecipes.isEmpty && !isSearching {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Button(action: {
-                                withAnimation { isCraftifyPicksExpanded.toggle() }
-                            }) {
+                            Button(action: { withAnimation { isCraftifyPicksExpanded.toggle() } }) {
                                 Image(systemName: isCraftifyPicksExpanded ? "chevron.down" : "chevron.right")
                                     .font(.title2)
                                     .foregroundColor(.gray)
@@ -220,7 +218,6 @@ struct FavoritesView: View {
                                                     .frame(width: 90)
                                             }
                                             .padding()
-                                            .background(Color.gray.opacity(0.2))
                                             .cornerRadius(12)
                                         }
                                     }
@@ -231,7 +228,7 @@ struct FavoritesView: View {
                     }
                 }
                 
-                // Show ContentUnavailableView if there are no favorite recipes.
+                // Display ContentUnavailableView if there are no favorite recipes.
                 if recipeCount == 0 {
                     EmptyFavoritesView()
                 } else {
