@@ -36,11 +36,13 @@
       "size" : "256x256"
     },
     {
+      "filename" : "Craftify AppIcon (512 x 512 px) 1.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "256x256"
     },
     {
+      "filename" : "Craftify AppIcon (512 x 512 px).png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "512x512"
