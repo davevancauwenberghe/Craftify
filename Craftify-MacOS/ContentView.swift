@@ -14,15 +14,15 @@ struct ContentView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     
     @State private var searchText = ""
+    @State private var sidebarSelection: String? = "Recipes"  // Default selection
     @State private var navigationPath = NavigationPath()
-    @State private var isSearching = false
     @State private var isLoading = true
     @State private var selectedCategory: String? = nil  // Managed by the sidebar
 
     var body: some View {
         NavigationSplitView {
-            // Sidebar: navigation and category selection.
-            List {
+            // Sidebar: Navigation links and category list.
+            List(selection: $sidebarSelection) {
                 Section(header: Text("Navigation").bold()) {
                     NavigationLink(value: "Recipes") {
                         Label("Recipes", systemImage: "square.grid.2x2")
@@ -52,19 +52,29 @@ struct ContentView: View {
             .navigationTitle("Craftify")
             .searchable(text: $searchText, prompt: "Search categories")
         } detail: {
+            // Detail view (do not apply searchable here to avoid duplicate toolbar items).
             ZStack {
                 if isLoading {
                     ProgressView("Loading recipes from Cloud...")
                         .progressViewStyle(CircularProgressViewStyle())
                         .padding()
                 } else {
-                    CategoryView(navigationPath: $navigationPath,
-                                 searchText: $searchText,
-                                 isSearching: $isSearching,
-                                 selectedCategory: $selectedCategory)
+                    // Switch based on the sidebar selection.
+                    switch sidebarSelection {
+                    case "Recipes":
+                        CategoryView(navigationPath: $navigationPath,
+                                     searchText: $searchText,
+                                     isSearching: .constant(!searchText.isEmpty),
+                                     selectedCategory: $selectedCategory)
+                    case "Favorites":
+                        FavoritesView()
+                    case "More":
+                        MoreView()
+                    default:
+                        Text("Select an option from the sidebar")
+                    }
                 }
             }
-            // Removed the .searchable modifier from the detail view to avoid duplicate search toolbar items.
         }
         .onAppear {
             if dataManager.recipes.isEmpty {
