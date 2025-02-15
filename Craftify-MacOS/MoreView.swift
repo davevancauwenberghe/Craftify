@@ -11,7 +11,7 @@ struct MoreView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @EnvironmentObject var dataManager: DataManager
     @State private var isSyncing: Bool = false
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -87,7 +87,7 @@ struct MoreView: View {
                         .listRowBackground(Color(NSColor.windowBackgroundColor))
                     }
                     
-                    // Sync Status and Recipe Count View.
+                    // Sync Status and Recipe Count Section.
                     Section(header: Text("Data Management").font(.headline)) {
                         VStack(alignment: .center, spacing: 10) {
                             Text("\(dataManager.recipes.count) recipes available")
@@ -155,7 +155,7 @@ struct MoreView: View {
                 }
                 .listStyle(PlainListStyle())
             }
-            .navigationTitle("") // Custom header is provided above.
+            .navigationTitle("") // Custom header provided above.
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
@@ -170,7 +170,7 @@ struct AboutView: View {
             Text("Craftify for Minecraft")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            Text("Version 1.0 - Build 21")
+            Text("Version 1.0 - Build 2")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
@@ -210,7 +210,7 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                Text("Version 1.0 - Build 1")
+                Text("Version 1.0 - Build 1-2")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Text("""

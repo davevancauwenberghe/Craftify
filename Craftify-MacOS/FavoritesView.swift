@@ -36,32 +36,21 @@ struct FavoritesView: View {
     @State private var searchText = ""
     @State private var isSearching = false
     @State private var recommendedRecipes: [Recipe] = []
-    @State private var selectedCategory: String? = nil
-    @State private var categoryScrollHapticTriggered = false
-    @State private var isCraftifyPicksExpanded = true
+    // selectedCategory is not used here since categories are shown in the sidebar on macOS
 
     // MARK: - Computed Properties
-
+    
     // Group and filter favorited recipes by their first letter.
     var sortedFavorites: [String: [Recipe]] {
         // Filter recipes that are favorites.
         let favoriteRecipes = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
         
-        // Filter by selected category if one is chosen.
-        let categoryFiltered: [Recipe] = {
-            if let category = selectedCategory {
-                return favoriteRecipes.filter { $0.category == category }
-            } else {
-                return favoriteRecipes
-            }
-        }()
-        
         // Further filter based on search text.
         let filteredFavorites: [Recipe] = {
             if searchText.isEmpty {
-                return categoryFiltered
+                return favoriteRecipes
             } else {
-                return categoryFiltered.filter { recipe in
+                return favoriteRecipes.filter { recipe in
                     recipe.name.localizedCaseInsensitiveContains(searchText) ||
                     recipe.category.localizedCaseInsensitiveContains(searchText) ||
                     recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
@@ -78,13 +67,6 @@ struct FavoritesView: View {
             sortedGrouped[key] = recipes.sorted { $0.name < $1.name }
         }
         return sortedGrouped
-    }
-    
-    // Compute the available favorite categories.
-    var favoriteCategories: [String] {
-        let favoriteRecipes = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
-        let categories = favoriteRecipes.compactMap { $0.category.isEmpty ? nil : $0.category }
-        return Array(Set(categories)).sorted()
     }
     
     // Total count of favorited recipes (after filtering).
@@ -136,60 +118,12 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack {
-                // Horizontal category selection.
-                if !favoriteCategories.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            Button(action: {
-                                let generator = NSHapticFeedbackManager.defaultPerformer
-                                generator.perform(.alignment, performanceTime: .default)
-                                selectedCategory = nil
-                            }) {
-                                Text("All")
-                                    .fontWeight(.bold)
-                                    .padding()
-                                    .background(selectedCategory == nil ? Color(hex: "00AA00") : Color.gray.opacity(0.2))
-                                    .foregroundColor(.white)
-                                    .cornerRadius(10)
-                            }
-                            ForEach(favoriteCategories, id: \.self) { category in
-                                Button(action: {
-                                    let generator = NSHapticFeedbackManager.defaultPerformer
-                                    generator.perform(.alignment, performanceTime: .default)
-                                    selectedCategory = category
-                                }) {
-                                    Text(category)
-                                        .fontWeight(.bold)
-                                        .padding()
-                                        .background(selectedCategory == category ? Color(hex: "00AA00") : Color.gray.opacity(0.2))
-                                        .foregroundColor(.white)
-                                        .cornerRadius(10)
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 10)
-                                .onChanged { _ in
-                                    if !categoryScrollHapticTriggered {
-                                        let generator = NSHapticFeedbackManager.defaultPerformer
-                                        generator.perform(.alignment, performanceTime: .default)
-                                        categoryScrollHapticTriggered = true
-                                    }
-                                }
-                                .onEnded { _ in
-                                    categoryScrollHapticTriggered = false
-                                }
-                        )
-                    }
-                }
-                
-                // Recommended Favorites ("Craftify Picks").
+                // Recommended Favorites ("Craftify Picks") Section.
                 if !recommendedRecipes.isEmpty && !isSearching {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Button(action: { withAnimation { isCraftifyPicksExpanded.toggle() } }) {
-                                Image(systemName: isCraftifyPicksExpanded ? "chevron.down" : "chevron.right")
+                            Button(action: { withAnimation { /* Toggle the section */ } }) {
+                                Image(systemName: "chevron.down")
                                     .font(.title2)
                                     .foregroundColor(.gray)
                             }
@@ -200,47 +134,44 @@ struct FavoritesView: View {
                         }
                         .padding(.horizontal)
                         
-                        if isCraftifyPicksExpanded {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
-                                    ForEach(recommendedRecipes) { recipe in
-                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                            VStack {
-                                                Image(recipe.image)
-                                                    .resizable()
-                                                    .scaledToFit()
-                                                    .frame(width: 90, height: 90)
-                                                    .padding(4)
-                                                Text(recipe.name)
-                                                    .font(.caption)
-                                                    .bold()
-                                                    .lineLimit(1)
-                                                    .frame(width: 90)
-                                            }
-                                            .padding()
-                                            .cornerRadius(12)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                ForEach(recommendedRecipes) { recipe in
+                                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                        VStack {
+                                            Image(recipe.image)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 90, height: 90)
+                                                .padding(4)
+                                            Text(recipe.name)
+                                                .font(.caption)
+                                                .bold()
+                                                .lineLimit(1)
+                                                .frame(width: 90)
                                         }
+                                        .padding()
+                                        .cornerRadius(12)
                                     }
                                 }
-                                .padding(.horizontal)
                             }
+                            .padding(.horizontal)
                         }
                     }
                 }
                 
-                // Display ContentUnavailableView if there are no favorite recipes.
+                // If no favorites, show the empty view; otherwise show the favorites list.
                 if recipeCount == 0 {
                     EmptyFavoritesView()
                 } else {
-                    // Otherwise, display the alphabetical favorites list.
                     favoritesList
                 }
             }
             .navigationTitle("Favorite recipes")
         }
         .searchable(text: $searchText, prompt: "Search favorites")
-        .onChange(of: searchText) { _, newValue in
-            isSearching = !newValue.isEmpty
+        .onChange(of: searchText) { _, _ in
+            isSearching = !searchText.isEmpty
         }
         .onAppear {
             recommendedRecipes = Array(

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+   Info.plist
+   Craftify
+
+   Created by Dave Van Cauwenberghe on 15/02/2025.
+   Copyright (c) 2025 ___ORGANIZATIONNAME___. All rights reserved.
+-->
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>be.ghentphotography.www.Craftify</string>
+    <key>CFBundleName</key>
+    <string>Craftify</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    
+    <!-- Supported Platforms -->
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOS</string>
+    </array>
+    
+    <!-- Minimum macOS Version -->
+    <key>LSMinimumSystemVersion</key>
+    <string>15.0</string>
+    
+    <!-- Principal Class -->
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    
+    <!-- Application Category (optional) -->
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.utilities</string>
+    
+    <!-- iCloud Configuration -->
+    <key>NSUbiquitousContainers</key>
+    <dict>
+        <key>iCloud.be.ghentphotography.www/Craftify</key>
+        <dict>
+            <key>NSUbiquitousContainerIsDocumentScopePublic</key>
+            <true/>
+            <key>NSUbiquitousContainerName</key>
+            <string>Craftify</string>
+            <key>NSUbiquitousContainerSupportedFolderLevels</key>
+            <string>All</string>
+        </dict>
+    </dict>
+</dict>
+</plist>

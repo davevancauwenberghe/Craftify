@@ -14,14 +14,15 @@ struct ContentView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     
     @State private var searchText = ""
-    @State private var sidebarSelection: String? = "Recipes"  // Default selection
+    @State private var sidebarSelection: String? = "Recipes"  // Default sidebar selection
     @State private var navigationPath = NavigationPath()
+    @State private var isSearching = false
     @State private var isLoading = true
-    @State private var selectedCategory: String? = nil  // Managed by the sidebar
+    @State private var selectedCategory: String? = nil  // Set by the sidebar’s Categories section
 
     var body: some View {
         NavigationSplitView {
-            // Sidebar: Navigation links and category list.
+            // Sidebar with navigation links and category selection.
             List(selection: $sidebarSelection) {
                 Section(header: Text("Navigation").bold()) {
                     NavigationLink(value: "Recipes") {
@@ -52,19 +53,18 @@ struct ContentView: View {
             .navigationTitle("Craftify")
             .searchable(text: $searchText, prompt: "Search categories")
         } detail: {
-            // Detail view (do not apply searchable here to avoid duplicate toolbar items).
             ZStack {
                 if isLoading {
                     ProgressView("Loading recipes from Cloud...")
                         .progressViewStyle(CircularProgressViewStyle())
                         .padding()
                 } else {
-                    // Switch based on the sidebar selection.
+                    // Switch between detail views based on the sidebar selection.
                     switch sidebarSelection {
                     case "Recipes":
                         CategoryView(navigationPath: $navigationPath,
                                      searchText: $searchText,
-                                     isSearching: .constant(!searchText.isEmpty),
+                                     isSearching: $isSearching,
                                      selectedCategory: $selectedCategory)
                     case "Favorites":
                         FavoritesView()
@@ -75,6 +75,7 @@ struct ContentView: View {
                     }
                 }
             }
+            // Removed duplicate .searchable to avoid duplicate toolbar items.
         }
         .onAppear {
             if dataManager.recipes.isEmpty {
@@ -95,12 +96,19 @@ struct ContentView: View {
     }
 }
 
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+            .environmentObject(DataManager())
+    }
+}
+
 struct CategoryView: View {
     @EnvironmentObject var dataManager: DataManager
     @Binding var navigationPath: NavigationPath
     @Binding var searchText: String
     @Binding var isSearching: Bool
-    @Binding var selectedCategory: String?  // Passed from ContentView
+    @Binding var selectedCategory: String?  // Passed from ContentView (sidebar)
     @State private var recommendedRecipes: [Recipe] = []
     @State private var isCraftifyPicksExpanded = true
 
@@ -131,7 +139,7 @@ struct CategoryView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Show the current category in a header.
+            // Display the current category as a header.
             HStack {
                 Text("Category:")
                     .font(.headline)
@@ -148,7 +156,7 @@ struct CategoryView: View {
             }
             .padding(.horizontal)
             
-            // Recommended Recipes ("Craftify Picks") Section.
+            // "Craftify Picks" Section.
             if !recommendedRecipes.isEmpty && !isSearching {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -232,7 +240,6 @@ struct CategoryView: View {
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             }
         }
-        // Removed an extra navigationTitle here to let the parent view manage it.
     }
 }
 

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import CloudKit
 
 struct RecipeDetailView: View {
     @EnvironmentObject var dataManager: DataManager
@@ -17,7 +16,7 @@ struct RecipeDetailView: View {
 
     var body: some View {
         VStack {
-            // Header with the recipe title and favorite button.
+            // Header with recipe title and favorite button.
             HStack {
                 Text(recipe.name)
                     .font(.largeTitle)
@@ -44,9 +43,9 @@ struct RecipeDetailView: View {
 
             Spacer()
 
-            // Crafting Grid & Output Side by Side.
+            // Crafting grid and output side by side.
             HStack(alignment: .center, spacing: 16) {
-                // 3x3 Crafting Grid for ingredients.
+                // 3x3 crafting grid for ingredients.
                 VStack(spacing: 6) {
                     ForEach(0..<3, id: \.self) { row in
                         HStack(spacing: 6) {
@@ -54,11 +53,9 @@ struct RecipeDetailView: View {
                                 let index = row * 3 + col
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(
-                                            (index < recipe.ingredients.count && !recipe.ingredients[index].isEmpty)
-                                            ? Color(NSColor.windowBackgroundColor)
-                                            : Color(NSColor.controlBackgroundColor)
-                                        )
+                                        .fill((index < recipe.ingredients.count && !recipe.ingredients[index].isEmpty)
+                                              ? Color(NSColor.windowBackgroundColor)
+                                              : Color(NSColor.controlBackgroundColor))
                                         .frame(width: 70, height: 70)
                                         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                                     
@@ -104,7 +101,6 @@ struct RecipeDetailView: View {
                             selectedDetail = recipe.name
                         }
                     }
-                    
                     Text("x\(recipe.output)")
                         .font(.headline)
                         .foregroundColor(.primary)
