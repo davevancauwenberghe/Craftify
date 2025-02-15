@@ -54,13 +54,6 @@
 			);
 			target = 55BEFB212D55A73000587E5B /* Craftify */;
 		};
-		55FE1B332D5F9E810098D3C2 /* Exceptions for "Craftify-MacOS" folder in "Craftify-MacOS" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Untitled.swift,
-			);
-			target = 554C16A32D5F914C00DDBE27 /* Craftify-MacOS */;
-		};
 		55FE1B352D5F9EA80098D3C2 /* Exceptions for "Craftify" folder in "Craftify-MacOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -74,9 +67,6 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		554C16A52D5F914C00DDBE27 /* Craftify-MacOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				55FE1B332D5F9E810098D3C2 /* Exceptions for "Craftify-MacOS" folder in "Craftify-MacOS" target */,
-			);
 			path = "Craftify-MacOS";
 			sourceTree = "<group>";
 		};
@@ -759,7 +749,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Craftify/Craftify.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_ASSET_PATHS = "\"Craftify/Preview Content\"";
 				DEVELOPMENT_TEAM = KMS556J2F8;
 				ENABLE_PREVIEWS = YES;
@@ -800,7 +790,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Craftify/Craftify.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_ASSET_PATHS = "\"Craftify/Preview Content\"";
 				DEVELOPMENT_TEAM = KMS556J2F8;
 				ENABLE_PREVIEWS = YES;
