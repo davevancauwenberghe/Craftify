@@ -6,15 +6,14 @@
 //
 
 import SwiftUI
-import Combine
 import CloudKit
 
 struct RecipeListView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
-    @State private var isSearching = false
-    
+
+    // Group recipes by the first letter of their name after filtering based on the search text.
     var sortedRecipes: [String: [Recipe]] {
         let filtered = searchText.isEmpty ? dataManager.recipes : dataManager.recipes.filter { recipe in
             recipe.name.localizedCaseInsensitiveContains(searchText) ||
@@ -28,13 +27,12 @@ struct RecipeListView: View {
         NavigationStack(path: $navigationPath) {
             List {
                 ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
-                    Section(header:
-                        Text(letter)
-                            .font(.headline)
-                            .bold()
-                            .foregroundColor(.primary)
-                            .padding(.vertical, 4)
-                    ) {
+                    Section(header: Text(letter)
+                                .font(.headline)
+                                .bold()
+                                .foregroundColor(.primary)
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 8)) {
                         ForEach(sortedRecipes[letter] ?? []) { recipe in
                             NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
                                 HStack {
@@ -60,9 +58,6 @@ struct RecipeListView: View {
                 }
             }
             .searchable(text: $searchText, prompt: "Search recipes")
-            .onChange(of: searchText) { _, newValue in
-                isSearching = !newValue.isEmpty
-            }
             .navigationTitle("Recipes")
             .navigationBarTitleDisplayMode(.large)
         }

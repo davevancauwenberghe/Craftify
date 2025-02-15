@@ -37,8 +37,8 @@ class DataManager: ObservableObject {
         }
 
         // Then fetch from CloudKit.
-        loadData { [weak self] in
-            self?.syncFavorites()
+        loadData {
+            self.syncFavorites()
         }
     }
 
@@ -121,6 +121,15 @@ class DataManager: ObservableObject {
         publicDatabase.add(queryOperation)
     }
 
+    // Asynchronous wrapper using async/await.
+    func loadDataAsync() async {
+        await withCheckedContinuation { continuation in
+            loadData {
+                continuation.resume()
+            }
+        }
+    }
+
     // MARK: - Local File Cache Methods
 
     // Always use "recipes.json" regardless of environment.
@@ -150,19 +159,9 @@ class DataManager: ObservableObject {
         }
     }
 
-    // Use Application Support on macOS; use Documents on iOS.
+    // On iOS, we use the Documents directory for caching.
     private func getCacheDirectory() -> URL {
-        #if os(macOS)
-        let urls = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-        if let appSupport = urls.first {
-            // Ensure the directory exists.
-            try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
-            return appSupport
-        }
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        #else
-        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        #endif
     }
 
     // MARK: - Clear Cache

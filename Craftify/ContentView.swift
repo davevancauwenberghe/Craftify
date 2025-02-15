@@ -10,8 +10,7 @@ import Combine
 import CloudKit
 
 struct ContentView: View {
-    @EnvironmentObject private var dataManager: DataManager  // Access DataManager via EnvironmentObject
-    
+    @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     
     @State private var searchText = ""
@@ -60,16 +59,13 @@ struct ContentView: View {
             colorSchemePreference == "system" ? nil :
             (colorSchemePreference == "light" ? .light : .dark)
         )
-        .onAppear {
+        .task {
+            // Use async/await for loading data.
             if dataManager.recipes.isEmpty {
-                dataManager.loadData {
-                    dataManager.syncFavorites()
-                    isLoading = false
-                }
-            } else {
-                dataManager.syncFavorites()
-                isLoading = false
+                await dataManager.loadDataAsync()
             }
+            dataManager.syncFavorites()
+            isLoading = false
         }
     }
 }
