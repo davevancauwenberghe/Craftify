@@ -225,6 +225,7 @@ struct ReleaseNotesView: View {
                     .foregroundColor(.secondary)
                 Text("""
                     - Added: RecipeDetailView now shows more info regarding which utility block needs to be used
+                    - CloudKit Container expanded with new strings for optional remarks
                     - Added: Image assets
                     - Asynchronous loading
                     """)
