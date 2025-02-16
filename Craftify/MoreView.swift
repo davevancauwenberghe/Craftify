@@ -177,7 +177,7 @@ struct AboutView: View {
             Text("Craftify for Minecraft")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            Text("Version 1.0 - Build 22")
+            Text("Version 1.0 - Build 24")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
@@ -220,11 +220,19 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                Text("Version 1.0 - Build 22")
+                Text("Version 1.0 - Build 24")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Text("""
-                    - Added: MacOS Native Support foundations
+                    - Added: RecipeDetailView now shows more info regarding which utility block needs to be used
+                    - Added: Image assets
+                    - Asynchronous loading
+                    """)
+                Text("Version 1.0 - Build 22-23")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text("""
+                    - MacOS Native Support test
                     - Added: Search on Categories
                     - Added: Basic LaunchScreen
                     """)

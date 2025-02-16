@@ -196,7 +196,19 @@ class DataManager: ObservableObject {
         }
         let id = Int(record.recordID.recordName) ?? 0
         let output = Int(outputInt64)
-        return Recipe(id: id, name: name, image: image, ingredients: ingredients, output: output, category: category)
+        let imageremark = record["imageremark"] as? String
+        let remarks = record["remarks"] as? String
+
+        return Recipe(
+            id: id,
+            name: name,
+            image: image,
+            ingredients: ingredients,
+            output: output,
+            category: category,
+            imageremark: imageremark,
+            remarks: remarks
+        )
     }
 
     // MARK: - Helper Properties

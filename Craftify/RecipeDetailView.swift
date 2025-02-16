@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Combine
 import CloudKit
 
 struct RecipeDetailView: View {
@@ -24,9 +23,9 @@ struct RecipeDetailView: View {
             HStack(alignment: .center, spacing: 16) {
                 // 3x3 Crafting Grid for ingredients
                 VStack(spacing: 6) {
-                    ForEach(0..<3, id: \ .self) { row in
+                    ForEach(0..<3, id: \.self) { row in
                         HStack(spacing: 6) {
-                            ForEach(0..<3, id: \ .self) { col in
+                            ForEach(0..<3, id: \.self) { col in
                                 let index = row * 3 + col
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 12)
@@ -46,7 +45,8 @@ struct RecipeDetailView: View {
                                     }
                                 }
                                 .onTapGesture {
-                                    guard index < recipe.ingredients.count, !recipe.ingredients[index].isEmpty else { return }
+                                    guard index < recipe.ingredients.count,
+                                          !recipe.ingredients[index].isEmpty else { return }
                                     let generator = UIImpactFeedbackGenerator(style: .light)
                                     generator.impactOccurred()
                                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -107,6 +107,38 @@ struct RecipeDetailView: View {
                     .animation(.easeInOut, value: selectedDetail)
             }
             
+            // New block: Display image remark and textual remark if provided.
+            if (recipe.imageremark?.isEmpty == false) || (recipe.remarks?.isEmpty == false) {
+                VStack(spacing: 8) {
+                    if let imageRemark = recipe.imageremark, !imageRemark.isEmpty {
+                        // Styled similarly to the output grid but smaller.
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(UIColor.systemGray5))
+                                .frame(width: 40, height: 40)
+                                .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                            Image(imageRemark)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 24, height: 24)
+                        }
+                        .onTapGesture {
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedDetail = imageRemark
+                            }
+                        }
+                    }
+                    if let remark = recipe.remarks, !remark.isEmpty {
+                        Text(remark)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.top, 8)
+            }
+            
             Spacer()
         }
         .padding()
@@ -138,5 +170,21 @@ struct RecipeDetailView: View {
                 }
             }
         }
+        // Overlay the category label at the bottom.
+        .overlay(
+            Group {
+                if !recipe.category.isEmpty {
+                    Text("Category: \(recipe.category)")
+                        .font(.subheadline)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .background(Color(UIColor.systemGray5).opacity(0.7))
+                        .foregroundColor(.primary)
+                        .cornerRadius(20)
+                        .padding(.bottom, 40)
+                }
+            },
+            alignment: .bottom
+        )
     }
 }

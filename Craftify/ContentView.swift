@@ -60,7 +60,6 @@ struct ContentView: View {
             (colorSchemePreference == "light" ? .light : .dark)
         )
         .task {
-            // Use async/await for loading data.
             if dataManager.recipes.isEmpty {
                 await dataManager.loadDataAsync()
             }

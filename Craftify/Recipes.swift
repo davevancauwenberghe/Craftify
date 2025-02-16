@@ -13,5 +13,7 @@ struct Recipe: Codable, Identifiable {
     let image: String
     let ingredients: [String]
     let output: Int
-    let category: String // New field for categorization
+    let category: String
+    let imageremark: String?
+    let remarks: String?
 }
