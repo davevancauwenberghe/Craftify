@@ -30,18 +30,6 @@ struct MoreView: View {
                 .padding(.top)
                 .padding(.bottom, 8)
                 
-                // Debug-only bulk upload button.
-                #if DEBUG
-                Button("Bulk Upload Recipes") {
-                    bulkUploadDebug()
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color(UIColor.systemGray5))
-                .cornerRadius(10)
-                .padding(.horizontal)
-                #endif
-                
                 // Settings List
                 List {
                     // Appearance Section.
@@ -182,14 +170,13 @@ struct MoreView: View {
     }
 }
 
-// Stub view for AboutView – expand as needed.
 struct AboutView: View {
     var body: some View {
         VStack(spacing: 16) {
             Text("Craftify for Minecraft")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            Text("Version 1.0 - Build 24")
+            Text("Version 1.0 - Build 25")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
@@ -224,7 +211,6 @@ struct AboutView: View {
     }
 }
 
-// Stub view for ReleaseNotesView – expand as needed.
 struct ReleaseNotesView: View {
     var body: some View {
         ScrollView {
@@ -232,6 +218,12 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                Text("Version 1.0 - Build 25")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text("""
+                    - Added: Image Assets
+                    """)
                 Text("Version 1.0 - Build 24")
                     .font(.headline)
                     .foregroundColor(.secondary)
