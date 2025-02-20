@@ -11,7 +11,7 @@ struct MoreView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @EnvironmentObject var dataManager: DataManager
     @State private var isSyncing: Bool = false
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -29,6 +29,18 @@ struct MoreView: View {
                 .padding(.horizontal)
                 .padding(.top)
                 .padding(.bottom, 8)
+                
+                // Debug-only bulk upload button.
+                #if DEBUG
+                Button("Bulk Upload Recipes") {
+                    bulkUploadDebug()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color(UIColor.systemGray5))
+                .cornerRadius(10)
+                .padding(.horizontal)
+                #endif
                 
                 // Settings List
                 List {
@@ -89,15 +101,15 @@ struct MoreView: View {
                         .listRowBackground(Color(UIColor.systemGray5))
                     }
                     
-                    // Sync Status and Recipe Count View (Fixed Alignment)
+                    // Sync Status and Recipe Count Section.
                     Section(header: Text("Data Management").font(.headline)) {
-                        VStack(alignment: .center, spacing: 10) { // Ensuring center alignment
+                        VStack(alignment: .center, spacing: 10) {
                             Text("\(dataManager.recipes.count) recipes available")
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
-
-                            // Sync Recipes Button
+                            
+                            // Sync Recipes Button.
                             Button(action: {
                                 let generator = UIImpactFeedbackGenerator(style: .medium)
                                 generator.impactOccurred()
@@ -127,8 +139,8 @@ struct MoreView: View {
                                 .background(Color(UIColor.systemGray5))
                                 .cornerRadius(10)
                             }
-
-                            // Clear Cache Button
+                            
+                            // Clear Cache Button.
                             Button(action: {
                                 let generator = UIImpactFeedbackGenerator(style: .medium)
                                 generator.impactOccurred()
@@ -155,7 +167,7 @@ struct MoreView: View {
                                 .cornerRadius(10)
                             }
                         }
-                        .frame(maxWidth: .infinity, alignment: .center) // Ensuring everything is centered
+                        .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 4)
                     }
                 }
