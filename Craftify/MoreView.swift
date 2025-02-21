@@ -176,7 +176,7 @@ struct AboutView: View {
             Text("Craftify for Minecraft")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            Text("Version 1.0 - Build 25")
+            Text("Version 1.0 - Build 26")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
@@ -218,7 +218,7 @@ struct ReleaseNotesView: View {
                 Text("Release Notes")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                Text("Version 1.0 - Build 25")
+                Text("Version 1.0 - Build 25-26")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Text("""
