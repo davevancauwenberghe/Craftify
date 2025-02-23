@@ -15,13 +15,16 @@ struct RecipeDetailView: View {
     @State private var selectedDetail: String?
     @State private var animateHeart = false
 
+    // Fixed height for the crafting section (3×3 grid height = 3*70 + 2*6 = 222)
+    private let craftingHeight: CGFloat = 222
+
     var body: some View {
         VStack {
             Spacer()
             
-            // Crafting Grid & Output Side by Side
+            // Crafting Grid & Output Side by Side – all columns forced to same height.
             HStack(alignment: .center, spacing: 16) {
-                // 3x3 Crafting Grid for ingredients
+                // Left: 3×3 Crafting Grid wrapped in a fixed-height container.
                 VStack(spacing: 6) {
                     ForEach(0..<3, id: \.self) { row in
                         HStack(spacing: 6) {
@@ -57,15 +60,17 @@ struct RecipeDetailView: View {
                         }
                     }
                 }
+                .frame(height: craftingHeight)
                 
-                // Arrow indicator between grid and output
+                // Middle: Arrow indicator, centered in a fixed-height container.
                 Image(systemName: "arrow.right")
                     .font(.largeTitle)
                     .foregroundColor(.gray)
-                    .frame(width: 40, height: 60)
+                    .frame(width: 40, height: craftingHeight)
                 
-                // Output Item styled similarly to grid cells
+                // Right: Output Item, centered in a fixed-height container.
                 VStack {
+                    Spacer()
                     ZStack {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(Color(UIColor.systemGray5))
@@ -88,7 +93,9 @@ struct RecipeDetailView: View {
                     Text("x\(recipe.output)")
                         .font(.headline)
                         .foregroundColor(.primary)
+                    Spacer()
                 }
+                .frame(height: craftingHeight)
             }
             
             Spacer()
@@ -107,11 +114,11 @@ struct RecipeDetailView: View {
                     .animation(.easeInOut, value: selectedDetail)
             }
             
-            // New block: Display image remark and textual remark if provided.
+            // New block: Display image remark and textual remark (if provided),
+            // placed above the category overlay.
             if (recipe.imageremark?.isEmpty == false) || (recipe.remarks?.isEmpty == false) {
                 VStack(spacing: 8) {
                     if let imageRemark = recipe.imageremark, !imageRemark.isEmpty {
-                        // Styled similarly to the output grid but smaller.
                         ZStack {
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(Color(UIColor.systemGray5))
@@ -170,9 +177,11 @@ struct RecipeDetailView: View {
                 }
             }
         }
-        // Overlay the category label at the bottom.
+        // Instead of an overlay that covers the bottom (which might conflict with the selected detail view),
+        // place the category label in a separate view above the bottom spacer.
         .overlay(
-            Group {
+            VStack {
+                Spacer()
                 if !recipe.category.isEmpty {
                     Text("Category: \(recipe.category)")
                         .font(.subheadline)
@@ -181,9 +190,9 @@ struct RecipeDetailView: View {
                         .background(Color(UIColor.systemGray5).opacity(0.7))
                         .foregroundColor(.primary)
                         .cornerRadius(20)
-                        .padding(.bottom, 40)
                 }
-            },
+            }
+            .padding(.bottom, 16),
             alignment: .bottom
         )
     }
