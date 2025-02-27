@@ -113,7 +113,14 @@ class DataManager: ObservableObject {
                 case .failure(let error):
                     self.errorMessage = "Error fetching recipes: \(error.localizedDescription)"
                     print("Error fetching recipes: \(error.localizedDescription)")
-                    completion()
+                    // Retry logic for transient errors:
+                    if let ckError = error as? CKError, ckError.isRetryable {
+                        DispatchQueue.global().asyncAfter(deadline: .now() + 3, execute: {
+                            self.loadData(completion: completion)
+                        })
+                    } else {
+                        completion()
+                    }
                 }
             }
         }
