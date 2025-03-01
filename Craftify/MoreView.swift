@@ -14,128 +14,159 @@ struct MoreView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Gradient Background
-                LinearGradient(gradient: Gradient(colors: [
-                    Color(hex: "00AA00").opacity(0.3),
-                    Color(hex: "008800").opacity(0.8)
-                ]), startPoint: .topLeading, endPoint: .bottomTrailing)
-                .ignoresSafeArea()
-
-                VStack(spacing: 16) {
-                    List {
-                        // Appearance Section
-                        Section(header: Text("Appearance").font(.headline)) {
-                            Picker("Appearance", selection: $colorSchemePreference) {
-                                Text("System").tag("system")
-                                Text("Light").tag("light")
-                                Text("Dark").tag("dark")
-                            }
-                            .pickerStyle(SegmentedPickerStyle())
+            VStack(spacing: 16) {
+                // Header with icon and title.
+                HStack {
+                    Image(systemName: "gearshape.fill")
+                        .font(.largeTitle)
+                        .foregroundColor(Color(hex: "00AA00"))
+                    Text("More")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.top)
+                .padding(.bottom, 8)
+                
+                // Settings List
+                List {
+                    // Appearance Section.
+                    Section(header: Text("Appearance").font(.headline)) {
+                        Picker("Appearance", selection: $colorSchemePreference) {
+                            Text("System").tag("system")
+                            Text("Light").tag("light")
+                            Text("Dark").tag("dark")
                         }
-
-                        // "Need help?" Section
-                        Section(header: Text("Need help?").font(.headline)) {
+                        .pickerStyle(SegmentedPickerStyle())
+                    }
+                    
+                    // "Need help?" Section.
+                    Section(header: Text("Need help?").font(.headline)) {
+                        Button(action: {
+                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                            generator.impactOccurred()
+                            if let url = URL(string: "mailto:hello@davevancauwenberghe.be") {
+                                UIApplication.shared.open(url)
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "envelope.fill")
+                                    .font(.title2)
+                                    .foregroundColor(Color(hex: "00AA00"))
+                                Text("Report missing recipe")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                        }
+                        .listRowBackground(Color(UIColor.systemGray5))
+                    }
+                    
+                    // About Section.
+                    Section(header: Text("About").font(.headline)) {
+                        NavigationLink(destination: AboutView()) {
+                            HStack {
+                                Image(systemName: "info.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(Color(hex: "00AA00"))
+                                Text("About Craftify")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .listRowBackground(Color(UIColor.systemGray5))
+                    }
+                    
+                    // Sync Status and Recipe Count Section.
+                    Section(header: Text("Data Management").font(.headline)) {
+                        VStack(alignment: .center, spacing: 10) {
+                            Text("\(dataManager.recipes.count) recipes available")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            
+                            // Sync Recipes Button.
                             Button(action: {
-                                if let url = URL(string: "mailto:hello@davevancauwenberghe.be") {
-                                    UIApplication.shared.open(url)
+                                let generator = UIImpactFeedbackGenerator(style: .medium)
+                                generator.impactOccurred()
+                                isSyncing = true
+                                dataManager.loadData {
+                                    dataManager.syncFavorites()
+                                    isSyncing = false
                                 }
                             }) {
-                                listButton(title: "Report Missing Recipe", systemImage: "envelope.fill")
-                            }
-                            .listRowBackground(Color(uiColor: .tertiarySystemBackground))
-                        }
-
-                        // About Section
-                        Section(header: Text("About").font(.headline)) {
-                            NavigationLink(destination: AboutView()) {
-                                listButton(title: "About Craftify", systemImage: "info.circle.fill")
-                            }
-                            .listRowBackground(Color(uiColor: .tertiarySystemBackground))
-                        }
-
-                        // Sync Status and Recipe Count Section
-                        Section(header: Text("Data Management").font(.headline)) {
-                            VStack(alignment: .center, spacing: 10) {
-                                Text("\(dataManager.recipes.count) recipes available")
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-
-                                Button(action: {
-                                    isSyncing = true
-                                    dataManager.loadData {
-                                        dataManager.syncFavorites()
-                                        isSyncing = false
+                                HStack {
+                                    if isSyncing {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle())
+                                            .padding(.trailing, 4)
+                                    } else {
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.title2)
+                                            .foregroundColor(Color(hex: "00AA00"))
                                     }
-                                }) {
-                                    actionButton(title: "Sync Recipes", systemImage: "arrow.clockwise", isLoading: $isSyncing)
+                                    Text("Sync recipes")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Spacer()
                                 }
-
-                                Button(action: {
-                                    dataManager.clearCache { success in
-                                        print(success ? "Cache cleared successfully." : "Failed to clear cache.")
-                                    }
-                                }) {
-                                    actionButton(title: "Clear Cache", systemImage: "trash.fill", color: .red)
-                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color(UIColor.systemGray5))
+                                .cornerRadius(10)
                             }
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 4)
+                            
+                            // Clear Cache Button.
+                            Button(action: {
+                                let generator = UIImpactFeedbackGenerator(style: .medium)
+                                generator.impactOccurred()
+                                dataManager.clearCache { success in
+                                    if success {
+                                        print("Cache cleared successfully.")
+                                    } else {
+                                        print("Failed to clear cache.")
+                                    }
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "trash.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.red)
+                                    Text("Clear Cache")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color(UIColor.systemGray5))
+                                .cornerRadius(10)
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 4)
                     }
-                    .listStyle(InsetGroupedListStyle())
-                    .scrollContentBackground(.hidden)
                 }
+                .listStyle(InsetGroupedListStyle())
             }
-            .navigationTitle("More")
+            .navigationTitle("")
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
             (colorSchemePreference == "light" ? .light : .dark)
         )
-    }
-
-    // ✅ List button style (matches Data Management buttons)
-    private func listButton(title: String, systemImage: String) -> some View {
-        HStack {
-            Image(systemName: systemImage)
-                .font(.title2)
-                .foregroundColor(Color(hex: "00AA00"))
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity)
-    }
-
-    // ✅ Action buttons (Sync & Clear Cache)
-    private func actionButton(title: String, systemImage: String, isLoading: Binding<Bool>? = nil, color: Color = Color(hex: "00AA00")) -> some View {
-        HStack {
-            if let isLoading = isLoading?.wrappedValue, isLoading {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle())
-                    .padding(.trailing, 4)
-            } else {
-                Image(systemName: systemImage)
-                    .font(.title2)
-                    .foregroundColor(color)
-            }
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
-            Spacer()
-        }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(Color(uiColor: .tertiarySystemBackground)) // Matches list row background
-        .cornerRadius(10)
-        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -221,7 +252,7 @@ struct ReleaseNotesView: View {
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
 
-                            Text("Version 1.0 - Build 27")
+                            Text("Version 1.0 - Build 28")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
 
@@ -254,15 +285,13 @@ struct ReleaseNotesView: View {
     }
 }
 
-// ✅ Struct for Release Notes
 struct ReleaseNote {
     let version: String
     let changes: [String]
 }
 
-// ✅ Updated Release Notes as a Data Array
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 27", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 27-28", changes: [
         "Data Manager fetches more than 100 recipes now",
         "Implemented a test UI update in More",
         "Updated release notes view"
@@ -313,4 +342,3 @@ let releaseNotes: [ReleaseNote] = [
         "Enhanced haptic feedback and smooth transitions."
     ])
 ]
-

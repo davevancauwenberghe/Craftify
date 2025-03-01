@@ -81,51 +81,69 @@ class DataManager: ObservableObject {
 
         let predicate = NSPredicate(value: true)
         let query = CKQuery(recordType: "Recipe", predicate: predicate)
-
-        let queryOperation = CKQueryOperation(query: query)
-        queryOperation.resultsLimit = CKQueryOperation.maximumResults
-
+        
         var fetchedRecipes: [Recipe] = []
 
-        queryOperation.recordMatchedBlock = { recordID, result in
-            switch result {
-            case .success(let record):
-                if let recipe = self.convertRecordToRecipe(record) {
-                    fetchedRecipes.append(recipe)
-                }
-            case .failure(let error):
-                DispatchQueue.main.async {
-                    self.errorMessage = "Error fetching record \(recordID.recordName): \(error.localizedDescription)"
-                }
-                print("Error fetching record \(recordID.recordName): \(error.localizedDescription)")
-            }
-        }
+        // Recursive function to fetch records with a given query operation.
+        func fetch(with queryOperation: CKQueryOperation) {
+            queryOperation.resultsLimit = CKQueryOperation.maximumResults
 
-        queryOperation.queryResultBlock = { result in
-            DispatchQueue.main.async {
+            queryOperation.recordMatchedBlock = { recordID, result in
                 switch result {
-                case .success(_):
-                    self.recipes = fetchedRecipes
-                    self.syncFavorites()
-                    self.saveRecipesToLocalCache(fetchedRecipes)
-                    self.lastUpdated = Date()
-                    completion()
+                case .success(let record):
+                    if let recipe = self.convertRecordToRecipe(record) {
+                        fetchedRecipes.append(recipe)
+                    }
                 case .failure(let error):
-                    self.errorMessage = "Error fetching recipes: \(error.localizedDescription)"
-                    print("Error fetching recipes: \(error.localizedDescription)")
+                    DispatchQueue.main.async {
+                        self.errorMessage = "Error fetching record \(recordID.recordName): \(error.localizedDescription)"
+                    }
+                    print("Error fetching record \(recordID.recordName): \(error.localizedDescription)")
+                }
+            }
+
+            queryOperation.queryResultBlock = { result in
+                switch result {
+                case .success(let cursor):
+                    if let cursor = cursor {
+                        // More records available, continue fetching.
+                        let nextOperation = CKQueryOperation(cursor: cursor)
+                        fetch(with: nextOperation)
+                    } else {
+                        // No more records – update UI and cache.
+                        DispatchQueue.main.async {
+                            self.recipes = fetchedRecipes
+                            self.syncFavorites()
+                            self.saveRecipesToLocalCache(fetchedRecipes)
+                            self.lastUpdated = Date()
+                            completion()
+                        }
+                    }
+                case .failure(let error):
+                    DispatchQueue.main.async {
+                        self.errorMessage = "Error fetching recipes: \(error.localizedDescription)"
+                        print("Error fetching recipes: \(error.localizedDescription)")
+                    }
                     // Retry logic for transient errors:
                     if let ckError = error as? CKError, ckError.isRetryable {
-                        DispatchQueue.global().asyncAfter(deadline: .now() + 3, execute: {
-                            self.loadData(completion: completion)
-                        })
+                        DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
+                            let retryOperation = CKQueryOperation(query: query)
+                            fetch(with: retryOperation)
+                        }
                     } else {
-                        completion()
+                        DispatchQueue.main.async {
+                            completion()
+                        }
                     }
                 }
             }
+
+            publicDatabase.add(queryOperation)
         }
 
-        publicDatabase.add(queryOperation)
+        // Start with the initial query operation.
+        let initialOperation = CKQueryOperation(query: query)
+        fetch(with: initialOperation)
     }
 
     // Asynchronous wrapper using async/await.
