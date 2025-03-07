@@ -96,6 +96,7 @@ struct CategoryView: View {
     
     var body: some View {
         VStack {
+            // Categories horizontal scroll view remains pinned at the top.
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     Button(action: { selectedCategory = nil }) {
@@ -106,7 +107,7 @@ struct CategoryView: View {
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
-                    ForEach(dataManager.categories, id: \ .self) { category in
+                    ForEach(dataManager.categories, id: \.self) { category in
                         Button(action: { selectedCategory = category }) {
                             Text(category)
                                 .fontWeight(.bold)
@@ -120,54 +121,54 @@ struct CategoryView: View {
                 .padding(.horizontal)
             }
             
-            if !recommendedRecipes.isEmpty && !isSearching {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Button(action: { withAnimation { isCraftifyPicksExpanded.toggle() } }) {
-                            Image(systemName: isCraftifyPicksExpanded ? "chevron.down" : "chevron.right")
-                                .font(.title2)
-                                .foregroundColor(.gray)
-                        }
-                        
-                        Text("Craftify Picks")
-                            .font(.title3)
-                            .bold()
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    
-                    if isCraftifyPicksExpanded {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
-                                ForEach(recommendedRecipes) { recipe in
-                                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                        VStack {
-                                            Image(recipe.image)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 90, height: 90)
-                                                .padding(4)
-                                            Text(recipe.name)
-                                                .font(.caption)
-                                                .bold()
-                                                .lineLimit(1)
-                                                .frame(width: 90)
+            // Embedding both the Craftify Picks and the Recipe List into one List.
+            List {
+                // Craftify Picks Section with custom header.
+                if !recommendedRecipes.isEmpty && !isSearching {
+                    Section {
+                        if isCraftifyPicksExpanded {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack {
+                                    ForEach(recommendedRecipes) { recipe in
+                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                            VStack {
+                                                Image(recipe.image)
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(width: 90, height: 90)
+                                                    .padding(4)
+                                                Text(recipe.name)
+                                                    .font(.caption)
+                                                    .bold()
+                                                    .lineLimit(1)
+                                                    .frame(width: 90)
+                                            }
+                                            .padding()
+                                            .background(Color.gray.opacity(0.2))
+                                            .cornerRadius(12)
                                         }
-                                        .padding()
-                                        .background(Color.gray.opacity(0.2))
-                                        .cornerRadius(12)
                                     }
                                 }
+                                .padding(.horizontal)
                             }
-                            .padding(.horizontal)
                         }
+                    } header: {
+                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
+                            withAnimation {
+                                isCraftifyPicksExpanded.toggle()
+                            }
+                        }
+                        // Remove any additional list styling for this header.
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                     }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
-            }
-            
-            List {
-                ForEach(sortedRecipes.keys.sorted(), id: \ .self) { letter in
+                
+                // Recipe List Sections.
+                ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
                     Section(header:
                         Text(letter)
                             .font(.headline)
@@ -197,17 +198,48 @@ struct CategoryView: View {
                                     }
                                 }
                             }
+                            .simultaneousGesture(
+                                TapGesture().onEnded {
+                                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                                    generator.impactOccurred()
+                                }
+                            )
                             .padding(.vertical, 4)
+                            .listRowSeparator(.hidden)
                         }
                     }
                 }
             }
+            .listStyle(PlainListStyle())
+            .scrollContentBackground(.hidden)
             .onAppear {
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             }
         }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
+    }
+}
+
+// Custom header view for Craftify Picks to restore original spacing.
+struct CraftifyPicksHeader: View {
+    var isExpanded: Bool
+    var toggle: () -> Void
+    
+    var body: some View {
+        HStack {
+            Button(action: toggle) {
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.title2)
+                    .foregroundColor(.gray)
+            }
+            Text("Craftify Picks")
+                .font(.title3)
+                .bold()
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8) // Adjust this vertical padding as needed to match your original design.
     }
 }
 
@@ -222,3 +254,4 @@ extension Color {
         self.init(red: red, green: green, blue: blue)
     }
 }
+
