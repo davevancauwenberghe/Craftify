@@ -37,7 +37,7 @@ struct ReportMissingRecipeView: View {
                 Section(header: Text("Missing Recipe Details")) {
                     TextField("Recipe Name", text: $recipeName)
                     TextEditor(text: $additionalInfo)
-                        .onChange(of: additionalInfo) { newValue in
+                        .onChange(of: additionalInfo) { newValue, _ in
                             if newValue.isEmpty {
                                 additionalInfo = "Add details..."
                             }
