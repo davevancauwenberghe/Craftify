@@ -10,39 +10,27 @@ import CloudKit
 
 struct RecipeDetailView: View {
     @EnvironmentObject var dataManager: DataManager
+    @Environment(\.colorScheme) var colorScheme
     let recipe: Recipe
     @Binding var navigationPath: NavigationPath
     @State private var selectedDetail: String?
     @State private var animateHeart = false
-    @Environment(\.colorScheme) var colorScheme
 
-    // Fixed height for the crafting section (3×3 grid height = 3*70 + 2*6 = 222)
+    // Fixed height for the crafting grid.
     private let craftingHeight: CGFloat = 222
 
     var body: some View {
         ZStack {
-            // Conditional background: use systemBackground in light mode; gradient in dark mode.
-            if colorScheme == .light {
-                Color(UIColor.systemBackground)
-                    .ignoresSafeArea()
-            } else {
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(hex: "00AA00").opacity(0.3),
-                        Color(hex: "008800").opacity(0.8)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+            // Revert to default system background for both light and dark modes.
+            Color(UIColor.systemBackground)
                 .ignoresSafeArea()
-            }
             
             VStack {
                 Spacer()
                 
-                // Crafting Grid & Output Side by Side – all columns forced to same height.
+                // Crafting grid and output item side-by-side.
                 HStack(alignment: .center, spacing: 16) {
-                    // Left: 3×3 Crafting Grid wrapped in a fixed-height container.
+                    // Left: 3x3 Crafting Grid.
                     VStack(spacing: 6) {
                         ForEach(0..<3, id: \.self) { row in
                             HStack(spacing: 6) {
@@ -80,13 +68,13 @@ struct RecipeDetailView: View {
                     }
                     .frame(height: craftingHeight)
                     
-                    // Middle: Arrow indicator, centered in a fixed-height container.
+                    // Middle: Arrow indicator.
                     Image(systemName: "arrow.right")
                         .font(.largeTitle)
                         .foregroundColor(.gray)
                         .frame(width: 40, height: craftingHeight)
                     
-                    // Right: Output Item, centered in a fixed-height container.
+                    // Right: Output Item.
                     VStack {
                         Spacer()
                         ZStack {
@@ -118,7 +106,7 @@ struct RecipeDetailView: View {
                 
                 Spacer()
                 
-                // Display tapped detail (ingredient or output) if available.
+                // Display tapped detail, if any.
                 if let detail = selectedDetail {
                     Text(detail)
                         .font(.title2)
@@ -132,7 +120,7 @@ struct RecipeDetailView: View {
                         .animation(.easeInOut, value: selectedDetail)
                 }
                 
-                // Display image remark and textual remark (if provided).
+                // Display remarks (if any).
                 if (recipe.imageremark?.isEmpty == false) || (recipe.remarks?.isEmpty == false) {
                     VStack(spacing: 8) {
                         if let imageRemark = recipe.imageremark, !imageRemark.isEmpty {
@@ -178,20 +166,15 @@ struct RecipeDetailView: View {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0)) {
                         animateHeart = true
                     }
-                    
                     dataManager.toggleFavorite(recipe: recipe)
-                    
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        withAnimation {
-                            animateHeart = false
-                        }
+                        withAnimation { animateHeart = false }
                     }
                 }) {
                     Image(systemName: dataManager.isFavorite(recipe: recipe) ? "heart.fill" : "heart")
                         .foregroundColor(.red)
                         .font(.title2)
                         .scaleEffect(animateHeart ? 1.3 : 1.0)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0), value: animateHeart)
                 }
             }
         }

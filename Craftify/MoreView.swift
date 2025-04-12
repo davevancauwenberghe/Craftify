@@ -182,7 +182,7 @@ struct AboutView: View {
                             .fontWeight(.bold)
                             .multilineTextAlignment(.center)
                         
-                        Text("Version 1.0 - Build 27")
+                        Text("Version 1.0 - Build 30")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         
@@ -268,7 +268,7 @@ struct ReleaseNotesView: View {
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
                             
-                            Text("Version 1.0 - Build 28")
+                            Text("Version 1.0 - Build 30")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
                             
@@ -309,6 +309,10 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
+    ReleaseNote(version: "Version 1.0 - Build 30", changes: [
+        "UI fixes",
+        "Bug fixes"
+    ]),
     ReleaseNote(version: "Version 1.0 - Build 29", changes: [
         "Craftify Picks added to scrollview",
         "Reporting missing recipes now uses a form instead of opening mail"

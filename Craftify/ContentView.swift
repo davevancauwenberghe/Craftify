@@ -81,24 +81,33 @@ struct CategoryView: View {
     @State private var recommendedRecipes: [Recipe] = []
     @State private var isCraftifyPicksExpanded = true
 
+    // Group recipes by the first letter.
     var sortedRecipes: [String: [Recipe]] {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
             : dataManager.recipes.filter { $0.category == selectedCategory }
         
-        let filtered = searchText.isEmpty ? categoryFiltered : categoryFiltered.filter { recipe in
-            recipe.name.localizedCaseInsensitiveContains(searchText) ||
-            recipe.category.localizedCaseInsensitiveContains(searchText) ||
-            recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
-        }
+        let filtered = searchText.isEmpty ? categoryFiltered :
+            categoryFiltered.filter { recipe in
+                recipe.name.localizedCaseInsensitiveContains(searchText) ||
+                recipe.category.localizedCaseInsensitiveContains(searchText) ||
+                recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
+            }
         
-        return Dictionary(grouping: filtered, by: { String($0.name.prefix(1)) })
-            .mapValues { $0.sorted { $0.name < $1.name } }
+        var groups = [String: [Recipe]]()
+        for recipe in filtered {
+            let key = String(recipe.name.prefix(1))
+            groups[key, default: []].append(recipe)
+        }
+        for key in groups.keys {
+            groups[key]?.sort(by: { $0.name < $1.name })
+        }
+        return groups
     }
     
     var body: some View {
         VStack {
-            // Categories horizontal scroll view remains pinned at the top.
+            // Categories horizontal scroll view.
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     Button(action: { selectedCategory = nil }) {
@@ -123,9 +132,9 @@ struct CategoryView: View {
                 .padding(.horizontal)
             }
             
-            // Embedding both the Craftify Picks and the Recipe List into one List.
+            // Recipe list.
             List {
-                // Craftify Picks Section with custom header.
+                // Craftify Picks Section.
                 if !recommendedRecipes.isEmpty && !isSearching {
                     Section {
                         if isCraftifyPicksExpanded {
@@ -155,17 +164,17 @@ struct CategoryView: View {
                             }
                         }
                     } header: {
-                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
+                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded, toggle: {
                             withAnimation {
                                 isCraftifyPicksExpanded.toggle()
                             }
-                        }
+                        })
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
-                    // Hide header separator if desired.
+                    // Hide separator for the Craftify Picks section.
                     .listRowSeparator(.hidden)
                 }
                 
@@ -181,11 +190,36 @@ struct CategoryView: View {
                     ) {
                         ForEach(sortedRecipes[letter] ?? []) { recipe in
                             NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                RecipeCell(recipe: recipe)
+                                // Use the same recipe cell UI as in FavoritesView.
+                                HStack {
+                                    Image(recipe.image)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 60, height: 60)
+                                        .padding(4)
+                                    VStack(alignment: .leading) {
+                                        Text(recipe.name)
+                                            .font(.headline)
+                                            .bold()
+                                        if !recipe.category.isEmpty {
+                                            Text(recipe.category)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
                             }
-                            // Remove default insets so that the separator covers full width.
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparatorInsets(EdgeInsets())
+                            .simultaneousGesture(
+                                TapGesture().onEnded {
+                                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                                    generator.impactOccurred()
+                                }
+                            )
+                            .padding(.vertical, 4)
+                            // Apply insets so the cell isn’t flush with the screen edges.
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            // Hide the default separator.
+                            .listRowSeparator(.hidden)
                         }
                     }
                 }
@@ -198,43 +232,6 @@ struct CategoryView: View {
         }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
-    }
-}
-
-// MARK: - RecipeCell
-struct RecipeCell: View {
-    let recipe: Recipe
-    @State private var isPressed = false
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(recipe.image)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 60, height: 60)
-                .padding(4)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(recipe.name)
-                    .font(.headline)
-                    .bold()
-                if !recipe.category.isEmpty {
-                    Text(recipe.category)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-            Spacer()
-        }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(10)
-        .scaleEffect(isPressed ? 0.97 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.5), value: isPressed)
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
     }
 }
 
