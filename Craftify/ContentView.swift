@@ -9,6 +9,7 @@ import SwiftUI
 import Combine
 import CloudKit
 
+// MARK: - ContentView
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
@@ -69,6 +70,7 @@ struct ContentView: View {
     }
 }
 
+// MARK: - CategoryView
 struct CategoryView: View {
     @EnvironmentObject var dataManager: DataManager
     @Binding var selectedTab: Int
@@ -158,12 +160,12 @@ struct CategoryView: View {
                                 isCraftifyPicksExpanded.toggle()
                             }
                         }
-                        // Remove any additional list styling for this header.
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
+                    // Hide header separator if desired.
                     .listRowSeparator(.hidden)
                 }
                 
@@ -179,33 +181,11 @@ struct CategoryView: View {
                     ) {
                         ForEach(sortedRecipes[letter] ?? []) { recipe in
                             NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                HStack {
-                                    Image(recipe.image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 60, height: 60)
-                                        .padding(4)
-                                    
-                                    VStack(alignment: .leading) {
-                                        Text(recipe.name)
-                                            .font(.headline)
-                                            .bold()
-                                        if !recipe.category.isEmpty {
-                                            Text(recipe.category)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                }
+                                RecipeCell(recipe: recipe)
                             }
-                            .simultaneousGesture(
-                                TapGesture().onEnded {
-                                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                                    generator.impactOccurred()
-                                }
-                            )
-                            .padding(.vertical, 4)
-                            .listRowSeparator(.hidden)
+                            // Remove default insets so that the separator covers full width.
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparatorInsets(EdgeInsets())
                         }
                     }
                 }
@@ -221,7 +201,44 @@ struct CategoryView: View {
     }
 }
 
-// Custom header view for Craftify Picks to restore original spacing.
+// MARK: - RecipeCell
+struct RecipeCell: View {
+    let recipe: Recipe
+    @State private var isPressed = false
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(recipe.image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 60, height: 60)
+                .padding(4)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(recipe.name)
+                    .font(.headline)
+                    .bold()
+                if !recipe.category.isEmpty {
+                    Text(recipe.category)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(10)
+        .scaleEffect(isPressed ? 0.97 : 1.0)
+        .animation(.spring(response: 0.2, dampingFraction: 0.5), value: isPressed)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
+// MARK: - CraftifyPicksHeader
 struct CraftifyPicksHeader: View {
     var isExpanded: Bool
     var toggle: () -> Void
@@ -239,7 +256,7 @@ struct CraftifyPicksHeader: View {
             Spacer()
         }
         .padding(.horizontal)
-        .padding(.vertical, 8) // Adjust this vertical padding as needed to match your original design.
+        .padding(.vertical, 8)
     }
 }
 
@@ -254,4 +271,3 @@ extension Color {
         self.init(red: red, green: green, blue: blue)
     }
 }
-
