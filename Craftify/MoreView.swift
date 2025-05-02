@@ -17,121 +17,95 @@ struct MoreView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                // Header with icon and title.
-                HStack {
-                    Image(systemName: "gearshape.fill")
-                        .font(.largeTitle)
-                        .foregroundColor(Color(hex: "00AA00"))
-                    Text("More")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-                    Spacer()
+            List {
+                // Appearance Section
+                Section(header: Text("Appearance").font(.headline)) {
+                    Picker("Appearance", selection: $colorSchemePreference) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
                 }
-                .padding(.horizontal)
-                .padding(.top)
-                .padding(.bottom, 8)
-                
-                // Settings List
-                List {
-                    // Appearance Section.
-                    Section(header: Text("Appearance").font(.headline)) {
-                        Picker("Appearance", selection: $colorSchemePreference) {
-                            Text("System").tag("system")
-                            Text("Light").tag("light")
-                            Text("Dark").tag("dark")
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
+
+                // "Need help?" Section
+                Section(header: Text("Need help?").font(.headline)) {
+                    NavigationLink(destination: ReportMissingRecipeView()) {
+                        buttonStyle(title: "Report missing recipe", systemImage: "envelope.fill")
                     }
-                    
-                    // "Need help?" Section.
-                    Section(header: Text("Need help?").font(.headline)) {
-                        NavigationLink(destination: ReportMissingRecipeView()) {
-                            buttonStyle(title: "Report missing recipe", systemImage: "envelope.fill")
-                        }
+                }
+
+                // About Section
+                Section(header: Text("About").font(.headline)) {
+                    NavigationLink(destination: AboutView()) {
+                        buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
                     }
-                    
-                    // About Section.
-                    Section(header: Text("About").font(.headline)) {
-                        NavigationLink(destination: AboutView()) {
-                            buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
-                        }
-                    }
-                    
-                    // Sync Status and Recipe Count Section.
-                    Section(header: Text("Data Management").font(.headline)) {
-                        VStack(alignment: .center, spacing: 10) {
-                            Text("\(dataManager.recipes.count) recipes available")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                            
-                            // Sync Recipes Button.
-                            Button(action: {
-                                let generator = UIImpactFeedbackGenerator(style: .medium)
-                                generator.impactOccurred()
-                                isSyncing = true
-                                dataManager.loadData {
-                                    dataManager.syncFavorites()
-                                    isSyncing = false
-                                }
-                            }) {
-                                HStack {
-                                    if isSyncing {
-                                        ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle())
-                                            .padding(.trailing, 4)
-                                    } else {
-                                        Image(systemName: "arrow.clockwise")
-                                            .font(.title2)
-                                            .foregroundColor(Color(hex: "00AA00"))
-                                    }
-                                    Text("Sync recipes")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                }
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color(UIColor.systemGray5))
-                                .cornerRadius(10)
+                }
+
+                // Sync Status and Recipe Count Section
+                Section(header: Text("Data Management").font(.headline)) {
+                    VStack(alignment: .center, spacing: 10) {
+                        Text("\(dataManager.recipes.count) recipes available")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+
+                        // Sync Recipes Button
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            isSyncing = true
+                            dataManager.loadData {
+                                dataManager.syncFavorites()
+                                isSyncing = false
                             }
-                            
-                            // Clear Cache Button.
-                            Button(action: {
-                                let generator = UIImpactFeedbackGenerator(style: .medium)
-                                generator.impactOccurred()
-                                dataManager.clearCache { success in
-                                    if success {
-                                        print("Cache cleared successfully.")
-                                    } else {
-                                        print("Failed to clear cache.")
-                                    }
-                                }
-                            }) {
-                                HStack {
-                                    Image(systemName: "trash.fill")
+                        }) {
+                            HStack {
+                                if isSyncing {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle())
+                                        .padding(.trailing, 4)
+                                } else {
+                                    Image(systemName: "arrow.clockwise")
                                         .font(.title2)
-                                        .foregroundColor(.red)
-                                    Text("Clear Cache")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    Spacer()
+                                        .foregroundColor(Color(hex: "00AA00"))
                                 }
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color(UIColor.systemGray5))
-                                .cornerRadius(10)
+                                Text("Sync recipes")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Spacer()
                             }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color(UIColor.systemGray5))
+                            .cornerRadius(10)
                         }
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 4)
+
+                        // Clear Cache Button
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            dataManager.clearCache { success in }
+                        }) {
+                            HStack {
+                                Image(systemName: "trash.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.red)
+                                Text("Clear Cache")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color(UIColor.systemGray5))
+                            .cornerRadius(10)
+                        }
                     }
+                    .padding(.vertical, 4)
                 }
-                .listStyle(InsetGroupedListStyle())
             }
-            .navigationTitle("")
+            .listStyle(InsetGroupedListStyle())
+            .navigationTitle("More")
+            .navigationBarTitleDisplayMode(.large)
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
@@ -147,156 +121,115 @@ struct MoreView: View {
             Text(title)
                 .font(.headline)
                 .foregroundColor(.primary)
+            Spacer()
         }
         .padding(.vertical, 8)
     }
 }
 
 struct AboutView: View {
-    @Environment(\.colorScheme) var colorScheme
-
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Use the stock system background in light mode;
-                // otherwise, use the gradient for dark mode.
-                if colorScheme == .light {
-                    Color(UIColor.systemBackground)
-                        .ignoresSafeArea()
-                } else {
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(hex: "00AA00").opacity(0.3),
-                            Color(hex: "008800").opacity(0.8)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .ignoresSafeArea()
+            VStack(spacing: 16) {
+                VStack(spacing: 8) {
+                    Text("Craftify for Minecraft")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+
+                    Text("Version 1.0 - Build 31")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
-                
-                VStack(spacing: 16) {
-                    VStack(spacing: 8) {
-                        Text("Craftify for Minecraft")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.center)
-                        
-                        Text("Version 1.0 - Build 30")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                .padding(.top, 20)
+
+                // Inline-styled Release Notes button.
+                NavigationLink(destination: ReleaseNotesView()) {
+                    HStack {
+                        Image(systemName: "doc.text.fill")
+                            .font(.title3)
+                        Text("Release Notes")
+                            .font(.title3)
+                            .bold()
                     }
-                    .padding(.top, 20)
-                    
-                    // Inline-styled Release Notes button.
-                    NavigationLink(destination: ReleaseNotesView()) {
-                        HStack {
-                            Image(systemName: "doc.text.fill")
-                                .font(.title3)
-                            Text("Release Notes")
-                                .font(.title3)
-                                .bold()
-                        }
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(8)
-                    }
-                    
-                    Spacer()
+                    .padding()
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(8)
                 }
-                .padding()
+
+                Spacer()
             }
+            .padding()
             .navigationTitle("About Craftify")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
         }
     }
 }
 
-    // Standard button style (same as MoreView)
-    private func buttonStyle(title: String, systemImage: String) -> some View {
-        HStack {
-            Image(systemName: systemImage)
-                .font(.title2)
-                .foregroundColor(Color(hex: "00AA00"))
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(Color(uiColor: .secondarySystemBackground))
-        .cornerRadius(10)
-        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+// Standard button style (same as MoreView)
+private func buttonStyle(title: String, systemImage: String) -> some View {
+    HStack {
+        Image(systemName: systemImage)
+            .font(.title2)
+            .foregroundColor(Color(hex: "00AA00"))
+        Text(title)
+            .font(.headline)
+            .foregroundColor(.primary)
+        Spacer()
+        Image(systemName: "chevron.right")
+            .font(.subheadline)
+            .foregroundColor(.secondary)
     }
+    .padding()
+    .frame(maxWidth: .infinity)
+    .background(Color(uiColor: .secondarySystemBackground))
+    .cornerRadius(10)
+    .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+}
 
 struct ReleaseNotesView: View {
-    @Environment(\.colorScheme) var colorScheme
-
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Conditionally apply the background:
-                // Use the stock system background in light mode,
-                // otherwise use the gradient for dark mode.
-                if colorScheme == .light {
-                    Color(UIColor.systemBackground)
-                        .ignoresSafeArea()
-                } else {
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(hex: "00AA00").opacity(0.3),
-                            Color(hex: "008800").opacity(0.8)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .ignoresSafeArea()
+            List {
+                // Header Section
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Craftify for Minecraft")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+
+                        Text("Version 1.0 - Build 31")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+
+                        Text("Stay updated with the latest improvements, fixes, and new features added to Craftify.")
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                            .padding(.top, 4)
+                    }
+                    .padding(.bottom, 8)
                 }
-                
-                List {
-                    Section {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Craftify for Minecraft")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                            
-                            Text("Version 1.0 - Build 30")
+                // Preserve default system background
+                .listRowBackground(Color(UIColor.systemBackground))
+
+                // Release Notes Sections
+                ForEach(releaseNotes, id: \.version) { note in
+                    Section(header: Text(note.version)
                                 .font(.headline)
-                                .foregroundColor(.secondary)
-                            
-                            Text("Stay updated with the latest improvements, fixes, and new features added to Craftify.")
-                                .font(.subheadline)
+                                .foregroundColor(.secondary)) {
+                        ForEach(note.changes, id: \.self) { change in
+                            Text("• \(change)")
+                                .padding(.vertical, 4)
                                 .foregroundColor(.primary)
-                                .padding(.top, 4)
-                        }
-                        .padding(.bottom, 8)
-                    }
-                    .listRowBackground(Color.clear)
-                    
-                    // List of Release Notes
-                    ForEach(releaseNotes, id: \.version) { note in
-                        Section(header: Text(note.version)
-                                    .font(.headline)
-                                    .foregroundColor(.secondary)) {
-                            ForEach(note.changes, id: \.self) { change in
-                                Text("• \(change)")
-                                    .padding(.vertical, 4)
-                                    .foregroundColor(.primary)
-                            }
                         }
                     }
                 }
-                .listStyle(InsetGroupedListStyle())
-                .scrollContentBackground(.hidden)
             }
+            .listStyle(InsetGroupedListStyle())
             .navigationTitle("Release Notes")
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -309,6 +242,11 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
+    ReleaseNote(version: "Version 1.0 - Build 31", changes: [
+        "UI streamlining",
+        "Image assets added",
+        "Bug fixes"
+    ]),
     ReleaseNote(version: "Version 1.0 - Build 30", changes: [
         "UI fixes",
         "Bug fixes"
