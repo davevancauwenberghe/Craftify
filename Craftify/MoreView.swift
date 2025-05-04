@@ -137,7 +137,7 @@ struct AboutView: View {
                         .fontWeight(.bold)
                         .multilineTextAlignment(.center)
 
-                    Text("Version 1.0 - Build 31")
+                    Text("Version 1.0 - Build 32")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
@@ -202,7 +202,7 @@ struct ReleaseNotesView: View {
                             .font(.largeTitle)
                             .fontWeight(.bold)
 
-                        Text("Version 1.0 - Build 31")
+                        Text("Version 1.0 - Build 32")
                             .font(.headline)
                             .foregroundColor(.secondary)
 
@@ -242,7 +242,7 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 31", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 31-32", changes: [
         "UI streamlining",
         "Image assets added",
         "Bug fixes"

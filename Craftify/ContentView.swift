@@ -9,7 +9,6 @@ import SwiftUI
 import Combine
 import CloudKit
 
-// MARK: - ContentView
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
@@ -19,6 +18,9 @@ struct ContentView: View {
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
     @State private var isLoading = true
+    
+    // NEW: state to control showing the beta alert
+    @State private var showBetaAlert = true
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -67,6 +69,17 @@ struct ContentView: View {
             dataManager.syncFavorites()
             isLoading = false
         }
+        // NEW: present a dismissible alert on first appear
+        .alert(
+            "Craftify for Minecraft",
+            isPresented: $showBetaAlert,
+            actions: {
+                Button("Continue", role: .cancel) { /* just dismiss */ }
+            },
+            message: {
+                Text("Thank you for testing Craftify!\n\nMore recipes will be added soon.")
+            }
+        )
     }
 }
 
