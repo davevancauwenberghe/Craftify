@@ -7,12 +7,23 @@
 
 import SwiftUI
 import MessageUI
-import CloudKit
 
 struct ReportMissingRecipeView: View {
     @State private var recipeName: String = ""
     @State private var selectedCategory: String = ""
-    @State private var categories: [String] = []
+    // Use a fixed set of categories
+    private let categories: [String] = [
+        "Beds",
+        "Crafting",
+        "Food",
+        "Lighting",
+        "Planks",
+        "Smelting",
+        "Storage",
+        "Tools",
+        "Transportation",
+        "Utilities"
+    ]
     @State private var additionalInfo: String = ""
     @State private var isShowingMailView = false
     @State private var isShowingConfirmation = false
@@ -24,18 +35,18 @@ struct ReportMissingRecipeView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         // Category picker, same height as text fields
-                        Picker("Category", selection: $selectedCategory) {
-                            Text("Select Category").tag("")
-                            ForEach(categories, id: \.self) { cat in
-                                Text(cat).tag(cat)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .font(.body)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(8)
+Picker("Category", selection: $selectedCategory) {
+    Text("Select Category").tag("")
+    ForEach(categories, id: \.self) { cat in
+        Text(cat).tag(cat)
+    }
+}
+.font(.body)
+.padding(12)
+.frame(maxWidth: .infinity, minHeight: 44)
+.background(Color(UIColor.secondarySystemBackground))
+.cornerRadius(8)
+.pickerStyle(MenuPickerStyle())
 
                         // Recipe Name field
                         TextField("Recipe Name", text: $recipeName)
@@ -79,7 +90,6 @@ struct ReportMissingRecipeView: View {
                     }
                     .padding()
                 }
-                .frame(maxWidth: .infinity)
             }
             .background(Color(UIColor.systemBackground))
             .navigationTitle("Report Missing Recipe")
@@ -95,7 +105,6 @@ struct ReportMissingRecipeView: View {
             } message: {
                 Text("Thank you for your submission!")
             }
-            .onAppear(perform: fetchCategories)
         }
     }
 
@@ -103,28 +112,6 @@ struct ReportMissingRecipeView: View {
         recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         selectedCategory.isEmpty
-    }
-
-    private func fetchCategories() {
-        let query = CKQuery(recordType: "Recipe", predicate: NSPredicate(value: true))
-        let op = CKQueryOperation(query: query)
-        op.desiredKeys = ["category"]
-        op.resultsLimit = CKQueryOperation.maximumResults
-        var fetched = Set<String>()
-        op.recordMatchedBlock = { _, result in
-            if case .success(let rec) = result,
-               let cat = rec["category"] as? String {
-                fetched.insert(cat)
-            }
-        }
-        op.queryResultBlock = { res in
-            if case .success = res {
-                DispatchQueue.main.async {
-                    categories = Array(fetched).sorted()
-                }
-            }
-        }
-        CKContainer.default().publicCloudDatabase.add(op)
     }
 
     private func sendEmail() {
@@ -155,19 +142,11 @@ struct MailView: UIViewControllerRepresentable {
 
     class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
         var parent: MailView
-        init(parent: MailView) {
-            self.parent = parent
-        }
+        init(parent: MailView) { self.parent = parent }
         func mailComposeController(_ controller: MFMailComposeViewController,
                                    didFinishWith result: MFMailComposeResult,
                                    error: Error?) {
             parent.isShowing = false
-            if result == .sent {
-                // show confirmation
-                DispatchQueue.main.async {
-                    // parent view's isShowingConfirmation bound in ReportMissingRecipeView
-                }
-            }
         }
     }
 

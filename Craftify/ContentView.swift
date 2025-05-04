@@ -22,6 +22,16 @@ struct ContentView: View {
     // NEW: state to control showing the beta alert
     @State private var showBetaAlert = true
 
+    // Restore default translucent tab bar appearance
+    init() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithDefaultBackground()
+        UITabBar.appearance().standardAppearance = appearance
+        if #available(iOS 15.0, *) {
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+        }
+    }
+
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack(path: $navigationPath) {
