@@ -54,20 +54,7 @@ struct RecipeDetailView: View {
                     
                     // Ingredients popup
                     if let detail = selectedDetail {
-                        ZStack {
-                            // Background overlay for dismissal
-                            Color.black.opacity(0.3)
-                                .ignoresSafeArea()
-                                .onTapGesture {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                                        selectedDetail = nil
-                                        selectedItem = nil
-                                    }
-                                }
-                                .transition(.opacity)
-                                .accessibilityHidden(true)
-                            
+                        ZStack(alignment: .topTrailing) {
                             // Popup content
                             VStack(spacing: 8) {
                                 // Item image
@@ -111,32 +98,49 @@ struct RecipeDetailView: View {
                                     .lineLimit(3)
                                     .minimumScaleFactor(0.8)
                             }
+                            .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .padding(.horizontal, 16)
-                            .frame(maxWidth: .infinity)
-                            .background(
-                                ZStack {
-                                    Color(.systemGray5)
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(Color(hex: "00AA00"), lineWidth: 2)
-                                }
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                                .shadow(radius: 8)
-                            )
-                            .padding(.horizontal, 32)
-                            .transition(.scale)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedDetail)
-                            .accessibilityElement(children: .contain)
-                            .accessibilityLabel(detail == recipe.name ? "Output: \(detail)" : "Ingredient: \(detail)")
-                            .accessibilityHint("Tap outside to dismiss or select another item")
-                            .accessibilityAction(named: "Dismiss Popup") {
+                            
+                            // Close button
+                            Button {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                     selectedDetail = nil
                                     selectedItem = nil
                                 }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(Color(hex: "00AA00"))
+                                    .background(
+                                        Circle()
+                                            .fill(Color(.systemGray5))
+                                            .frame(width: 24, height: 24)
+                                            .shadow(radius: 2)
+                                    )
+                                    .frame(width: 24, height: 24)
                             }
+                            .padding(.top, 4)
+                            .padding(.trailing, 4)
+                            .accessibilityLabel("Close popup")
+                            .accessibilityHint("Dismisses the details for \(detail)")
                         }
+                        .frame(width: 300)
+                        .background(
+                            ZStack {
+                                Color(.systemGray5)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color(hex: "00AA00"), lineWidth: 2)
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .shadow(radius: 8)
+                        )
+                        .padding(.horizontal, 32)
+                        .transition(.scale)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedDetail)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel(detail == recipe.name ? "Output: \(detail)" : "Ingredient: \(detail)")
+                        .accessibilityHint("Tap the close button or select another item to dismiss")
                     }
                     
                     // Spacer to push remarks and category label down
