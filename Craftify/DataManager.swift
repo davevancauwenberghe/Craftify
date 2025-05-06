@@ -15,9 +15,19 @@ class DataManager: ObservableObject {
     @Published var selectedCategory: String? = nil
     @Published var lastUpdated: Date? = nil
     @Published var errorMessage: String? = nil
-    @Published var cacheClearedMessage: String? = nil // Message for UI feedback
+    @Published var cacheClearedMessage: String? = nil
+    @Published var isLoading: Bool = false
+    @Published var accessibilityAnnouncement: String? = nil
 
     private let iCloudKey = "favoriteRecipes"
+    private var cancellables = Set<AnyCancellable>()
+
+    enum ErrorType: String {
+        case network = "Network issue, please check your connection and try again."
+        case permissions = "Permission denied, please enable iCloud access."
+        case dataCorruption = "Data error, please try refreshing."
+        case unknown = "An unexpected error occurred."
+    }
 
     init() {
         NotificationCenter.default.addObserver(
@@ -27,18 +37,58 @@ class DataManager: ObservableObject {
             object: NSUbiquitousKeyValueStore.default
         )
 
-        // Load from local cache first.
+        // Clear error messages after 5 seconds
+        $errorMessage
+            .sink { [weak self] message in
+                if message != nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        self?.errorMessage = nil
+                    }
+                }
+            }
+            .store(in: &cancellables)
+
+        $cacheClearedMessage
+            .sink { [weak self] message in
+                if let message = message {
+                    self?.accessibilityAnnouncement = message
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        self?.cacheClearedMessage = nil
+                        self?.accessibilityAnnouncement = nil
+                    }
+                }
+            }
+            .store(in: &cancellables)
+
+        // Load from local cache first
         if let localRecipes = loadRecipesFromLocalCache() {
             print("Loaded \(localRecipes.count) recipes from local cache.")
-            self.recipes = localRecipes
+            self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncFavorites()
         } else {
             print("No local cache found; will fetch from CloudKit.")
         }
 
-        // Then fetch from CloudKit.
+        // Then fetch from CloudKit
         loadData {
             self.syncFavorites()
+        }
+    }
+
+    // MARK: - Sync Status
+
+    var syncStatus: String {
+        if let lastUpdated = lastUpdated {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            return "Last synced: \(formatter.string(from: lastUpdated))"
+        } else if isLoading {
+            return "Syncing recipes..."
+        } else if let error = errorMessage {
+            return "Sync failed: \(error)"
+        } else {
+            return "Not synced"
         }
     }
 
@@ -65,7 +115,14 @@ class DataManager: ObservableObject {
 
     func syncFavorites() {
         if let savedIDs = NSUbiquitousKeyValueStore.default.array(forKey: iCloudKey) as? [Int] {
-            favorites = recipes.filter { savedIDs.contains($0.id) }
+            // Validate favorite IDs against available recipes
+            let validIDs = savedIDs.filter { id in recipes.contains { $0.id == id } }
+            favorites = recipes.filter { validIDs.contains($0.id) }
+            if validIDs.count < savedIDs.count {
+                // Clean up invalid IDs
+                NSUbiquitousKeyValueStore.default.set(validIDs, forKey: iCloudKey)
+                NSUbiquitousKeyValueStore.default.synchronize()
+            }
         }
     }
 
@@ -76,6 +133,11 @@ class DataManager: ObservableObject {
     // MARK: - CloudKit & Local File Caching
 
     func loadData(completion: @escaping () -> Void) {
+        DispatchQueue.main.async {
+            self.isLoading = true
+            self.errorMessage = nil
+        }
+
         let container = CKContainer(identifier: "iCloud.craftifydb")
         let publicDatabase = container.publicCloudDatabase
 
@@ -84,8 +146,8 @@ class DataManager: ObservableObject {
         
         var fetchedRecipes: [Recipe] = []
 
-        // Recursive function to fetch records with a given query operation.
-        func fetch(with queryOperation: CKQueryOperation) {
+        // Recursive function to fetch records with a given query operation
+        func fetch(with queryOperation: CKQueryOperation, retryCount: Int = 0) {
             queryOperation.resultsLimit = CKQueryOperation.maximumResults
 
             queryOperation.recordMatchedBlock = { recordID, result in
@@ -106,29 +168,34 @@ class DataManager: ObservableObject {
                 switch result {
                 case .success(let cursor):
                     if let cursor = cursor {
-                        // More records available, continue fetching.
+                        // More records available, continue fetching
                         let nextOperation = CKQueryOperation(cursor: cursor)
-                        fetch(with: nextOperation)
+                        fetch(with: nextOperation, retryCount: retryCount)
                     } else {
-                        // No more records – update UI and cache.
+                        // No more records – update UI and cache
                         DispatchQueue.main.async {
-                            self.recipes = fetchedRecipes
+                            self.recipes = fetchedRecipes.sorted(by: { $0.name < $1.name })
                             self.syncFavorites()
                             self.saveRecipesToLocalCache(fetchedRecipes)
                             self.lastUpdated = Date()
+                            self.isLoading = false
                             completion()
                         }
                     }
                 case .failure(let error):
                     DispatchQueue.main.async {
-                        self.errorMessage = "Error fetching recipes: \(error.localizedDescription)"
-                        print("Error fetching recipes: \(error.localizedDescription)")
+                        let errorType = self.errorType(for: error)
+                        self.errorMessage = errorType.rawValue
+                        self.accessibilityAnnouncement = errorType.rawValue
+                        self.isLoading = false
+                        print("Error fetching recipes (attempt \(retryCount + 1)): \(error.localizedDescription)")
                     }
-                    // Retry logic for transient errors:
-                    if let ckError = error as? CKError, ckError.isRetryable {
+                    // Retry logic for transient errors
+                    if let ckError = error as? CKError, ckError.isRetryable, retryCount < 3 {
+                        print("Retrying fetch (attempt \(retryCount + 2))...")
                         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
                             let retryOperation = CKQueryOperation(query: query)
-                            fetch(with: retryOperation)
+                            fetch(with: retryOperation, retryCount: retryCount + 1)
                         }
                     } else {
                         DispatchQueue.main.async {
@@ -141,12 +208,12 @@ class DataManager: ObservableObject {
             publicDatabase.add(queryOperation)
         }
 
-        // Start with the initial query operation.
+        // Start with the initial query operation
         let initialOperation = CKQueryOperation(query: query)
         fetch(with: initialOperation)
     }
 
-    // Asynchronous wrapper using async/await.
+    // Asynchronous wrapper using async/await
     func loadDataAsync() async {
         await withCheckedContinuation { continuation in
             loadData {
@@ -157,7 +224,6 @@ class DataManager: ObservableObject {
 
     // MARK: - Local File Cache Methods
 
-    // Always use "recipes.json" regardless of environment.
     private func localCacheFileName() -> String {
         return "recipes.json"
     }
@@ -184,7 +250,6 @@ class DataManager: ObservableObject {
         }
     }
 
-    // On iOS, we use the Documents directory for caching.
     private func getCacheDirectory() -> URL {
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
@@ -198,11 +263,13 @@ class DataManager: ObservableObject {
             DispatchQueue.main.async {
                 self.recipes = []
                 self.cacheClearedMessage = "Cache cleared successfully."
+                self.accessibilityAnnouncement = "Cache cleared successfully."
             }
             completion(true)
         } catch {
             DispatchQueue.main.async {
                 self.cacheClearedMessage = "Failed to clear cache."
+                self.accessibilityAnnouncement = "Failed to clear cache."
             }
             completion(false)
         }
@@ -234,6 +301,24 @@ class DataManager: ObservableObject {
             imageremark: imageremark,
             remarks: remarks
         )
+    }
+
+    // MARK: - Error Handling
+
+    private func errorType(for error: Error) -> ErrorType {
+        if let ckError = error as? CKError {
+            switch ckError.code {
+            case .networkFailure, .networkUnavailable, .serviceUnavailable, .requestRateLimited:
+                return .network
+            case .notAuthenticated, .permissionFailure:
+                return .permissions
+            case .unknownItem, .invalidArguments:
+                return .dataCorruption
+            default:
+                return .unknown
+            }
+        }
+        return .unknown
     }
 
     // MARK: - Helper Properties
