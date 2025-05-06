@@ -314,11 +314,15 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
+    ReleaseNote(version: "Version 1.0 - Build 35", changes: [
+        "RecipeDetailView reworked (New detailview implemented when tapping cells)"
+    ]),
     ReleaseNote(version: "Version 1.0 - Build 34", changes: [
         "MoreView reworked",
         "AboutView reworked",
         "DataManager optimalisation",
-        "Improved CloudKit integration"
+        "Improved CloudKit integration",
+        "VoiceOver improvements"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 31-33", changes: [
         "UI streamlining",

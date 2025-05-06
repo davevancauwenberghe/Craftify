@@ -16,21 +16,20 @@ struct RecipeDetailView: View {
     @State private var selectedDetail: String?
     @State private var animateHeart = false
 
-    // Fixed height for the crafting grid.
+    // Fixed height for the crafting grid
     private let craftingHeight: CGFloat = 222
 
     var body: some View {
         ZStack {
-            // Revert to default system background for both light and dark modes.
             Color(UIColor.systemBackground)
                 .ignoresSafeArea()
             
             VStack {
                 Spacer()
                 
-                // Crafting grid and output item side-by-side.
+                // Crafting grid and output item side-by-side
                 HStack(alignment: .center, spacing: 16) {
-                    // Left: 3x3 Crafting Grid.
+                    // Left: 3x3 Crafting Grid
                     VStack(spacing: 6) {
                         ForEach(0..<3, id: \.self) { row in
                             HStack(spacing: 6) {
@@ -47,18 +46,35 @@ struct RecipeDetailView: View {
                                             .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                                         
                                         if index < recipe.ingredients.count, !recipe.ingredients[index].isEmpty {
-                                            Image(recipe.ingredients[index])
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fit)
-                                                .frame(width: 60, height: 60)
+                                            if UIImage(named: recipe.ingredients[index]) != nil {
+                                                Image(recipe.ingredients[index])
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fit)
+                                                    .frame(width: 60, height: 60)
+                                            } else {
+                                                Image(systemName: "photo")
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fit)
+                                                    .frame(width: 60, height: 60)
+                                                    .foregroundColor(.gray)
+                                            }
                                         }
                                     }
+                                    .accessibilityLabel(
+                                        index < recipe.ingredients.count && !recipe.ingredients[index].isEmpty
+                                        ? "Ingredient: \(recipe.ingredients[index])"
+                                        : "Empty crafting slot"
+                                    )
+                                    .accessibilityHint(
+                                        index < recipe.ingredients.count && !recipe.ingredients[index].isEmpty
+                                        ? "Tap to view details for \(recipe.ingredients[index])"
+                                        : ""
+                                    )
                                     .onTapGesture {
                                         guard index < recipe.ingredients.count,
                                               !recipe.ingredients[index].isEmpty else { return }
-                                        let generator = UIImpactFeedbackGenerator(style: .light)
-                                        generator.impactOccurred()
-                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                             selectedDetail = recipe.ingredients[index]
                                         }
                                     }
@@ -68,13 +84,14 @@ struct RecipeDetailView: View {
                     }
                     .frame(height: craftingHeight)
                     
-                    // Middle: Arrow indicator.
+                    // Middle: Arrow indicator
                     Image(systemName: "arrow.right")
                         .font(.largeTitle)
                         .foregroundColor(.gray)
                         .frame(width: 40, height: craftingHeight)
+                        .accessibilityHidden(true)
                     
-                    // Right: Output Item.
+                    // Right: Output Item
                     VStack {
                         Spacer()
                         ZStack {
@@ -83,15 +100,24 @@ struct RecipeDetailView: View {
                                 .frame(width: 70, height: 70)
                                 .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                             
-                            Image(recipe.image)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 60, height: 60)
+                            if UIImage(named: recipe.image) != nil {
+                                Image(recipe.image)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 60, height: 60)
+                            } else {
+                                Image(systemName: "photo")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 60, height: 60)
+                                    .foregroundColor(.gray)
+                            }
                         }
+                        .accessibilityLabel(recipe.imageremark ?? "Output: \(recipe.name)")
+                        .accessibilityHint("Tap to view details for \(recipe.name)")
                         .onTapGesture {
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
-                            withAnimation(.easeInOut(duration: 0.2)) {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                 selectedDetail = recipe.name
                             }
                         }
@@ -99,6 +125,7 @@ struct RecipeDetailView: View {
                         Text("x\(recipe.output)")
                             .font(.headline)
                             .foregroundColor(.primary)
+                            .accessibilityLabel("Output quantity: \(recipe.output)")
                         Spacer()
                     }
                     .frame(height: craftingHeight)
@@ -106,21 +133,91 @@ struct RecipeDetailView: View {
                 
                 Spacer()
                 
-                // Display tapped detail, if any.
+                // Modernized ingredients popup (inline)
                 if let detail = selectedDetail {
-                    Text(detail)
-                        .font(.title2)
-                        .bold()
+                    ZStack {
+                        VStack(spacing: 12) {
+                            // Item image
+                            if UIImage(named: detail) != nil {
+                                Image(detail)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 80, height: 80)
+                                    .padding(8)
+                                    .background(Color(UIColor.systemGray5))
+                                    .cornerRadius(12)
+                                    .accessibilityLabel("Image of \(detail)")
+                            } else {
+                                Image(systemName: "photo")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 80, height: 80)
+                                    .padding(8)
+                                    .foregroundColor(.gray)
+                                    .background(Color(UIColor.systemGray5))
+                                    .cornerRadius(12)
+                                    .accessibilityLabel("Image unavailable for \(detail)")
+                            }
+                            
+                            // Item name
+                            Text(detail)
+                                .font(.title2)
+                                .bold()
+                                .foregroundColor(.primary)
+                                .padding(.horizontal)
+                            
+                            // Description
+                            Text(detail == recipe.name ? "Output of crafting" : "Ingredient for \(recipe.name)")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal)
+                        }
                         .padding()
-                        .background(Color(UIColor.systemGray3))
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                        .shadow(radius: 4)
-                        .transition(.opacity)
-                        .animation(.easeInOut, value: selectedDetail)
+                        .background(
+                            ZStack {
+                                Color(UIColor.systemGray5)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color(hex: "00AA00"), lineWidth: 2)
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .shadow(radius: 8)
+                        )
+                        .padding(.horizontal, 32)
+                        .transition(.scale)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedDetail)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel(detail == recipe.name ? "Output: \(detail)" : "Ingredient: \(detail)")
+                        .accessibilityHint("Tap another item to view its details or close to dismiss")
+                        
+                        // Close button (top-right X)
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                                        selectedDetail = nil
+                                    }
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(Color(hex: "00AA00"))
+                                        .background(
+                                            Circle()
+                                                .fill(Color(UIColor.systemGray5))
+                                                .frame(width: 30, height: 30)
+                                        )
+                                        .frame(width: 30, height: 30)
+                                        .padding(8)
+                                }
+                                .accessibilityLabel("Close popup")
+                                .accessibilityHint("Dismisses the details for \(detail)")
+                            }
+                            Spacer()
+                        }
+                    }
                 }
                 
-                // Display remarks (if any).
+                // Display remarks (if any)
                 if (recipe.imageremark?.isEmpty == false) || (recipe.remarks?.isEmpty == false) {
                     VStack(spacing: 8) {
                         if let imageRemark = recipe.imageremark, !imageRemark.isEmpty {
@@ -129,15 +226,24 @@ struct RecipeDetailView: View {
                                     .fill(Color(UIColor.systemGray5))
                                     .frame(width: 40, height: 40)
                                     .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                                Image(imageRemark)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 24, height: 24)
+                                if UIImage(named: imageRemark) != nil {
+                                    Image(imageRemark)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 24, height: 24)
+                                } else {
+                                    Image(systemName: "photo")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 24, height: 24)
+                                        .foregroundColor(.gray)
+                                }
                             }
+                            .accessibilityLabel("Remark image: \(imageRemark)")
+                            .accessibilityHint("Tap to view details for \(imageRemark)")
                             .onTapGesture {
-                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                generator.impactOccurred()
-                                withAnimation(.easeInOut(duration: 0.2)) {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                     selectedDetail = imageRemark
                                 }
                             }
@@ -146,6 +252,8 @@ struct RecipeDetailView: View {
                             Text(remark)
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .accessibilityLabel("Remark: \(remark)")
                         }
                     }
                     .padding(.top, 8)
@@ -160,10 +268,8 @@ struct RecipeDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
-                    
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0)) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                         animateHeart = true
                     }
                     dataManager.toggleFavorite(recipe: recipe)
@@ -172,10 +278,12 @@ struct RecipeDetailView: View {
                     }
                 }) {
                     Image(systemName: dataManager.isFavorite(recipe: recipe) ? "heart.fill" : "heart")
-                        .foregroundColor(.red)
+                        .foregroundColor(Color(hex: "00AA00"))
                         .font(.title2)
                         .scaleEffect(animateHeart ? 1.3 : 1.0)
                 }
+                .accessibilityLabel(dataManager.isFavorite(recipe: recipe) ? "Remove from favorites" : "Add to favorites")
+                .accessibilityHint("Toggles favorite status for \(recipe.name)")
             }
         }
         .overlay(
@@ -189,10 +297,15 @@ struct RecipeDetailView: View {
                         .background(Color(UIColor.systemGray5).opacity(0.7))
                         .foregroundColor(.primary)
                         .cornerRadius(20)
+                        .accessibilityLabel("Category: \(recipe.category)")
                 }
             }
             .padding(.bottom, 16),
             alignment: .bottom
         )
+        .onAppear {
+            // Preload haptics
+            UIImpactFeedbackGenerator(style: .medium).prepare()
+        }
     }
 }
