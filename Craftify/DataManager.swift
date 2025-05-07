@@ -290,12 +290,14 @@ class DataManager: ObservableObject {
         let output = Int(outputInt64)
         let imageremark = record["imageremark"] as? String
         let remarks = record["remarks"] as? String
+        let alternateIngredients = record["alternateIngredients"] as? [String]
 
         return Recipe(
             id: id,
             name: name,
             image: image,
             ingredients: ingredients,
+            alternateIngredients: alternateIngredients,
             output: output,
             category: category,
             imageremark: imageremark,
@@ -347,3 +349,4 @@ extension CKError {
         }
     }
 }
+

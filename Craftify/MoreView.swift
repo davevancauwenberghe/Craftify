@@ -314,8 +314,12 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 35", changes: [
-        "RecipeDetailView reworked (New detailview implemented when tapping cells)"
+    ReleaseNote(version: "Version 1.0 - Build 35-37", changes: [
+        "RecipeDetailView reworked (New detail view implemented when tapping cells)",
+        "Ingredient and output popup updated",
+        "Category label updated",
+        "Alternate crafting options added",
+        "Image assets added"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 34", changes: [
         "MoreView reworked",
