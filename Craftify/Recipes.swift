@@ -13,20 +13,32 @@ struct Recipe: Codable, Identifiable {
     let image: String
     let ingredients: [String]
     let alternateIngredients: [String]?
+    let alternateIngredients1: [String]?
+    let alternateIngredients2: [String]?
+    let alternateIngredients3: [String]?
+
     let output: Int
+    let alternateOutput: Int?
+    let alternateOutput1: Int?
+    let alternateOutput2: Int?
+    let alternateOutput3: Int?
+
     let category: String
     let imageremark: String?
     let remarks: String?
 
     enum CodingKeys: String, CodingKey {
-        case id
-        case name
-        case image
-        case ingredients
-        case alternateIngredients
-        case output
-        case category
-        case imageremark
-        case remarks
+        case id, name, image, ingredients
+        case alternateIngredients,
+             alternateIngredients1,
+             alternateIngredients2,
+             alternateIngredients3
+        case output,
+             alternateOutput,
+             alternateOutput1,
+             alternateOutput2,
+             alternateOutput3
+        case category, imageremark, remarks
     }
 }
+

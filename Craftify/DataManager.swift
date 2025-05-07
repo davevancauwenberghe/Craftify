@@ -290,18 +290,32 @@ class DataManager: ObservableObject {
         let output = Int(outputInt64)
         let imageremark = record["imageremark"] as? String
         let remarks = record["remarks"] as? String
-        let alternateIngredients = record["alternateIngredients"] as? [String]
+        let alt0 = record["alternateIngredients"]   as? [String]
+        let alt1 = record["alternateIngredients1"]  as? [String]
+        let alt2 = record["alternateIngredients2"]  as? [String]
+        let alt3 = record["alternateIngredients3"]  as? [String]
+        let altOutput0 = (record["alternateOutput"]   as? Int64).map(Int.init)
+        let altOutput1 = (record["alternateOutput1"]  as? Int64).map(Int.init)
+        let altOutput2 = (record["alternateOutput2"]  as? Int64).map(Int.init)
+        let altOutput3 = (record["alternateOutput3"]  as? Int64).map(Int.init)
 
         return Recipe(
             id: id,
             name: name,
             image: image,
             ingredients: ingredients,
-            alternateIngredients: alternateIngredients,
-            output: output,
-            category: category,
-            imageremark: imageremark,
-            remarks: remarks
+            alternateIngredients:   alt0,
+            alternateIngredients1:  alt1,
+            alternateIngredients2:  alt2,
+            alternateIngredients3:  alt3,
+            output:                output,
+            alternateOutput:       altOutput0,
+            alternateOutput1:      altOutput1,
+            alternateOutput2:      altOutput2,
+            alternateOutput3:      altOutput3,
+            category:              category,
+            imageremark:           imageremark,
+            remarks:               remarks
         )
     }
 

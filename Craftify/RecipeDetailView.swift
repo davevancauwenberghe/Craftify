@@ -17,6 +17,7 @@ struct RecipeDetailView: View {
     @State private var selectedItem: SelectedItem?
     @State private var animateHeart: Bool = false
     @State private var selectedCraftingOption: Int = 0
+    @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
 
     private let craftingHeight: CGFloat = 222
 
@@ -28,15 +29,40 @@ struct RecipeDetailView: View {
 
     // Combine primary and alternate ingredients for display
     private var allIngredientSets: [[String]] {
-        var sets = [recipe.ingredients]
-        if let alternate = recipe.alternateIngredients, !alternate.isEmpty {
-            // Append the entire alternate list as one new option
-            sets.append(alternate)
+        var sets: [[String]] = [recipe.ingredients]
+        if let alt = recipe.alternateIngredients, !alt.isEmpty {
+            sets.append(alt)
+        }
+        if let alt1 = recipe.alternateIngredients1, !alt1.isEmpty {
+            sets.append(alt1)
+        }
+        if let alt2 = recipe.alternateIngredients2, !alt2.isEmpty {
+            sets.append(alt2)
+        }
+        if let alt3 = recipe.alternateIngredients3, !alt3.isEmpty {
+            sets.append(alt3)
         }
         return sets.map { set in
-            // Pad with empty strings to ensure 9 slots for 3x3 grid
             set.count < 9 ? set + Array(repeating: "", count: 9 - set.count) : set
         }
+    }
+
+    // Corresponding outputs for each ingredient set
+    private var allOutputs: [Int] {
+        var outputs: [Int] = [recipe.output]
+        if recipe.alternateIngredients != nil {
+            outputs.append(recipe.alternateOutput ?? recipe.output)
+        }
+        if recipe.alternateIngredients1 != nil {
+            outputs.append(recipe.alternateOutput1 ?? recipe.output)
+        }
+        if recipe.alternateIngredients2 != nil {
+            outputs.append(recipe.alternateOutput2 ?? recipe.output)
+        }
+        if recipe.alternateIngredients3 != nil {
+            outputs.append(recipe.alternateOutput3 ?? recipe.output)
+        }
+        return outputs
     }
 
     var body: some View {
@@ -61,25 +87,47 @@ struct RecipeDetailView: View {
                     }
                     
                     if allIngredientSets.count > 1 {
-                        Picker("Crafting Option", selection: $selectedCraftingOption) {
-                            ForEach(0..<allIngredientSets.count, id: \.self) { index in
-                                Text("Option \(index + 1)")
-                                    .tag(index)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(0..<allIngredientSets.count, id: \.self) { index in
+                                    Button {
+                                        feedbackGenerator.impactOccurred()
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                                            selectedCraftingOption = index
+                                            selectedDetail = nil
+                                            selectedItem = nil
+                                        }
+                                    } label: {
+                                        Text("Option \(index + 1)")
+                                            .font(.subheadline)
+                                            .foregroundColor(.primary)
+                                            .padding(.vertical, 8)
+                                            .padding(.horizontal, 14)
+                                            .frame(minWidth: 60)
+                                            .background(
+                                                ZStack {
+                                                    Color(.systemGray5)
+                                                    RoundedRectangle(cornerRadius: 16)
+                                                        .stroke(
+                                                            Color(hex: "00AA00"),
+                                                            lineWidth: selectedCraftingOption == index ? 3 : 2
+                                                        )
+                                                }
+                                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                                .shadow(radius: 8)
+                                            )
+                                            .minimumScaleFactor(0.8)
+                                    }
                                     .accessibilityLabel("Crafting option \(index + 1)")
+                                    .accessibilityHint("Selects ingredient combination \(index + 1) for crafting \(recipe.name)")
+                                }
                             }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
                         }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
+                        .accessibilityElement(children: .contain)
                         .accessibilityLabel("Crafting option picker")
                         .accessibilityHint("Select different ingredient combinations for crafting \(recipe.name)")
-                        .onChange(of: selectedCraftingOption) {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                                selectedDetail = nil
-                                selectedItem = nil
-                            }
-                        }
                     }
                     
                     GridView(
@@ -87,7 +135,8 @@ struct RecipeDetailView: View {
                         selectedItem: $selectedItem,
                         selectedDetail: $selectedDetail,
                         craftingHeight: craftingHeight,
-                        ingredients: allIngredientSets[selectedCraftingOption]
+                        ingredients: allIngredientSets[selectedCraftingOption],
+                        output: allOutputs[selectedCraftingOption]
                     )
                     
                     if selectedDetail != nil {
@@ -99,6 +148,7 @@ struct RecipeDetailView: View {
                         ZStack(alignment: .topTrailing) {
                             VStack(spacing: 8) {
                                 Group {
+                                    // Note: Ensure image assets are optimized (e.g., <100KB, 60x60pt) to minimize memory usage.
                                     if UIImage(named: detail) != nil {
                                         Image(detail)
                                             .resizable()
@@ -140,7 +190,7 @@ struct RecipeDetailView: View {
                             .padding(.horizontal, 16)
                             
                             Button {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                feedbackGenerator.impactOccurred()
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                     selectedDetail = nil
                                     selectedItem = nil
@@ -215,7 +265,7 @@ struct RecipeDetailView: View {
                                 .accessibilityLabel("Remark image: \(imageRemark)")
                                 .accessibilityHint("Tap to view details for \(imageRemark)")
                                 .onTapGesture {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    feedbackGenerator.impactOccurred()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                         selectedDetail = imageRemark
                                         selectedItem = .imageremark
@@ -240,13 +290,9 @@ struct RecipeDetailView: View {
                             .padding(.vertical, 10)
                             .padding(.horizontal, 16)
                             .background(
-                                ZStack {
-                                    Color(.systemGray5)
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(Color(hex: "00AA00"), lineWidth: 2)
-                                }
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                                .shadow(radius: 8)
+                                Color(.systemGray5)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    .shadow(radius: 8)
                             )
                             .padding(.top, 16)
                             .padding(.bottom, 32)
@@ -257,10 +303,6 @@ struct RecipeDetailView: View {
                         .frame(height: 32)
                 }
                 .padding()
-                .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedDetail)
-                .onAppear {
-                    print("RecipeDetailView: \(recipe.name), alternateIngredients: \(String(describing: recipe.alternateIngredients))")
-                }
             }
             .accessibilityElement(children: .contain)
         }
@@ -269,12 +311,12 @@ struct RecipeDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    feedbackGenerator.impactOccurred()
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                         animateHeart = true
                     }
                     dataManager.toggleFavorite(recipe: recipe)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { // reset heart
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         withAnimation { animateHeart = false }
                     }
                 } label: {
@@ -288,7 +330,8 @@ struct RecipeDetailView: View {
             }
         }
         .onAppear {
-            UIImpactFeedbackGenerator(style: .medium).prepare()
+            feedbackGenerator.prepare()
+            print("RecipeDetailView: \(recipe.name), alternateIngredients: \(String(describing: recipe.alternateIngredients)), alternateOutput: \(String(describing: recipe.alternateOutput)), alternateIngredients1: \(String(describing: recipe.alternateIngredients1)), alternateOutput1: \(String(describing: recipe.alternateOutput1)), alternateIngredients2: \(String(describing: recipe.alternateIngredients2)), alternateOutput2: \(String(describing: recipe.alternateOutput2)), alternateIngredients3: \(String(describing: recipe.alternateIngredients3)), alternateOutput3: \(String(describing: recipe.alternateOutput3))")
         }
     }
 }
@@ -300,6 +343,8 @@ struct GridView: View {
     @Binding var selectedDetail: String?
     let craftingHeight: CGFloat
     let ingredients: [String]
+    let output: Int
+    @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
 
     var body: some View {
         HStack(alignment: .center, spacing: 16) {
@@ -326,6 +371,7 @@ struct GridView: View {
                                     )
                                 
                                 if index < ingredients.count, !ingredients[index].isEmpty {
+                                    // Note: Ensure image assets are optimized (e.g., <100KB, 60x60pt) to minimize memory usage.
                                     if UIImage(named: ingredients[index]) != nil {
                                         Image(ingredients[index])
                                             .resizable()
@@ -352,7 +398,7 @@ struct GridView: View {
                             )
                             .onTapGesture {
                                 guard index < ingredients.count, !ingredients[index].isEmpty else { return }
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                feedbackGenerator.impactOccurred()
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                     selectedDetail = ingredients[index]
                                     selectedItem = .grid(index: index)
@@ -385,6 +431,7 @@ struct GridView: View {
                             : nil
                         )
                     
+                    // Note: Ensure image assets are optimized (e.g., <100KB, 60x60pt) to minimize memory usage.
                     if UIImage(named: recipe.image) != nil {
                         Image(recipe.image)
                             .resizable()
@@ -401,20 +448,23 @@ struct GridView: View {
                 .accessibilityLabel(recipe.imageremark ?? "Output: \(recipe.name)")
                 .accessibilityHint("Tap to view details for \(recipe.name)")
                 .onTapGesture {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    feedbackGenerator.impactOccurred()
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                         selectedDetail = recipe.name
                         selectedItem = .output
                     }
                 }
                 
-                Text("x\(recipe.output)")
+                Text("x\(output)")
                     .font(.headline)
                     .foregroundColor(.primary)
-                    .accessibilityLabel("Output quantity: \(recipe.output)")
+                    .accessibilityLabel("Output quantity: \(output)")
                 Spacer()
             }
             .frame(height: craftingHeight)
+        }
+        .onAppear {
+            feedbackGenerator.prepare()
         }
     }
 }
