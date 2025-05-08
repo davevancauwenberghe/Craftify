@@ -9,8 +9,6 @@ import SwiftUI
 import Combine
 import CloudKit
 
-import SwiftUI
-
 struct MoreView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @EnvironmentObject var dataManager: DataManager
@@ -171,6 +169,8 @@ struct MoreView: View {
 }
 
 struct AboutView: View {
+    @Environment(\.colorScheme) var colorScheme
+    
     // Fetch version and build number dynamically from Bundle
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -253,8 +253,14 @@ struct AboutView: View {
             Spacer()
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(8)
+        .background(
+            Color(UIColor.secondarySystemBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .shadow(
+                    color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
+                    radius: colorScheme == .light ? 6 : 8
+                )
+        )
     }
 }
 
@@ -314,6 +320,12 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
+    ReleaseNote(version: "Version 1.0 - Build 38-39", changes: [
+        "Adaptive grid view",
+        "Remarks added into the popup when needed",
+        "Updated search bar in the main view",
+        "Image assets added"
+    ]),
     ReleaseNote(version: "Version 1.0 - Build 35-37", changes: [
         "RecipeDetailView reworked (New detail view implemented when tapping cells)",
         "Ingredient and output popup updated",

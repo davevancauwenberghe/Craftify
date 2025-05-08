@@ -27,8 +27,17 @@ struct RecipeDetailView: View {
         case imageremark
     }
 
-    // Combine primary and alternate ingredients for display
+    // Combine primary and alternate ingredients, padding based on category
     private var allIngredientSets: [[String]] {
+        let maxIngredients: Int
+        switch recipe.category {
+        case "Smithing":
+            maxIngredients = 3
+        case "Smelting":
+            maxIngredients = 2 // Only first and third cells used
+        default:
+            maxIngredients = 9
+        }
         var sets: [[String]] = [recipe.ingredients]
         if let alt = recipe.alternateIngredients, !alt.isEmpty {
             sets.append(alt)
@@ -43,7 +52,7 @@ struct RecipeDetailView: View {
             sets.append(alt3)
         }
         return sets.map { set in
-            set.count < 9 ? set + Array(repeating: "", count: 9 - set.count) : set
+            set.count < maxIngredients ? set + Array(repeating: "", count: maxIngredients - set.count) : Array(set.prefix(maxIngredients))
         }
     }
 
@@ -88,7 +97,7 @@ struct RecipeDetailView: View {
                     
                     if allIngredientSets.count > 1 {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 12) {
                                 ForEach(0..<allIngredientSets.count, id: \.self) { index in
                                     Button {
                                         feedbackGenerator.impactOccurred()
@@ -114,7 +123,10 @@ struct RecipeDetailView: View {
                                                         )
                                                 }
                                                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                                                .shadow(radius: 8)
+                                                .shadow(
+                                                    color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
+                                                    radius: colorScheme == .light ? 6 : 8
+                                                )
                                             )
                                             .minimumScaleFactor(0.8)
                                     }
@@ -178,7 +190,11 @@ struct RecipeDetailView: View {
                                     .lineLimit(2)
                                     .minimumScaleFactor(0.8)
                                 
-                                Text(detail == recipe.name ? "Output of crafting" : "Ingredient for \(recipe.name)")
+                                Text(
+                                    selectedItem == .imageremark
+                                        ? (recipe.remarks?.isEmpty == false ? recipe.remarks! : "No remarks available")
+                                        : (detail == recipe.name ? "Output of crafting" : "Ingredient for \(recipe.name)")
+                                )
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .padding(.horizontal, 8)
@@ -219,13 +235,20 @@ struct RecipeDetailView: View {
                                     .stroke(Color(hex: "00AA00"), lineWidth: 2)
                             }
                             .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .shadow(radius: 8)
+                            .shadow(
+                                color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
+                                radius: colorScheme == .light ? 6 : 8
+                            )
                         )
                         .padding(.horizontal, 32)
                         .transition(.scale)
                         .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedDetail)
                         .accessibilityElement(children: .contain)
-                        .accessibilityLabel(detail == recipe.name ? "Output: \(detail)" : "Ingredient: \(detail)")
+                        .accessibilityLabel(
+                            selectedItem == .imageremark
+                                ? "Remark: \(recipe.remarks?.isEmpty == false ? recipe.remarks! : "No remarks available")"
+                                : (detail == recipe.name ? "Output: \(detail)" : "Ingredient: \(detail)")
+                        )
                         .accessibilityHint("Tap the close button or select another item to dismiss")
                     }
                     
@@ -234,7 +257,7 @@ struct RecipeDetailView: View {
                             .frame(height: 32)
                     }
                     
-                    if recipe.imageremark?.isEmpty == false || recipe.remarks?.isEmpty == false {
+                    if recipe.imageremark?.isEmpty == false {
                         VStack(spacing: 8) {
                             if let imageRemark = recipe.imageremark, !imageRemark.isEmpty {
                                 ZStack {
@@ -263,7 +286,7 @@ struct RecipeDetailView: View {
                                     }
                                 }
                                 .accessibilityLabel("Remark image: \(imageRemark)")
-                                .accessibilityHint("Tap to view details for \(imageRemark)")
+                                .accessibilityHint("Tap to view details and remarks for \(imageRemark)")
                                 .onTapGesture {
                                     feedbackGenerator.impactOccurred()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
@@ -271,13 +294,6 @@ struct RecipeDetailView: View {
                                         selectedItem = .imageremark
                                     }
                                 }
-                            }
-                            if let remark = recipe.remarks, !remark.isEmpty {
-                                Text(remark)
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .accessibilityLabel("Remark: \(remark)")
                             }
                         }
                         .padding(.top, 8)
@@ -292,7 +308,10 @@ struct RecipeDetailView: View {
                             .background(
                                 Color(.systemGray5)
                                     .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    .shadow(radius: 8)
+                                    .shadow(
+                                        color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
+                                        radius: colorScheme == .light ? 6 : 8
+                                    )
                             )
                             .padding(.top, 16)
                             .padding(.bottom, 32)
@@ -331,12 +350,12 @@ struct RecipeDetailView: View {
         }
         .onAppear {
             feedbackGenerator.prepare()
-            print("RecipeDetailView: \(recipe.name), alternateIngredients: \(String(describing: recipe.alternateIngredients)), alternateOutput: \(String(describing: recipe.alternateOutput)), alternateIngredients1: \(String(describing: recipe.alternateIngredients1)), alternateOutput1: \(String(describing: recipe.alternateOutput1)), alternateIngredients2: \(String(describing: recipe.alternateIngredients2)), alternateOutput2: \(String(describing: recipe.alternateOutput2)), alternateIngredients3: \(String(describing: recipe.alternateIngredients3)), alternateOutput3: \(String(describing: recipe.alternateOutput3))")
+            print("RecipeDetailView: \(recipe.name), category: \(recipe.category), alternateIngredients: \(String(describing: recipe.alternateIngredients)), alternateOutput: \(String(describing: recipe.alternateOutput)), alternateIngredients1: \(String(describing: recipe.alternateIngredients1)), alternateOutput1: \(String(describing: recipe.alternateOutput1)), alternateIngredients2: \(String(describing: recipe.alternateIngredients2)), alternateOutput2: \(String(describing: recipe.alternateOutput2)), alternateIngredients3: \(String(describing: recipe.alternateIngredients3)), alternateOutput3: \(String(describing: recipe.alternateOutput3))")
         }
     }
 }
 
-// Extracted GridView to avoid code duplication
+// Extracted GridView to support dynamic grid based on category
 struct GridView: View {
     let recipe: Recipe
     @Binding var selectedItem: RecipeDetailView.SelectedItem?
@@ -348,67 +367,87 @@ struct GridView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 16) {
-            VStack(spacing: 6) {
-                ForEach(0..<3) { row in
-                    HStack(spacing: 6) {
-                        ForEach(0..<3) { col in
-                            let index = row * 3 + col
+            // Determine grid type based on category
+            switch recipe.category {
+            case "Smithing", "Smelting":
+                // 1x3 grid (vertical, aligned with middle column of 3x3 grid)
+                VStack(spacing: 6) {
+                    // First row
+                    HStack(spacing: 0) {
+                        Spacer()
+                            .frame(width: 76) // Align with middle column (70pt first cell + 6pt spacing)
+                        GridCell(
+                            index: 0,
+                            ingredient: ingredients[0],
+                            isSelected: selectedItem == .grid(index: 0),
+                            feedbackGenerator: feedbackGenerator
+                        ) { selectedDetail = ingredients[0]; selectedItem = .grid(index: 0) }
+                        Spacer()
+                    }
+                    
+                    // Second row
+                    HStack(spacing: 0) {
+                        Spacer()
+                            .frame(width: 76)
+                        if recipe.category == "Smelting" {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(
-                                        index < ingredients.count && !ingredients[index].isEmpty
-                                        ? Color(.systemGray5)
-                                        : Color(.systemGray6)
-                                    )
+                                    .fill(Color(.systemGray5))
                                     .frame(width: 70, height: 70)
                                     .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                                    .overlay(
-                                        selectedItem == .grid(index: index)
-                                        ? RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color(hex: "00AA00"), lineWidth: 2)
-                                            .shadow(radius: 4)
-                                        : nil
-                                    )
-                                
-                                if index < ingredients.count, !ingredients[index].isEmpty {
-                                    // Note: Ensure image assets are optimized (e.g., <100KB, 60x60pt) to minimize memory usage.
-                                    if UIImage(named: ingredients[index]) != nil {
-                                        Image(ingredients[index])
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 60, height: 60)
-                                    } else {
-                                        Image(systemName: "photo")
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 60, height: 60)
-                                            .foregroundColor(.gray)
-                                    }
-                                }
+                                Image(systemName: "flame.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 40, height: 40)
+                                    .foregroundColor(.orange)
                             }
-                            .accessibilityLabel(
-                                index < ingredients.count && !ingredients[index].isEmpty
-                                ? "Ingredient: \(ingredients[index])"
-                                : "Empty crafting slot"
-                            )
-                            .accessibilityHint(
-                                index < ingredients.count && !ingredients[index].isEmpty
-                                ? "Tap to view details for \(ingredients[index])"
-                                : ""
-                            )
-                            .onTapGesture {
-                                guard index < ingredients.count, !ingredients[index].isEmpty else { return }
-                                feedbackGenerator.impactOccurred()
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                                    selectedDetail = ingredients[index]
-                                    selectedItem = .grid(index: index)
-                                }
+                            .accessibilityLabel("Furnace")
+                            .accessibilityHidden(true)
+                        } else {
+                            GridCell(
+                                index: 1,
+                                ingredient: ingredients[1],
+                                isSelected: selectedItem == .grid(index: 1),
+                                feedbackGenerator: feedbackGenerator
+                            ) { selectedDetail = ingredients[1]; selectedItem = .grid(index: 1) }
+                        }
+                        Spacer()
+                    }
+                    
+                    // Third row
+                    HStack(spacing: 0) {
+                        Spacer()
+                            .frame(width: 76)
+                        GridCell(
+                            index: recipe.category == "Smelting" ? 1 : 2,
+                            ingredient: recipe.category == "Smelting" ? ingredients[1] : ingredients[2],
+                            isSelected: selectedItem == .grid(index: recipe.category == "Smelting" ? 1 : 2),
+                            feedbackGenerator: feedbackGenerator
+                        ) { selectedDetail = recipe.category == "Smelting" ? ingredients[1] : ingredients[2]; selectedItem = .grid(index: recipe.category == "Smelting" ? 1 : 2) }
+                        Spacer()
+                    }
+                }
+                .frame(height: craftingHeight)
+            
+            default:
+                // 3x3 grid for Crafting and other categories
+                VStack(spacing: 6) {
+                    ForEach(0..<3) { row in
+                        HStack(spacing: 6) {
+                            ForEach(0..<3) { col in
+                                let index = row * 3 + col
+                                GridCell(
+                                    index: index,
+                                    ingredient: index < ingredients.count ? ingredients[index] : "",
+                                    isSelected: selectedItem == .grid(index: index),
+                                    feedbackGenerator: feedbackGenerator
+                                ) { selectedDetail = ingredients[index]; selectedItem = .grid(index: index) }
                             }
                         }
                     }
                 }
+                .frame(height: craftingHeight)
             }
-            .frame(height: craftingHeight)
             
             Image(systemName: "arrow.right")
                 .font(.largeTitle)
@@ -465,6 +504,56 @@ struct GridView: View {
         }
         .onAppear {
             feedbackGenerator.prepare()
+        }
+    }
+}
+
+// Reusable GridCell view to reduce duplication
+struct GridCell: View {
+    let index: Int
+    let ingredient: String
+    let isSelected: Bool
+    let feedbackGenerator: UIImpactFeedbackGenerator
+    let onTap: () -> Void
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(!ingredient.isEmpty ? Color(.systemGray5) : Color(.systemGray6))
+                .frame(width: 70, height: 70)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                .overlay(
+                    isSelected
+                    ? RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(hex: "00AA00"), lineWidth: 2)
+                        .shadow(radius: 4)
+                    : nil
+                )
+            
+            if !ingredient.isEmpty {
+                // Note: Ensure image assets are optimized (e.g., <100KB, 60x60pt) to minimize memory usage.
+                if UIImage(named: ingredient) != nil {
+                    Image(ingredient)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                } else {
+                    Image(systemName: "photo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .accessibilityLabel(!ingredient.isEmpty ? "Ingredient: \(ingredient)" : "Empty slot")
+        .accessibilityHint(!ingredient.isEmpty ? "Tap to view details for \(ingredient)" : "")
+        .onTapGesture {
+            guard !ingredient.isEmpty else { return }
+            feedbackGenerator.impactOccurred()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                onTap()
+            }
         }
     }
 }
