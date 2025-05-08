@@ -320,6 +320,9 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
+    ReleaseNote(version: "Version 1.0 - Build 41", changes: [
+        "UI fixes on iPad"
+    ]),
     ReleaseNote(version: "Version 1.0 - Build 38-40", changes: [
         "Adaptive grid view",
         "Remarks added into the popup when needed",

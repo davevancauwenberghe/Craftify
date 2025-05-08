@@ -363,132 +363,137 @@ struct GridView: View {
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
-            // Determine grid type based on imageremark
-            switch true {
-            case recipe.imageremark == "Furnace":
-                // 1x3 grid (vertical, aligned with middle column of 3x3 grid) for Furnace recipes
-                VStack(spacing: 6) {
-                    // First row
-                    HStack(spacing: 0) {
-                        Spacer()
-                            .frame(width: 76) // Align with middle column (70pt first cell + 6pt spacing)
-                        GridCell(
-                            index: 0,
-                            ingredient: ingredients[0],
-                            isSelected: selectedItem == .grid(index: 0),
-                            feedbackGenerator: feedbackGenerator
-                        ) { selectedDetail = ingredients[0]; selectedItem = .grid(index: 0) }
-                        Spacer()
-                    }
-                    
-                    // Second row
-                    HStack(spacing: 0) {
-                        Spacer()
-                            .frame(width: 76)
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(.systemGray5))
-                                .frame(width: 70, height: 70)
-                                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                            Image(systemName: "flame.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 40, height: 40)
-                                .foregroundColor(.orange)
+        VStack {
+            HStack(alignment: .center, spacing: 16) {
+                // Determine grid type based on imageremark
+                switch true {
+                case recipe.imageremark == "Furnace":
+                    // 1x3 grid (vertical, aligned with middle column of 3x3 grid) for Furnace recipes
+                    VStack(spacing: 6) {
+                        // First row
+                        HStack(spacing: 0) {
+                            Spacer()
+                                .frame(width: 70) // Reduced to avoid clipping, align with 3x3 grid
+                            GridCell(
+                                index: 0,
+                                ingredient: ingredients[0],
+                                isSelected: selectedItem == .grid(index: 0),
+                                feedbackGenerator: feedbackGenerator
+                            ) { selectedDetail = ingredients[0]; selectedItem = .grid(index: 0) }
+                            Spacer()
                         }
-                        .accessibilityLabel("Furnace")
-                        .accessibilityHidden(true)
-                        Spacer()
+                        
+                        // Second row
+                        HStack(spacing: 0) {
+                            Spacer()
+                                .frame(width: 70)
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemGray5))
+                                    .frame(width: 70, height: 70)
+                                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                                Image(systemName: "flame.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 40, height: 40)
+                                    .foregroundColor(.orange)
+                            }
+                            .accessibilityLabel("Furnace")
+                            .accessibilityHidden(true)
+                            Spacer()
+                        }
+                        
+                        // Third row
+                        HStack(spacing: 0) {
+                            Spacer()
+                                .frame(width: 70)
+                            GridCell(
+                                index: 1,
+                                ingredient: ingredients[1],
+                                isSelected: selectedItem == .grid(index: 1),
+                                feedbackGenerator: feedbackGenerator
+                            ) { selectedDetail = ingredients[1]; selectedItem = .grid(index: 1) }
+                            Spacer()
+                        }
                     }
-                    
-                    // Third row
-                    HStack(spacing: 0) {
-                        Spacer()
-                            .frame(width: 76)
-                        GridCell(
-                            index: 1,
-                            ingredient: ingredients[1],
-                            isSelected: selectedItem == .grid(index: 1),
-                            feedbackGenerator: feedbackGenerator
-                        ) { selectedDetail = ingredients[1]; selectedItem = .grid(index: 1) }
-                        Spacer()
-                    }
-                }
-                .frame(height: craftingHeight)
-            
-            default:
-                // 3x3 grid for Crafting, Smithing, and other categories
-                VStack(spacing: 6) {
-                    ForEach(0..<3) { row in
-                        HStack(spacing: 6) {
-                            ForEach(0..<3) { col in
-                                let index = row * 3 + col
-                                GridCell(
-                                    index: index,
-                                    ingredient: index < ingredients.count ? ingredients[index] : "",
-                                    isSelected: selectedItem == .grid(index: index),
-                                    feedbackGenerator: feedbackGenerator
-                                ) { selectedDetail = ingredients[index]; selectedItem = .grid(index: index) }
+                    .frame(height: craftingHeight)
+                
+                default:
+                    // 3x3 grid for Crafting, Smithing, and other categories
+                    VStack(spacing: 6) {
+                        ForEach(0..<3) { row in
+                            HStack(spacing: 6) {
+                                ForEach(0..<3) { col in
+                                    let index = row * 3 + col
+                                    GridCell(
+                                        index: index,
+                                        ingredient: index < ingredients.count ? ingredients[index] : "",
+                                        isSelected: selectedItem == .grid(index: index),
+                                        feedbackGenerator: feedbackGenerator
+                                    ) { selectedDetail = ingredients[index]; selectedItem = .grid(index: index) }
+                                }
                             }
                         }
                     }
+                    .frame(height: craftingHeight)
+                }
+                
+                Image(systemName: "arrow.right")
+                    .font(.largeTitle)
+                    .foregroundColor(.gray)
+                    .frame(width: 40, height: craftingHeight)
+                    .accessibilityHidden(true)
+                
+                VStack {
+                    Spacer()
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray5))
+                            .frame(width: 70, height: 70)
+                            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                            .overlay(
+                                selectedItem == .output
+                                ? RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color(hex: "00AA00"), lineWidth: 2)
+                                    .shadow(radius: 4)
+                                : nil
+                            )
+                        
+                        if UIImage(named: recipe.image) != nil {
+                            Image(recipe.image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 60, height: 60)
+                        } else {
+                            Image(systemName: "photo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 60, height: 60)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .accessibilityLabel(recipe.imageremark ?? "Output: \(recipe.name)")
+                    .accessibilityHint("Tap to view details for \(recipe.name)")
+                    .onTapGesture {
+                        feedbackGenerator.impactOccurred()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                            selectedDetail = recipe.name
+                            selectedItem = .output
+                        }
+                    }
+                    
+                    Text("x\(output)")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .accessibilityLabel("Output quantity: \(output)")
+                    Spacer()
                 }
                 .frame(height: craftingHeight)
             }
-            
-            Image(systemName: "arrow.right")
-                .font(.largeTitle)
-                .foregroundColor(.gray)
-                .frame(width: 40, height: craftingHeight)
-                .accessibilityHidden(true)
-            
-            VStack {
-                Spacer()
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemGray5))
-                        .frame(width: 70, height: 70)
-                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                        .overlay(
-                            selectedItem == .output
-                            ? RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color(hex: "00AA00"), lineWidth: 2)
-                                .shadow(radius: 4)
-                            : nil
-                        )
-                    
-                    if UIImage(named: recipe.image) != nil {
-                        Image(recipe.image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 60, height: 60)
-                    } else {
-                        Image(systemName: "photo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 60, height: 60)
-                            .foregroundColor(.gray)
-                    }
-                }
-                .accessibilityLabel(recipe.imageremark ?? "Output: \(recipe.name)")
-                .accessibilityHint("Tap to view details for \(recipe.name)")
-                .onTapGesture {
-                    feedbackGenerator.impactOccurred()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                        selectedDetail = recipe.name
-                        selectedItem = .output
-                    }
-                }
-                
-                Text("x\(output)")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                    .accessibilityLabel("Output quantity: \(output)")
-                Spacer()
-            }
-            .frame(height: craftingHeight)
+            .padding(.horizontal, 16)
         }
+        .frame(maxWidth: 360)
+        .ignoresSafeArea(edges: .horizontal)
         .onAppear {
             feedbackGenerator.prepare()
         }

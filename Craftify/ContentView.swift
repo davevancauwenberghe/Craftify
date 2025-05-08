@@ -12,15 +12,14 @@ import CloudKit
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
-    @AppStorage("hasSeenWelcomeView") private var hasSeenWelcomeView: Bool = false
     
     @State private var searchText = ""
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
     @State private var isLoading = true
+    @State private var showBetaAlert = true
 
-    // Restore default translucent tab bar appearance
     init() {
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
@@ -31,55 +30,45 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
-            TabView(selection: $selectedTab) {
-                NavigationStack(path: $navigationPath) {
-                    ZStack {
-                        if isLoading {
-                            ProgressView("Loading recipes from Cloud...")
-                                .progressViewStyle(CircularProgressViewStyle())
-                                .padding()
-                        } else {
-                            CategoryView(
-                                selectedTab: $selectedTab,
-                                navigationPath: $navigationPath,
-                                searchText: $searchText,
-                                isSearching: $isSearching
-                            )
-                        }
+        TabView(selection: $selectedTab) {
+            NavigationStack(path: $navigationPath) {
+                ZStack {
+                    if isLoading {
+                        ProgressView("Loading recipes from Cloud...")
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .padding()
+                    } else {
+                        CategoryView(selectedTab: $selectedTab,
+                                     navigationPath: $navigationPath,
+                                     searchText: $searchText,
+                                     isSearching: $isSearching)
                     }
-                    .navigationTitle("Craftify")
-                    .navigationBarTitleDisplayMode(.large)
-                    .searchable(text: $searchText, prompt: "Search recipes")
                 }
-                .tabItem {
-                    Label("Recipes", systemImage: "square.grid.2x2")
-                }
-                .tag(0)
-                
-                FavoritesView()
-                    .tabItem {
-                        Label("Favorites", systemImage: "heart.fill")
-                    }
-                    .tag(1)
-                
-                MoreView()
-                    .tabItem {
-                        Label("More", systemImage: "ellipsis.circle")
-                    }
-                    .tag(2)
+                .navigationTitle("Craftify")
+                .navigationBarTitleDisplayMode(.large)
+                .searchable(text: $searchText, prompt: "Search recipes")
             }
-            .preferredColorScheme(
-                colorSchemePreference == "system" ? nil :
-                (colorSchemePreference == "light" ? .light : .dark)
-            )
+            .tabItem {
+                Label("Recipes", systemImage: "square.grid.2x2")
+            }
+            .tag(0)
             
-            // Welcome view overlay
-            if !hasSeenWelcomeView {
-                WelcomeView(hasSeenWelcomeView: $hasSeenWelcomeView)
-                    .transition(.scale)
-            }
+            FavoritesView()
+                .tabItem {
+                    Label("Favorites", systemImage: "heart.fill")
+                }
+                .tag(1)
+            
+            MoreView()
+                .tabItem {
+                    Label("More", systemImage: "ellipsis.circle")
+                }
+                .tag(2)
         }
+        .preferredColorScheme(
+            colorSchemePreference == "system" ? nil :
+            (colorSchemePreference == "light" ? .light : .dark)
+        )
         .task {
             if dataManager.recipes.isEmpty {
                 await dataManager.loadDataAsync()
@@ -90,90 +79,6 @@ struct ContentView: View {
     }
 }
 
-// MARK: - WelcomeView
-struct WelcomeView: View {
-    @Binding var hasSeenWelcomeView: Bool
-    @Environment(\.colorScheme) var colorScheme
-    @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture { /* Prevent background taps */ }
-            
-            VStack(spacing: 16) {
-                Image(systemName: "square.grid.2x2")
-                    .font(.largeTitle)
-                    .foregroundColor(Color(hex: "00AA00"))
-                    .padding(.top, 16)
-                
-                Text("Welcome to Craftify!")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
-                
-                Text("Thank you for testing Craftify! More recipes will be added soon.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                
-                Button(action: {
-                    feedbackGenerator.impactOccurred()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                        hasSeenWelcomeView = true
-                    }
-                }) {
-                    Text("Get Started")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 24)
-                        .background(
-                            ZStack {
-                                Color(UIColor.systemGray5)
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color(hex: "00AA00"), lineWidth: 2)
-                            }
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .shadow(
-                                color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
-                                radius: colorScheme == .light ? 6 : 8
-                            )
-                        )
-                }
-                .accessibilityLabel("Get Started")
-                .accessibilityHint("Dismiss the welcome message")
-                .padding(.bottom, 24)
-            }
-            .frame(width: 300)
-            .background(
-                ZStack {
-                    Color(UIColor.systemGray5)
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color(hex: "00AA00"), lineWidth: 2)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(
-                    color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
-                    radius: colorScheme == .light ? 6 : 8
-                )
-            )
-            .padding(.horizontal, 32)
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: hasSeenWelcomeView)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Welcome to Craftify, thank you for testing Craftify! More recipes will be added soon.")
-        .accessibilityHint("Tap Get Started to dismiss the welcome message")
-        .onAppear {
-            feedbackGenerator.prepare()
-        }
-    }
-}
-
-// MARK: - CategoryView
 struct CategoryView: View {
     @EnvironmentObject var dataManager: DataManager
     @Binding var selectedTab: Int
@@ -184,7 +89,6 @@ struct CategoryView: View {
     @State private var recommendedRecipes: [Recipe] = []
     @State private var isCraftifyPicksExpanded = true
 
-    // Group recipes by the first letter
     var sortedRecipes: [String: [Recipe]] {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
@@ -210,7 +114,6 @@ struct CategoryView: View {
     
     var body: some View {
         VStack {
-            // Categories horizontal scroll view
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     Button(action: { selectedCategory = nil }) {
@@ -235,9 +138,9 @@ struct CategoryView: View {
                 .padding(.horizontal)
             }
             
-            // Recipe list
+            // Recipe list.
             List {
-                // Craftify Picks Section
+                // Craftify Picks Section.
                 if !recommendedRecipes.isEmpty && !isSearching {
                     Section {
                         if isCraftifyPicksExpanded {
@@ -277,10 +180,11 @@ struct CategoryView: View {
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
+                    // Hide separator for the Craftify Picks section.
                     .listRowSeparator(.hidden)
                 }
                 
-                // Recipe List Sections
+                // Recipe List Sections.
                 ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
                     Section(header:
                         Text(letter)
@@ -292,7 +196,7 @@ struct CategoryView: View {
                     ) {
                         ForEach(sortedRecipes[letter] ?? []) { recipe in
                             NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                // Use the same recipe cell UI as in FavoritesView
+                                // Use the same recipe cell UI as in FavoritesView.
                                 HStack {
                                     Image(recipe.image)
                                         .resizable()
@@ -318,7 +222,9 @@ struct CategoryView: View {
                                 }
                             )
                             .padding(.vertical, 4)
+                            // Apply insets so the cell isn’t flush with the screen edges.
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            // Hide the default separator.
                             .listRowSeparator(.hidden)
                         }
                     }
