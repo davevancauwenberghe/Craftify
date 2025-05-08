@@ -9,6 +9,7 @@ import SwiftUI
 import MessageUI
 
 struct ReportMissingRecipeView: View {
+    @Environment(\.colorScheme) var colorScheme
     @State private var recipeName: String = ""
     @State private var selectedCategory: String = ""
     @State private var additionalInfo: String = ""
@@ -18,7 +19,7 @@ struct ReportMissingRecipeView: View {
 
     private let categories: [String] = [
         "Beds", "Crafting", "Food", "Lighting", "Planks",
-        "Smelting", "Storage", "Tools", "Transportation", "Utilities"
+        "Smelting", "Storage", "Tools", "Transportation", "Utilities", "Not listed"
     ]
     private let supportEmail = "hello@davevancauwenberghe.be"
     private let fieldHeight: CGFloat = 44
@@ -31,19 +32,27 @@ struct ReportMissingRecipeView: View {
                 VStack(spacing: 16) {
                     // Category Picker
                     Picker("Category", selection: $selectedCategory) {
-                        Text("Select Category").tag("")
+                        Text("Select category").tag("")
                         ForEach(categories, id: \.self) { cat in
                             Text(cat).tag(cat)
                         }
                     }
                     .font(.body)
-                    .padding(12)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
                     .frame(maxWidth: .infinity, minHeight: fieldHeight)
-                    .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .cornerRadius(10)
+                    .background(Color(.systemGray5))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(showValidationErrors && selectedCategory.isEmpty ? Color.red : Color.clear, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                showValidationErrors && selectedCategory.isEmpty ? Color.red : Color(hex: "00AA00"),
+                                lineWidth: 2
+                            )
+                    )
+                    .shadow(
+                        color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
+                        radius: colorScheme == .light ? 6 : 8
                     )
                     .pickerStyle(.menu)
                     .accessibilityLabel("Category")
@@ -52,17 +61,18 @@ struct ReportMissingRecipeView: View {
                     // Grouped Input Section (Recipe Name + Additional Info)
                     VStack(spacing: 0) {
                         // Recipe Name
-                        TextField("Recipe Name", text: $recipeName)
+                        TextField("Recipe name", text: $recipeName)
                             .font(.body)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 12)
                             .frame(maxWidth: .infinity, minHeight: fieldHeight)
+                            .background(Color(UIColor.secondarySystemGroupedBackground))
                             .onChange(of: recipeName) { oldValue, newValue in
                                 if newValue.count > maxRecipeNameLength {
                                     recipeName = String(newValue.prefix(maxRecipeNameLength))
                                 }
                             }
-                            .accessibilityLabel("Recipe Name")
+                            .accessibilityLabel("Recipe name")
                             .accessibilityHint("Enter the name of the missing recipe")
 
                         Divider()
@@ -70,13 +80,13 @@ struct ReportMissingRecipeView: View {
 
                         ZStack(alignment: .topLeading) {
                             Text("Add details...")
-                                .font(.body)
-                                .foregroundColor(.secondary)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary.opacity(0.7))
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 14)
-                                .opacity(additionalInfo.isEmpty ? 0.7 : 0)
+                                .opacity(additionalInfo.isEmpty ? 1.0 : 0)
                                 .animation(.easeInOut(duration: 0.2), value: additionalInfo.isEmpty)
-                            TextEditor(text: $additionalInfo)
+                            TextEditorRepresentable(text: $additionalInfo)
                                 .font(.body)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 12)
@@ -92,34 +102,47 @@ struct ReportMissingRecipeView: View {
                         .accessibilityValue(additionalInfo.isEmpty ? "No details entered" : additionalInfo)
                     }
                     .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(showValidationErrors && (recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? Color.red : Color.clear, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                showValidationErrors && (recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? Color.red : Color(hex: "00AA00"),
+                                lineWidth: 2
+                            )
                     )
-                    .padding(.horizontal, 2)
+                    .shadow(
+                        color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
+                        radius: colorScheme == .light ? 6 : 8
+                    )
 
                     Button(action: sendEmail) {
                         HStack {
                             Image(systemName: "paperplane.fill")
-                            Text("Send Report")
-                                .font(.body)
-                                .fontWeight(.semibold)
+                            Text("Send report")
+                                .font(.headline)
+                                .bold()
                         }
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 24)
                         .background(isFormIncomplete ? Color.accentColor.opacity(0.5) : Color.accentColor)
                         .foregroundColor(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(
+                            color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
+                            radius: colorScheme == .light ? 6 : 8
+                        )
                     }
                     .disabled(isFormIncomplete)
-                    .accessibilityLabel("Send Report")
+                    .accessibilityLabel("Send report")
                     .accessibilityHint("Sends the missing recipe report via email")
                 }
-                .padding()
+                .frame(maxWidth: 400)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 24)
             }
             .background(Color(UIColor.systemGroupedBackground))
-            .navigationTitle("Report Missing Recipe")
+            .navigationTitle("Report missing recipe")
             .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $isShowingMailView) {
                 MailView(
@@ -130,7 +153,7 @@ struct ReportMissingRecipeView: View {
                     supportEmail: supportEmail
                 )
             }
-            .alert("Report Sent", isPresented: $isShowingConfirmation) {
+            .alert("Report sent", isPresented: $isShowingConfirmation) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text("Thank you for reporting \(recipeName) in \(selectedCategory)!")
@@ -160,10 +183,8 @@ struct ReportMissingRecipeView: View {
                 UIApplication.shared.open(url) { success in
                     if success {
                         isShowingConfirmation = true
-
                     } else {
                         print("Failed to open mail client")
-
                     }
                 }
             } else {
@@ -226,4 +247,38 @@ struct MailView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
+}
+
+struct TextEditorRepresentable: UIViewRepresentable {
+    @Binding var text: String
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.font = .preferredFont(forTextStyle: .body)
+        textView.backgroundColor = UIColor.secondarySystemGroupedBackground
+        textView.text = text
+        textView.delegate = context.coordinator
+        return textView
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        uiView.text = text
+        uiView.backgroundColor = UIColor.secondarySystemGroupedBackground
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, UITextViewDelegate {
+        var parent: TextEditorRepresentable
+
+        init(_ parent: TextEditorRepresentable) {
+            self.parent = parent
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            parent.text = textView.text
+        }
+    }
 }

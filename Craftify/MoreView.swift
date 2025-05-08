@@ -35,9 +35,9 @@ struct MoreView: View {
                 // Need Help Section
                 Section(header: Text("Need Help?")) {
                     NavigationLink(destination: ReportMissingRecipeView()) {
-                        buttonStyle(title: "Report Missing Recipe", systemImage: "envelope.fill")
+                        buttonStyle(title: "Report missing recipe", systemImage: "envelope.fill")
                     }
-                    .accessibilityLabel("Report Missing Recipe")
+                    .accessibilityLabel("Report missing recipe")
                     .accessibilityHint("Navigate to report a missing recipe")
                 }
 
@@ -320,8 +320,10 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 41", changes: [
-        "UI fixes on iPad"
+    ReleaseNote(version: "Version 1.0 - Build 41-42", changes: [
+        "UI fixes on iPad",
+        "Bug fixes",
+        "Image assets added"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 38-40", changes: [
         "Adaptive grid view",
