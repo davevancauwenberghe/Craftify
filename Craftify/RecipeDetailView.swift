@@ -27,16 +27,14 @@ struct RecipeDetailView: View {
         case imageremark
     }
 
-    // Combine primary and alternate ingredients, padding based on category
+    // Combine primary and alternate ingredients, padding based on imageremark
     private var allIngredientSets: [[String]] {
         let maxIngredients: Int
-        switch recipe.category {
-        case "Smithing":
-            maxIngredients = 3
-        case "Smelting":
-            maxIngredients = 2 // Only first and third cells used
+        switch true {
+        case recipe.imageremark == "Furnace":
+            maxIngredients = 2 // Only first and second cells used
         default:
-            maxIngredients = 9
+            maxIngredients = 9 // For Crafting, Smithing, and other categories
         }
         var sets: [[String]] = [recipe.ingredients]
         if let alt = recipe.alternateIngredients, !alt.isEmpty {
@@ -160,7 +158,6 @@ struct RecipeDetailView: View {
                         ZStack(alignment: .topTrailing) {
                             VStack(spacing: 8) {
                                 Group {
-                                    // Note: Ensure image assets are optimized (e.g., <100KB, 60x60pt) to minimize memory usage.
                                     if UIImage(named: detail) != nil {
                                         Image(detail)
                                             .resizable()
@@ -355,7 +352,7 @@ struct RecipeDetailView: View {
     }
 }
 
-// Extracted GridView to support dynamic grid based on category
+// Extracted GridView to support dynamic grid based on imageremark
 struct GridView: View {
     let recipe: Recipe
     @Binding var selectedItem: RecipeDetailView.SelectedItem?
@@ -367,10 +364,10 @@ struct GridView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 16) {
-            // Determine grid type based on category
-            switch recipe.category {
-            case "Smithing", "Smelting":
-                // 1x3 grid (vertical, aligned with middle column of 3x3 grid)
+            // Determine grid type based on imageremark
+            switch true {
+            case recipe.imageremark == "Furnace":
+                // 1x3 grid (vertical, aligned with middle column of 3x3 grid) for Furnace recipes
                 VStack(spacing: 6) {
                     // First row
                     HStack(spacing: 0) {
@@ -389,28 +386,19 @@ struct GridView: View {
                     HStack(spacing: 0) {
                         Spacer()
                             .frame(width: 76)
-                        if recipe.category == "Smelting" {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemGray5))
-                                    .frame(width: 70, height: 70)
-                                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                                Image(systemName: "flame.fill")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 40, height: 40)
-                                    .foregroundColor(.orange)
-                            }
-                            .accessibilityLabel("Furnace")
-                            .accessibilityHidden(true)
-                        } else {
-                            GridCell(
-                                index: 1,
-                                ingredient: ingredients[1],
-                                isSelected: selectedItem == .grid(index: 1),
-                                feedbackGenerator: feedbackGenerator
-                            ) { selectedDetail = ingredients[1]; selectedItem = .grid(index: 1) }
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray5))
+                                .frame(width: 70, height: 70)
+                                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                            Image(systemName: "flame.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 40, height: 40)
+                                .foregroundColor(.orange)
                         }
+                        .accessibilityLabel("Furnace")
+                        .accessibilityHidden(true)
                         Spacer()
                     }
                     
@@ -419,18 +407,18 @@ struct GridView: View {
                         Spacer()
                             .frame(width: 76)
                         GridCell(
-                            index: recipe.category == "Smelting" ? 1 : 2,
-                            ingredient: recipe.category == "Smelting" ? ingredients[1] : ingredients[2],
-                            isSelected: selectedItem == .grid(index: recipe.category == "Smelting" ? 1 : 2),
+                            index: 1,
+                            ingredient: ingredients[1],
+                            isSelected: selectedItem == .grid(index: 1),
                             feedbackGenerator: feedbackGenerator
-                        ) { selectedDetail = recipe.category == "Smelting" ? ingredients[1] : ingredients[2]; selectedItem = .grid(index: recipe.category == "Smelting" ? 1 : 2) }
+                        ) { selectedDetail = ingredients[1]; selectedItem = .grid(index: 1) }
                         Spacer()
                     }
                 }
                 .frame(height: craftingHeight)
             
             default:
-                // 3x3 grid for Crafting and other categories
+                // 3x3 grid for Crafting, Smithing, and other categories
                 VStack(spacing: 6) {
                     ForEach(0..<3) { row in
                         HStack(spacing: 6) {
@@ -470,7 +458,6 @@ struct GridView: View {
                             : nil
                         )
                     
-                    // Note: Ensure image assets are optimized (e.g., <100KB, 60x60pt) to minimize memory usage.
                     if UIImage(named: recipe.image) != nil {
                         Image(recipe.image)
                             .resizable()
@@ -531,7 +518,6 @@ struct GridCell: View {
                 )
             
             if !ingredient.isEmpty {
-                // Note: Ensure image assets are optimized (e.g., <100KB, 60x60pt) to minimize memory usage.
                 if UIImage(named: ingredient) != nil {
                     Image(ingredient)
                         .resizable()

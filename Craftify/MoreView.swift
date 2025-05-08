@@ -320,11 +320,12 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 38-39", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 38-40", changes: [
         "Adaptive grid view",
         "Remarks added into the popup when needed",
         "Updated search bar in the main view",
-        "Image assets added"
+        "Image assets added",
+        "UI fixes"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 35-37", changes: [
         "RecipeDetailView reworked (New detail view implemented when tapping cells)",
