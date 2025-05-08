@@ -18,6 +18,7 @@ class DataManager: ObservableObject {
     @Published var cacheClearedMessage: String? = nil
     @Published var isLoading: Bool = false
     @Published var accessibilityAnnouncement: String? = nil
+    @Published var searchText: String = ""
 
     private let iCloudKey = "favoriteRecipes"
     private var cancellables = Set<AnyCancellable>()
@@ -37,7 +38,6 @@ class DataManager: ObservableObject {
             object: NSUbiquitousKeyValueStore.default
         )
 
-        // Clear error messages after 5 seconds
         $errorMessage
             .sink { [weak self] message in
                 if message != nil {
@@ -60,7 +60,6 @@ class DataManager: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Load from local cache first
         if let localRecipes = loadRecipesFromLocalCache() {
             print("Loaded \(localRecipes.count) recipes from local cache.")
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
@@ -69,7 +68,6 @@ class DataManager: ObservableObject {
             print("No local cache found; will fetch from CloudKit.")
         }
 
-        // Then fetch from CloudKit
         loadData {
             self.syncFavorites()
         }
@@ -115,11 +113,9 @@ class DataManager: ObservableObject {
 
     func syncFavorites() {
         if let savedIDs = NSUbiquitousKeyValueStore.default.array(forKey: iCloudKey) as? [Int] {
-            // Validate favorite IDs against available recipes
             let validIDs = savedIDs.filter { id in recipes.contains { $0.id == id } }
             favorites = recipes.filter { validIDs.contains($0.id) }
             if validIDs.count < savedIDs.count {
-                // Clean up invalid IDs
                 NSUbiquitousKeyValueStore.default.set(validIDs, forKey: iCloudKey)
                 NSUbiquitousKeyValueStore.default.synchronize()
             }
@@ -140,13 +136,11 @@ class DataManager: ObservableObject {
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
         let publicDatabase = container.publicCloudDatabase
-
         let predicate = NSPredicate(value: true)
         let query = CKQuery(recordType: "Recipe", predicate: predicate)
-        
+
         var fetchedRecipes: [Recipe] = []
 
-        // Recursive function to fetch records with a given query operation
         func fetch(with queryOperation: CKQueryOperation, retryCount: Int = 0) {
             queryOperation.resultsLimit = CKQueryOperation.maximumResults
 
@@ -160,7 +154,6 @@ class DataManager: ObservableObject {
                     DispatchQueue.main.async {
                         self.errorMessage = "Error fetching record \(recordID.recordName): \(error.localizedDescription)"
                     }
-                    print("Error fetching record \(recordID.recordName): \(error.localizedDescription)")
                 }
             }
 
@@ -168,11 +161,9 @@ class DataManager: ObservableObject {
                 switch result {
                 case .success(let cursor):
                     if let cursor = cursor {
-                        // More records available, continue fetching
                         let nextOperation = CKQueryOperation(cursor: cursor)
                         fetch(with: nextOperation, retryCount: retryCount)
                     } else {
-                        // No more records – update UI and cache
                         DispatchQueue.main.async {
                             self.recipes = fetchedRecipes.sorted(by: { $0.name < $1.name })
                             self.syncFavorites()
@@ -188,11 +179,9 @@ class DataManager: ObservableObject {
                         self.errorMessage = errorType.rawValue
                         self.accessibilityAnnouncement = errorType.rawValue
                         self.isLoading = false
-                        print("Error fetching recipes (attempt \(retryCount + 1)): \(error.localizedDescription)")
                     }
-                    // Retry logic for transient errors
+
                     if let ckError = error as? CKError, ckError.isRetryable, retryCount < 3 {
-                        print("Retrying fetch (attempt \(retryCount + 2))...")
                         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
                             let retryOperation = CKQueryOperation(query: query)
                             fetch(with: retryOperation, retryCount: retryCount + 1)
@@ -208,12 +197,10 @@ class DataManager: ObservableObject {
             publicDatabase.add(queryOperation)
         }
 
-        // Start with the initial query operation
         let initialOperation = CKQueryOperation(query: query)
         fetch(with: initialOperation)
     }
 
-    // Asynchronous wrapper using async/await
     func loadDataAsync() async {
         await withCheckedContinuation { continuation in
             loadData {
@@ -230,9 +217,7 @@ class DataManager: ObservableObject {
 
     private func loadRecipesFromLocalCache() -> [Recipe]? {
         let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
-        print("Attempting to load local cache from: \(fileURL.path)")
         guard let data = try? Data(contentsOf: fileURL) else {
-            print("No data found at \(fileURL.path)")
             return nil
         }
         return try? JSONDecoder().decode([Recipe].self, from: data)
@@ -243,7 +228,6 @@ class DataManager: ObservableObject {
         if let data = try? JSONEncoder().encode(recipes) {
             do {
                 try data.write(to: fileURL)
-                print("Saved \(recipes.count) recipes to local cache at \(fileURL.path)")
             } catch {
                 print("Error saving recipes to local cache: \(error.localizedDescription)")
             }
@@ -283,39 +267,39 @@ class DataManager: ObservableObject {
               let ingredients = record["ingredients"] as? [String],
               let outputInt64 = record["output"] as? Int64,
               let category = record["category"] as? String else {
-            print("Missing field in record \(record.recordID.recordName)")
             return nil
         }
+
         let id = Int(record.recordID.recordName) ?? 0
         let output = Int(outputInt64)
         let imageremark = record["imageremark"] as? String
         let remarks = record["remarks"] as? String
-        let alt0 = record["alternateIngredients"]   as? [String]
-        let alt1 = record["alternateIngredients1"]  as? [String]
-        let alt2 = record["alternateIngredients2"]  as? [String]
-        let alt3 = record["alternateIngredients3"]  as? [String]
-        let altOutput0 = (record["alternateOutput"]   as? Int64).map(Int.init)
-        let altOutput1 = (record["alternateOutput1"]  as? Int64).map(Int.init)
-        let altOutput2 = (record["alternateOutput2"]  as? Int64).map(Int.init)
-        let altOutput3 = (record["alternateOutput3"]  as? Int64).map(Int.init)
+        let alt0 = record["alternateIngredients"] as? [String]
+        let alt1 = record["alternateIngredients1"] as? [String]
+        let alt2 = record["alternateIngredients2"] as? [String]
+        let alt3 = record["alternateIngredients3"] as? [String]
+        let altOutput0 = (record["alternateOutput"] as? Int64).map(Int.init)
+        let altOutput1 = (record["alternateOutput1"] as? Int64).map(Int.init)
+        let altOutput2 = (record["alternateOutput2"] as? Int64).map(Int.init)
+        let altOutput3 = (record["alternateOutput3"] as? Int64).map(Int.init)
 
         return Recipe(
             id: id,
             name: name,
             image: image,
             ingredients: ingredients,
-            alternateIngredients:   alt0,
-            alternateIngredients1:  alt1,
-            alternateIngredients2:  alt2,
-            alternateIngredients3:  alt3,
-            output:                output,
-            alternateOutput:       altOutput0,
-            alternateOutput1:      altOutput1,
-            alternateOutput2:      altOutput2,
-            alternateOutput3:      altOutput3,
-            category:              category,
-            imageremark:           imageremark,
-            remarks:               remarks
+            alternateIngredients: alt0,
+            alternateIngredients1: alt1,
+            alternateIngredients2: alt2,
+            alternateIngredients3: alt3,
+            output: output,
+            alternateOutput: altOutput0,
+            alternateOutput1: altOutput1,
+            alternateOutput2: altOutput2,
+            alternateOutput3: altOutput3,
+            category: category,
+            imageremark: imageremark,
+            remarks: remarks
         )
     }
 
@@ -345,10 +329,10 @@ class DataManager: ObservableObject {
     }
 
     var filteredRecipes: [Recipe] {
-        if let category = selectedCategory {
-            return recipes.filter { $0.category == category }
-        } else {
-            return recipes
+        recipes.filter { recipe in
+            let matchesCategory = selectedCategory == nil || recipe.category == selectedCategory
+            let matchesSearch = searchText.isEmpty || recipe.name.lowercased().contains(searchText.lowercased())
+            return matchesCategory && matchesSearch
         }
     }
 }
@@ -363,4 +347,3 @@ extension CKError {
         }
     }
 }
-
