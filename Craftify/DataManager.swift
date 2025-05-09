@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import CloudKit
+import UIKit
 
 class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []
@@ -31,11 +32,23 @@ class DataManager: ObservableObject {
     }
 
     init() {
+        // Pull any existing iCloud favorites on launch
+        NSUbiquitousKeyValueStore.default.synchronize()
+
+        // Listen for changes in iCloud key-value store
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(icloudDidChange),
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: NSUbiquitousKeyValueStore.default
+        )
+
+        // Sync when app returns to foreground
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
         )
 
         $errorMessage
@@ -71,6 +84,15 @@ class DataManager: ObservableObject {
         loadData {
             self.syncFavorites()
         }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func appWillEnterForeground() {
+        // Pull any updates made to favorites while backgrounded
+        NSUbiquitousKeyValueStore.default.synchronize()
     }
 
     // MARK: - Sync Status

@@ -20,7 +20,6 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Appearance Section
                 Section(header: Text("Appearance")) {
                     Picker("Appearance", selection: $colorSchemePreference) {
                         Text("System").tag("system")
@@ -32,7 +31,6 @@ struct MoreView: View {
                     .accessibilityHint("Choose between System, Light, or Dark mode")
                 }
 
-                // Need Help Section
                 Section(header: Text("Need Help?")) {
                     NavigationLink(destination: ReportMissingRecipeView()) {
                         buttonStyle(title: "Report missing recipe", systemImage: "envelope.fill")
@@ -41,7 +39,6 @@ struct MoreView: View {
                     .accessibilityHint("Navigate to report a missing recipe")
                 }
 
-                // About Section
                 Section(header: Text("About")) {
                     NavigationLink(destination: AboutView()) {
                         buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
@@ -57,7 +54,6 @@ struct MoreView: View {
                         .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
                 }
 
-                // Data Management Section
                 Section(header: Text("Data Management")) {
                     VStack(alignment: .center, spacing: 10) {
                         Text("\(dataManager.recipes.count) recipes available")
@@ -74,7 +70,6 @@ struct MoreView: View {
                             .accessibilityLabel("Sync Status")
                             .accessibilityHint(dataManager.syncStatus)
 
-                        // Sync Recipes Button
                         Button(action: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             isSyncing = true
@@ -109,7 +104,6 @@ struct MoreView: View {
                         .accessibilityLabel("Sync Recipes")
                         .accessibilityHint("Syncs Minecraft recipes from CloudKit")
 
-                        // Clear Cache Button
                         Button(action: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             dataManager.clearCache { success in
@@ -171,7 +165,6 @@ struct MoreView: View {
 struct AboutView: View {
     @Environment(\.colorScheme) var colorScheme
     
-    // Fetch version and build number dynamically from Bundle
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "33"
@@ -181,7 +174,6 @@ struct AboutView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                // App Info
                 VStack(spacing: 8) {
                     Text("Craftify for Minecraft")
                         .font(.largeTitle)
@@ -201,7 +193,6 @@ struct AboutView: View {
                 .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
                 .accessibilityHint("About the Craftify app and its purpose")
 
-                // Release Notes Button
                 NavigationLink(destination: ReleaseNotesView()) {
                     buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
                 }
@@ -218,7 +209,6 @@ struct AboutView: View {
                 .accessibilityLabel("Contact Support")
                 .accessibilityHint("Opens the mail app to contact support at hello@davevancauwenberghe.be")
 
-                // Disclaimer
                 Text("Craftify for Minecraft is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.")
                     .font(.footnote)
                     .foregroundColor(.secondary)
@@ -236,7 +226,6 @@ struct AboutView: View {
             .navigationTitle("About Craftify")
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
-                // Preload haptics for smoother feedback
                 UIImpactFeedbackGenerator(style: .medium).prepare()
             }
         }
@@ -265,7 +254,6 @@ struct AboutView: View {
 }
 
 struct ReleaseNotesView: View {
-    // Fetch version and build number dynamically from Bundle
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "33"
@@ -274,7 +262,6 @@ struct ReleaseNotesView: View {
 
     var body: some View {
         List {
-            // Header Section
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Craftify for Minecraft")
@@ -292,10 +279,8 @@ struct ReleaseNotesView: View {
                 }
                 .padding(.bottom, 8)
             }
-            // Preserve default system background
             .listRowBackground(Color(UIColor.systemBackground))
 
-            // Release Notes Sections
             ForEach(releaseNotes, id: \.version) { note in
                 Section(header: Text(note.version)
                             .font(.headline)

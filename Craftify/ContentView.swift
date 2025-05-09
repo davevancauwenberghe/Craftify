@@ -18,15 +18,12 @@ struct ContentView: View {
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
     @State private var isLoading = true
-    @State private var showBetaAlert = true
 
     init() {
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
         UITabBar.appearance().standardAppearance = appearance
-        if #available(iOS 15.0, *) {
-            UITabBar.appearance().scrollEdgeAppearance = appearance
-        }
+        UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 
     var body: some View {
@@ -35,13 +32,15 @@ struct ContentView: View {
                 ZStack {
                     if isLoading {
                         ProgressView("Loading recipes from Cloud...")
-                            .progressViewStyle(CircularProgressViewStyle())
+                            .progressViewStyle(.circular)
                             .padding()
                     } else {
-                        CategoryView(selectedTab: $selectedTab,
-                                     navigationPath: $navigationPath,
-                                     searchText: $searchText,
-                                     isSearching: $isSearching)
+                        CategoryView(
+                            selectedTab: $selectedTab,
+                            navigationPath: $navigationPath,
+                            searchText: $searchText,
+                            isSearching: $isSearching
+                        )
                     }
                 }
                 .navigationTitle("Craftify")
@@ -85,11 +84,15 @@ struct CategoryView: View {
     @Binding var navigationPath: NavigationPath
     @Binding var searchText: String
     @Binding var isSearching: Bool
+    
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
     @State private var isCraftifyPicksExpanded = true
+    @State private var filteredRecipes: [String: [Recipe]] = [:]
+    
+    private let primaryColor = Color(hex: "00AA00")
 
-    var sortedRecipes: [String: [Recipe]] {
+    private func updateFilteredRecipes() {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
             : dataManager.recipes.filter { $0.category == selectedCategory }
@@ -103,46 +106,58 @@ struct CategoryView: View {
         
         var groups = [String: [Recipe]]()
         for recipe in filtered {
-            let key = String(recipe.name.prefix(1))
+            let key = String(recipe.name.prefix(1).uppercased())
             groups[key, default: []].append(recipe)
         }
         for key in groups.keys {
             groups[key]?.sort(by: { $0.name < $1.name })
         }
-        return groups
+        filteredRecipes = groups
     }
     
     var body: some View {
         VStack {
+            // Category selector
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     Button(action: { selectedCategory = nil }) {
                         Text("All")
                             .fontWeight(.bold)
                             .padding()
-                            .background(selectedCategory == nil ? Color(hex: "00AA00") : Color.gray.opacity(0.2))
+                            .background(selectedCategory == nil ? primaryColor : Color.gray.opacity(0.2))
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
+                    .accessibilityLabel("Show all recipes")
+                    .accessibilityHint("Displays recipes from all categories")
+                    
                     ForEach(dataManager.categories, id: \.self) { category in
                         Button(action: { selectedCategory = category }) {
                             Text(category)
                                 .fontWeight(.bold)
                                 .padding()
-                                .background(selectedCategory == category ? Color(hex: "00AA00") : Color.gray.opacity(0.2))
+                                .background(selectedCategory == category ? primaryColor : Color.gray.opacity(0.2))
                                 .foregroundColor(.white)
                                 .cornerRadius(10)
                         }
+                        .accessibilityLabel("Show \(category) recipes")
+                        .accessibilityHint("Filters recipes to show only \(category) category")
                     }
                 }
                 .padding(.horizontal)
             }
             
-            // Recipe list.
+            // Recipe list
             List {
-                // Craftify Picks Section.
+                // Craftify Picks Section
                 if !recommendedRecipes.isEmpty && !isSearching {
-                    Section {
+                    Section(header:
+                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
+                            withAnimation { isCraftifyPicksExpanded.toggle() }
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                    ) {
                         if isCraftifyPicksExpanded {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack {
@@ -164,45 +179,41 @@ struct CategoryView: View {
                                             .background(Color.gray.opacity(0.2))
                                             .cornerRadius(12)
                                         }
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                                            generator.impactOccurred()
+                                        }
                                     }
                                 }
                                 .padding(.horizontal)
                             }
                         }
-                    } header: {
-                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded, toggle: {
-                            withAnimation {
-                                isCraftifyPicksExpanded.toggle()
-                            }
-                        })
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
-                    // Hide separator for the Craftify Picks section.
                     .listRowSeparator(.hidden)
                 }
-                
-                // Recipe List Sections.
-                ForEach(sortedRecipes.keys.sorted(), id: \.self) { letter in
+
+                // Alphabetical sections
+                ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
                     Section(header:
                         Text(letter)
                             .font(.headline)
                             .bold()
-                            .foregroundColor(.primary)
                             .padding(.vertical, 4)
                             .padding(.horizontal, 8)
                     ) {
-                        ForEach(sortedRecipes[letter] ?? []) { recipe in
+                        ForEach(filteredRecipes[letter] ?? []) { recipe in
                             NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                // Use the same recipe cell UI as in FavoritesView.
                                 HStack {
                                     Image(recipe.image)
                                         .resizable()
                                         .scaledToFit()
                                         .frame(width: 60, height: 60)
                                         .padding(4)
+                                        .accessibilityLabel("Image of \(recipe.name)")
+                                        .accessibilityHidden(false)
                                     VStack(alignment: .leading) {
                                         Text(recipe.name)
                                             .font(.headline)
@@ -215,25 +226,26 @@ struct CategoryView: View {
                                     }
                                 }
                             }
-                            .simultaneousGesture(
-                                TapGesture().onEnded {
-                                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                                    generator.impactOccurred()
-                                }
-                            )
+                            .contentShape(Rectangle())
+                            .simultaneousGesture(TapGesture().onEnded {
+                                let generator = UIImpactFeedbackGenerator(style: .medium)
+                                generator.impactOccurred()
+                            })
                             .padding(.vertical, 4)
-                            // Apply insets so the cell isn’t flush with the screen edges.
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                            // Hide the default separator.
                             .listRowSeparator(.hidden)
                         }
                     }
                 }
             }
-            .listStyle(PlainListStyle())
+            .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .onAppear {
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
+                updateFilteredRecipes()
+            }
+            .task(id: "\(searchText)\(selectedCategory ?? "")") {
+                updateFilteredRecipes()
             }
         }
         .navigationTitle("Craftify")
@@ -253,6 +265,8 @@ struct CraftifyPicksHeader: View {
                     .font(.title2)
                     .foregroundColor(.gray)
             }
+            .accessibilityLabel(isExpanded ? "Collapse Craftify Picks" : "Expand Craftify Picks")
+            .accessibilityHint("Toggles the visibility of recommended recipes")
             Text("Craftify Picks")
                 .font(.title3)
                 .bold()

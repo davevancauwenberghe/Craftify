@@ -168,7 +168,6 @@ struct ReportMissingRecipeView: View {
     }
 
     private func sendEmail() {
-        // Show validation errors if form is incomplete
         if isFormIncomplete {
             showValidationErrors = true
             return
