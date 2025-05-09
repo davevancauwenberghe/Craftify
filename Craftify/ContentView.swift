@@ -120,7 +120,10 @@ struct CategoryView: View {
             // Category selector
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
-                    Button(action: { selectedCategory = nil }) {
+                    Button {
+                        selectedCategory = nil
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    } label: {
                         Text("All")
                             .fontWeight(.bold)
                             .padding()
@@ -132,7 +135,10 @@ struct CategoryView: View {
                     .accessibilityHint("Displays recipes from all categories")
                     
                     ForEach(dataManager.categories, id: \.self) { category in
-                        Button(action: { selectedCategory = category }) {
+                        Button {
+                            selectedCategory = category
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        } label: {
                             Text(category)
                                 .fontWeight(.bold)
                                 .padding()
@@ -160,15 +166,19 @@ struct CategoryView: View {
                     ) {
                         if isCraftifyPicksExpanded {
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
-                                    ForEach(recommendedRecipes) { recipe in
-                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                HStack(spacing: 12) {
+                                    ForEach(recommendedRecipes, id: \.name) { recipe in
+                                        NavigationLink {
+                                            RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                        } label: {
                                             VStack {
                                                 Image(recipe.image)
                                                     .resizable()
                                                     .scaledToFit()
                                                     .frame(width: 90, height: 90)
                                                     .padding(4)
+                                                    .accessibilityLabel("Image of \(recipe.name)")
+                                                    .accessibilityHidden(false)
                                                 Text(recipe.name)
                                                     .font(.caption)
                                                     .bold()
@@ -178,12 +188,11 @@ struct CategoryView: View {
                                             .padding()
                                             .background(Color.gray.opacity(0.2))
                                             .cornerRadius(12)
+                                            .onTapGesture {
+                                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                            }
                                         }
                                         .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                                            generator.impactOccurred()
-                                        }
                                     }
                                 }
                                 .padding(.horizontal)
@@ -204,8 +213,10 @@ struct CategoryView: View {
                             .padding(.vertical, 4)
                             .padding(.horizontal, 8)
                     ) {
-                        ForEach(filteredRecipes[letter] ?? []) { recipe in
-                            NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                        ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
+                            NavigationLink {
+                                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                            } label: {
                                 HStack {
                                     Image(recipe.image)
                                         .resizable()
@@ -225,12 +236,11 @@ struct CategoryView: View {
                                         }
                                     }
                                 }
+                                .onTapGesture {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                }
                             }
                             .contentShape(Rectangle())
-                            .simultaneousGesture(TapGesture().onEnded {
-                                let generator = UIImpactFeedbackGenerator(style: .medium)
-                                generator.impactOccurred()
-                            })
                             .padding(.vertical, 4)
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                             .listRowSeparator(.hidden)
@@ -259,20 +269,28 @@ struct CraftifyPicksHeader: View {
     var toggle: () -> Void
     
     var body: some View {
-        HStack {
-            Button(action: toggle) {
+        HStack(spacing: 8) {
+            Button {
+                toggle()
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            } label: {
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                     .font(.title2)
                     .foregroundColor(.gray)
+                    .padding(8)
+                    .background(Color.gray.opacity(0.1))
+                    .clipShape(Circle())
             }
             .accessibilityLabel(isExpanded ? "Collapse Craftify Picks" : "Expand Craftify Picks")
             .accessibilityHint("Toggles the visibility of recommended recipes")
+            
             Text("Craftify Picks")
                 .font(.title3)
-                .bold()
+                .fontWeight(.bold)
+            
             Spacer()
         }
-        .padding(.horizontal)
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
 }
