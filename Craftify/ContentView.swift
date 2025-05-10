@@ -178,7 +178,6 @@ struct CategoryView: View {
                                                     .frame(width: 90, height: 90)
                                                     .padding(4)
                                                     .accessibilityLabel("Image of \(recipe.name)")
-                                                    .accessibilityHidden(false)
                                                 Text(recipe.name)
                                                     .font(.caption)
                                                     .bold()
@@ -188,11 +187,11 @@ struct CategoryView: View {
                                             .padding()
                                             .background(Color.gray.opacity(0.2))
                                             .cornerRadius(12)
-                                            .onTapGesture {
-                                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                            }
                                         }
                                         .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        }
                                     }
                                 }
                                 .padding(.horizontal)
@@ -224,7 +223,6 @@ struct CategoryView: View {
                                         .frame(width: 60, height: 60)
                                         .padding(4)
                                         .accessibilityLabel("Image of \(recipe.name)")
-                                        .accessibilityHidden(false)
                                     VStack(alignment: .leading) {
                                         Text(recipe.name)
                                             .font(.headline)

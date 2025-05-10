@@ -37,9 +37,7 @@ struct FavoritesView: View {
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
     @State private var isSearching = false
-    @State private var recommendedRecipes: [Recipe] = []
     @State private var selectedCategory: String? = nil
-    @State private var isCraftifyPicksExpanded = true
     @State private var filteredFavorites: [String: [Recipe]] = [:]
 
     private let primaryColor = Color(hex: "00AA00")
@@ -108,51 +106,6 @@ struct FavoritesView: View {
 
                     // Favorites List
                     List {
-                        // Craftify Picks (unchanged)
-                        if !recommendedRecipes.isEmpty && !isSearching {
-                            Section(header:
-                                CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
-                                    withAnimation { isCraftifyPicksExpanded.toggle() }
-                                }
-                                .listRowInsets(EdgeInsets())
-                                .listRowBackground(Color.clear)
-                            ) {
-                                if isCraftifyPicksExpanded {
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack {
-                                            ForEach(recommendedRecipes) { recipe in
-                                                NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
-                                                    VStack {
-                                                        Image(recipe.image)
-                                                            .resizable()
-                                                            .scaledToFit()
-                                                            .frame(width: 90, height: 90)
-                                                            .padding(4)
-                                                        Text(recipe.name)
-                                                            .font(.caption)
-                                                            .bold()
-                                                            .lineLimit(1)
-                                                            .frame(width: 90)
-                                                    }
-                                                    .padding()
-                                                    .background(Color.gray.opacity(0.2))
-                                                    .cornerRadius(12)
-                                                }
-                                                .contentShape(Rectangle())
-                                                .onTapGesture {
-                                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                                }
-                                            }
-                                        }
-                                        .padding(.horizontal)
-                                    }
-                                }
-                            }
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                        }
-
                         // Favorite recipe sections
                         ForEach(filteredFavorites.keys.sorted(), id: \.self) { letter in
                             Section(header:
@@ -162,8 +115,10 @@ struct FavoritesView: View {
                                     .padding(.vertical, 4)
                                     .padding(.horizontal, 8)
                             ) {
-                                ForEach(filteredFavorites[letter]!) { recipe in
-                                    NavigationLink(destination: RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)) {
+                                ForEach(filteredFavorites[letter]!, id: \.name) { recipe in
+                                    NavigationLink {
+                                        RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                    } label: {
                                         HStack {
                                             Image(recipe.image)
                                                 .resizable()
@@ -171,7 +126,6 @@ struct FavoritesView: View {
                                                 .frame(width: 60, height: 60)
                                                 .padding(4)
                                                 .accessibilityLabel("Image of \(recipe.name)")
-                                                .accessibilityHidden(false)
                                             VStack(alignment: .leading) {
                                                 Text(recipe.name)
                                                     .font(.headline)
@@ -183,11 +137,11 @@ struct FavoritesView: View {
                                                 }
                                             }
                                         }
+                                        .onTapGesture {
+                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        }
                                     }
                                     .contentShape(Rectangle())
-                                    .simultaneousGesture(TapGesture().onEnded {
-                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                    })
                                     .padding(.vertical, 4)
                                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                                     .listRowSeparator(.hidden)
@@ -206,11 +160,6 @@ struct FavoritesView: View {
                 isSearching = !newValue.isEmpty
             }
             .onAppear {
-                recommendedRecipes = Array(
-                    dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
-                        .shuffled()
-                        .prefix(5)
-                )
                 updateFilteredFavorites()
             }
             .task(id: "\(searchText)\(selectedCategory ?? "")") {
