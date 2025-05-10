@@ -305,7 +305,14 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 41-42", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 45", changes: [
+        "Reworked Recipes & Favorites view",
+        "Search bar randomly collapsing fixed",
+        "VoiceOver improvements",
+        "New AppIcon introduced",
+        "Image assets added"
+    ]),
+    ReleaseNote(version: "Version 1.0 - Build 41-44", changes: [
         "UI fixes on iPad",
         "Bug fixes",
         "Image assets added"

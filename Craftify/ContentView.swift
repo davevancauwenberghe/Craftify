@@ -8,7 +8,6 @@
 import SwiftUI
 import Combine
 import CloudKit
-import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
@@ -141,6 +140,7 @@ struct CategoryView: View {
                 HStack(spacing: 8) {
                     Button {
                         selectedCategory = nil
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     } label: {
                         Text("All")
                             .fontWeight(.bold)
@@ -156,6 +156,7 @@ struct CategoryView: View {
                     ForEach(dataManager.categories, id: \.self) { category in
                         Button {
                             selectedCategory = category
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         } label: {
                             Text(category)
                                 .fontWeight(.bold)
@@ -181,7 +182,7 @@ struct CategoryView: View {
                         Section {
                             if isCraftifyPicksExpanded {
                                 ScrollView(.horizontal, showsIndicators: false) {
-                                    LazyHStack(spacing: 16) {
+                                    LazyHStack(spacing: 8) {
                                         ForEach(recommendedRecipes, id: \.name) { recipe in
                                             NavigationLink {
                                                 RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
@@ -239,6 +240,104 @@ struct CategoryView: View {
         }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
+    }
+}
+
+// MARK: - RecipeCell
+struct RecipeCell: View {
+    let recipe: Recipe
+    let isCraftifyPick: Bool
+    
+    private let primaryColor = Color(hex: "00AA00")
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(recipe.image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: isCraftifyPick ? 72 : 64, height: isCraftifyPick ? 72 : 64)
+                .cornerRadius(8)
+                .padding(4)
+                .accessibilityLabel("Image of \(recipe.name)")
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(recipe.name)
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                
+                if !recipe.category.isEmpty {
+                    Text(recipe.category)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.gray)
+                .padding(.trailing, 8)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            LinearGradient(
+                colors: [primaryColor.opacity(0.05), Color.gray.opacity(0.025)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .cornerRadius(10)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(
+                    primaryColor.opacity(0.3),
+                    style: isCraftifyPick ? StrokeStyle(lineWidth: 1) : StrokeStyle(lineWidth: 1, dash: [4, 4])
+                )
+        )
+        .shadow(radius: 2, y: 2)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(recipe.name), \(recipe.category.isEmpty ? "recipe" : "\(recipe.category) recipe")")
+        .accessibilityHint("Navigates to the detailed view of \(recipe.name)")
+    }
+}
+
+// MARK: - CraftifyPicksHeader
+struct CraftifyPicksHeader: View {
+    var isExpanded: Bool
+    var toggle: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Button {
+                toggle()
+            } label: {
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.title2)
+                    .foregroundColor(.gray)
+                    .padding(8)
+                    .background(Color.gray.opacity(0.1))
+                    .clipShape(Circle())
+            }
+            .contentShape(Rectangle())
+            .accessibilityLabel(isExpanded ? "Collapse Craftify Picks" : "Expand Craftify Picks")
+            .accessibilityHint("Toggles the visibility of recommended recipes")
+            
+            Text("Craftify Picks")
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 }
 
