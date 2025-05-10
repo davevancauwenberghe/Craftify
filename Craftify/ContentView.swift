@@ -8,22 +8,30 @@
 import SwiftUI
 import Combine
 import CloudKit
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     
     @State private var searchText = ""
+    @State private var isSearchActive = false
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
     @State private var isLoading = true
 
     init() {
-        let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
+        let navAppearance = UINavigationBarAppearance()
+        navAppearance.configureWithOpaqueBackground()
+        UINavigationBar.appearance().standardAppearance = navAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
+        UINavigationBar.appearance().isTranslucent = false
+        
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithDefaultBackground()
+        UITabBar.appearance().standardAppearance = tabAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
     }
 
     var body: some View {
@@ -45,7 +53,13 @@ struct ContentView: View {
                 }
                 .navigationTitle("Craftify")
                 .navigationBarTitleDisplayMode(.large)
-                .searchable(text: $searchText, prompt: "Search recipes")
+                .toolbar(.visible, for: .navigationBar)
+                .searchable(
+                    text: $searchText,
+                    isPresented: $isSearchActive,
+                    placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "Search recipes"
+                )
             }
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
@@ -68,6 +82,11 @@ struct ContentView: View {
             colorSchemePreference == "system" ? nil :
             (colorSchemePreference == "light" ? .light : .dark)
         )
+        .onChange(of: isSearchActive) {
+            if !isSearchActive {
+                searchText = ""
+            }
+        }
         .task {
             if dataManager.recipes.isEmpty {
                 await dataManager.loadDataAsync()
@@ -116,17 +135,17 @@ struct CategoryView: View {
     }
     
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             // Category selector
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
+                HStack(spacing: 8) {
                     Button {
                         selectedCategory = nil
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     } label: {
                         Text("All")
                             .fontWeight(.bold)
-                            .padding()
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
                             .background(selectedCategory == nil ? primaryColor : Color.gray.opacity(0.2))
                             .foregroundColor(.white)
                             .cornerRadius(10)
@@ -137,11 +156,11 @@ struct CategoryView: View {
                     ForEach(dataManager.categories, id: \.self) { category in
                         Button {
                             selectedCategory = category
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         } label: {
                             Text(category)
                                 .fontWeight(.bold)
-                                .padding()
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
                                 .background(selectedCategory == category ? primaryColor : Color.gray.opacity(0.2))
                                 .foregroundColor(.white)
                                 .cornerRadius(10)
@@ -150,103 +169,65 @@ struct CategoryView: View {
                         .accessibilityHint("Filters recipes to show only \(category) category")
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
             
             // Recipe list
-            List {
-                // Craftify Picks Section
-                if !recommendedRecipes.isEmpty && !isSearching {
-                    Section(header:
-                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
-                            withAnimation { isCraftifyPicksExpanded.toggle() }
-                        }
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                    ) {
-                        if isCraftifyPicksExpanded {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(recommendedRecipes, id: \.name) { recipe in
-                                        NavigationLink {
-                                            RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                        } label: {
-                                            VStack {
-                                                Image(recipe.image)
-                                                    .resizable()
-                                                    .scaledToFit()
-                                                    .frame(width: 90, height: 90)
-                                                    .padding(4)
-                                                    .accessibilityLabel("Image of \(recipe.name)")
-                                                Text(recipe.name)
-                                                    .font(.caption)
-                                                    .bold()
-                                                    .lineLimit(1)
-                                                    .frame(width: 90)
+            ScrollView {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    // Craftify Picks Section
+                    if !recommendedRecipes.isEmpty && !isSearching {
+                        Section {
+                            if isCraftifyPicksExpanded {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    LazyHStack(spacing: 16) {
+                                        ForEach(recommendedRecipes, id: \.name) { recipe in
+                                            NavigationLink {
+                                                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                            } label: {
+                                                RecipeCell(recipe: recipe, isCraftifyPick: true)
                                             }
-                                            .padding()
-                                            .background(Color.gray.opacity(0.2))
-                                            .cornerRadius(12)
-                                        }
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                            .buttonStyle(.plain)
+                                            .contentShape(Rectangle())
                                         }
                                     }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
                                 }
-                                .padding(.horizontal)
                             }
+                        } header: {
+                            CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
+                                withAnimation { isCraftifyPicksExpanded.toggle() }
+                            }
+                            .background(Color(.systemBackground))
                         }
                     }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                }
 
-                // Alphabetical sections
-                ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
-                    Section(header:
-                        Text(letter)
-                            .font(.headline)
-                            .bold()
-                            .padding(.vertical, 4)
-                            .padding(.horizontal, 8)
-                    ) {
-                        ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
-                            NavigationLink {
-                                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                            } label: {
-                                HStack {
-                                    Image(recipe.image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 60, height: 60)
-                                        .padding(4)
-                                        .accessibilityLabel("Image of \(recipe.name)")
-                                    VStack(alignment: .leading) {
-                                        Text(recipe.name)
-                                            .font(.headline)
-                                            .bold()
-                                        if !recipe.category.isEmpty {
-                                            Text(recipe.category)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
+                    // Alphabetical sections
+                    ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
+                        Section {
+                            ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
+                                NavigationLink {
+                                    RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                } label: {
+                                    RecipeCell(recipe: recipe, isCraftifyPick: false)
                                 }
-                                .onTapGesture {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                }
+                                .buttonStyle(.plain)
+                                .contentShape(Rectangle())
                             }
-                            .contentShape(Rectangle())
-                            .padding(.vertical, 4)
-                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                            .listRowSeparator(.hidden)
+                        } header: {
+                            Text(letter)
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(.systemBackground))
                         }
                     }
                 }
             }
-            .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .onAppear {
                 recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
@@ -258,38 +239,6 @@ struct CategoryView: View {
         }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
-    }
-}
-
-// MARK: - CraftifyPicksHeader
-struct CraftifyPicksHeader: View {
-    var isExpanded: Bool
-    var toggle: () -> Void
-    
-    var body: some View {
-        HStack(spacing: 8) {
-            Button {
-                toggle()
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            } label: {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.title2)
-                    .foregroundColor(.gray)
-                    .padding(8)
-                    .background(Color.gray.opacity(0.1))
-                    .clipShape(Circle())
-            }
-            .accessibilityLabel(isExpanded ? "Collapse Craftify Picks" : "Expand Craftify Picks")
-            .accessibilityHint("Toggles the visibility of recommended recipes")
-            
-            Text("Craftify Picks")
-                .font(.title3)
-                .fontWeight(.bold)
-            
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
     }
 }
 
