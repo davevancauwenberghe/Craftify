@@ -23,6 +23,7 @@ struct ContentView: View {
     init() {
         let navAppearance = UINavigationBarAppearance()
         navAppearance.configureWithOpaqueBackground()
+        navAppearance.shadowColor = nil
         UINavigationBar.appearance().standardAppearance = navAppearance
         UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
         UINavigationBar.appearance().isTranslucent = false
@@ -69,13 +70,13 @@ struct ContentView: View {
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
-                .tag(1)
+            .tag(1)
             
             MoreView()
                 .tabItem {
                     Label("More", systemImage: "ellipsis.circle")
                 }
-                .tag(2)
+            .tag(2)
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
@@ -85,6 +86,9 @@ struct ContentView: View {
             if !isSearchActive {
                 searchText = ""
             }
+        }
+        .onChange(of: selectedTab) { oldValue, newValue in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }
         .task {
             if dataManager.recipes.isEmpty {
@@ -135,7 +139,6 @@ struct CategoryView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Category selector
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     Button {
@@ -174,10 +177,8 @@ struct CategoryView: View {
                 .padding(.vertical, 8)
             }
             
-            // Recipe list
             ScrollView {
                 LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    // Craftify Picks Section
                     if !recommendedRecipes.isEmpty && !isSearching {
                         Section {
                             if isCraftifyPicksExpanded {
@@ -205,7 +206,6 @@ struct CategoryView: View {
                         }
                     }
 
-                    // Alphabetical sections
                     ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
                         Section {
                             ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
@@ -243,7 +243,6 @@ struct CategoryView: View {
     }
 }
 
-// MARK: - RecipeCell
 struct RecipeCell: View {
     let recipe: Recipe
     let isCraftifyPick: Bool
@@ -299,7 +298,6 @@ struct RecipeCell: View {
                     style: isCraftifyPick ? StrokeStyle(lineWidth: 1) : StrokeStyle(lineWidth: 1, dash: [4, 4])
                 )
         )
-        .shadow(radius: 2, y: 2)
         .padding(.horizontal, 16)
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
@@ -308,7 +306,6 @@ struct RecipeCell: View {
     }
 }
 
-// MARK: - CraftifyPicksHeader
 struct CraftifyPicksHeader: View {
     var isExpanded: Bool
     var toggle: () -> Void
