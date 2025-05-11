@@ -9,7 +9,6 @@ import SwiftUI
 import Combine
 import CloudKit
 
-// MARK: - Empty Favorites View
 struct EmptyFavoritesView: View {
     var body: some View {
         VStack(spacing: 12) {
@@ -31,7 +30,6 @@ struct EmptyFavoritesView: View {
     }
 }
 
-// MARK: - FavoritesView
 struct FavoritesView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var navigationPath = NavigationPath()
@@ -66,6 +64,7 @@ struct FavoritesView: View {
     init() {
         let navAppearance = UINavigationBarAppearance()
         navAppearance.configureWithOpaqueBackground()
+        navAppearance.shadowColor = nil
         UINavigationBar.appearance().standardAppearance = navAppearance
         UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
         UINavigationBar.appearance().isTranslucent = false
@@ -77,7 +76,6 @@ struct FavoritesView: View {
                 if filteredFavorites.isEmpty {
                     EmptyFavoritesView()
                 } else {
-                    // Category filter bar
                     if !favoriteCategories.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
@@ -118,10 +116,8 @@ struct FavoritesView: View {
                         }
                     }
 
-                    // Favorites List
                     ScrollView {
                         LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                            // Craftify Picks Section
                             if !recommendedRecipes.isEmpty && !isSearching {
                                 Section {
                                     if isCraftifyPicksExpanded {
@@ -132,6 +128,7 @@ struct FavoritesView: View {
                                                         RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
                                                     } label: {
                                                         RecipeCell(recipe: recipe, isCraftifyPick: true)
+                                                            .padding(.vertical, 2)
                                                     }
                                                     .buttonStyle(.plain)
                                                     .contentShape(Rectangle())
@@ -149,14 +146,14 @@ struct FavoritesView: View {
                                 }
                             }
 
-                            // Favorite recipe sections
                             ForEach(filteredFavorites.keys.sorted(), id: \.self) { letter in
                                 Section {
-                                    ForEach(filteredFavorites[letter]!, id: \.name) { recipe in
+                                    ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
                                         NavigationLink {
                                             RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
                                         } label: {
                                             RecipeCell(recipe: recipe, isCraftifyPick: false)
+                                                .padding(.vertical, 2)
                                         }
                                         .buttonStyle(.plain)
                                         .contentShape(Rectangle())
@@ -172,8 +169,8 @@ struct FavoritesView: View {
                                 }
                             }
                         }
+                        .scrollContentBackground(.hidden)
                     }
-                    .scrollContentBackground(.hidden)
                 }
             }
             .navigationTitle("Favorite Recipes")
@@ -185,11 +182,11 @@ struct FavoritesView: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: "Search favorites"
             )
-            .onChange(of: searchText) {
-                isSearching = !searchText.isEmpty
+            .onChange(of: searchText) { oldValue, newValue in
+                isSearching = !newValue.isEmpty
             }
-            .onChange(of: isSearchActive) {
-                if !isSearchActive {
+            .onChange(of: isSearchActive) { oldValue, newValue in
+                if !newValue {
                     searchText = ""
                 }
             }

@@ -18,23 +18,23 @@ struct RecipeDetailView: View {
     @State private var animateHeart: Bool = false
     @State private var selectedCraftingOption: Int = 0
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
-
+    
     private let craftingHeight: CGFloat = 222
-
+    private let primaryColor = Color(hex: "00AA00")
+    
     enum SelectedItem: Equatable {
         case grid(index: Int)
         case output
         case imageremark
     }
-
-    // Combine primary and alternate ingredients, padding based on imageremark
+    
     private var allIngredientSets: [[String]] {
         let maxIngredients: Int
         switch true {
         case recipe.imageremark == "Furnace":
-            maxIngredients = 2 // Only first and second cells used
+            maxIngredients = 2
         default:
-            maxIngredients = 9 // For Crafting, Smithing, and other categories
+            maxIngredients = 9
         }
         var sets: [[String]] = [recipe.ingredients]
         if let alt = recipe.alternateIngredients, !alt.isEmpty {
@@ -53,8 +53,7 @@ struct RecipeDetailView: View {
             set.count < maxIngredients ? set + Array(repeating: "", count: maxIngredients - set.count) : Array(set.prefix(maxIngredients))
         }
     }
-
-    // Corresponding outputs for each ingredient set
+    
     private var allOutputs: [Int] {
         var outputs: [Int] = [recipe.output]
         if recipe.alternateIngredients != nil {
@@ -71,7 +70,18 @@ struct RecipeDetailView: View {
         }
         return outputs
     }
-
+    
+    init(recipe: Recipe, navigationPath: Binding<NavigationPath>) {
+        self.recipe = recipe
+        self._navigationPath = navigationPath
+        let navAppearance = UINavigationBarAppearance()
+        navAppearance.configureWithOpaqueBackground()
+        navAppearance.shadowColor = nil
+        UINavigationBar.appearance().standardAppearance = navAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
+        UINavigationBar.appearance().isTranslucent = false
+    }
+    
     var body: some View {
         ZStack {
             Color(.systemBackground)
@@ -79,11 +89,6 @@ struct RecipeDetailView: View {
             
             ScrollView {
                 VStack(spacing: 16) {
-                    if selectedDetail == nil {
-                        Spacer()
-                            .frame(minHeight: 50)
-                    }
-                    
                     if allIngredientSets.count <= 1 {
                         Text("No alternate crafting options available")
                             .font(.caption)
@@ -95,40 +100,25 @@ struct RecipeDetailView: View {
                     
                     if allIngredientSets.count > 1 {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
+                            HStack(spacing: 8) {
                                 ForEach(0..<allIngredientSets.count, id: \.self) { index in
                                     Button {
-                                        feedbackGenerator.impactOccurred()
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                             selectedCraftingOption = index
                                             selectedDetail = nil
                                             selectedItem = nil
                                         }
                                     } label: {
-                                        Text("Option \(index + 1)")
-                                            .font(.subheadline)
-                                            .foregroundColor(.primary)
+                                        Text("Recipe \(index + 1)")
+                                            .fontWeight(.bold)
+                                            .padding(.horizontal, 16)
                                             .padding(.vertical, 8)
-                                            .padding(.horizontal, 14)
-                                            .frame(minWidth: 60)
-                                            .background(
-                                                ZStack {
-                                                    Color(.systemGray5)
-                                                    RoundedRectangle(cornerRadius: 16)
-                                                        .stroke(
-                                                            Color(hex: "00AA00"),
-                                                            lineWidth: selectedCraftingOption == index ? 3 : 2
-                                                        )
-                                                }
-                                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                                                .shadow(
-                                                    color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
-                                                    radius: colorScheme == .light ? 6 : 8
-                                                )
-                                            )
-                                            .minimumScaleFactor(0.8)
+                                            .background(selectedCraftingOption == index ? primaryColor : Color.gray.opacity(0.2))
+                                            .foregroundColor(.white)
+                                            .cornerRadius(10)
                                     }
-                                    .accessibilityLabel("Crafting option \(index + 1)")
+                                    .accessibilityLabel("Recipe \(index + 1)")
                                     .accessibilityHint("Selects ingredient combination \(index + 1) for crafting \(recipe.name)")
                                 }
                             }
@@ -149,11 +139,6 @@ struct RecipeDetailView: View {
                         output: allOutputs[selectedCraftingOption]
                     )
                     
-                    if selectedDetail != nil {
-                        Spacer()
-                            .frame(height: 24)
-                    }
-                    
                     if let detail = selectedDetail {
                         ZStack(alignment: .topTrailing) {
                             VStack(spacing: 8) {
@@ -164,7 +149,7 @@ struct RecipeDetailView: View {
                                             .scaledToFit()
                                             .frame(width: 80, height: 80)
                                             .padding(8)
-                                            .background(Color(.systemGray5))
+                                            .background(Color(.systemBackground))
                                             .cornerRadius(12)
                                             .accessibilityLabel("Image of \(detail)")
                                     } else {
@@ -174,14 +159,14 @@ struct RecipeDetailView: View {
                                             .frame(width: 80, height: 80)
                                             .padding(8)
                                             .foregroundColor(.gray)
-                                            .background(Color(.systemGray5))
+                                            .background(Color(.systemBackground))
                                             .cornerRadius(12)
                                             .accessibilityLabel("Image unavailable for \(detail)")
                                     }
                                 }
                                 Text(detail)
                                     .font(.title2)
-                                    .bold()
+                                    .fontWeight(.bold)
                                     .foregroundColor(.primary)
                                     .padding(.horizontal, 8)
                                     .lineLimit(2)
@@ -198,9 +183,17 @@ struct RecipeDetailView: View {
                                     .lineLimit(3)
                                     .minimumScaleFactor(0.8)
                             }
-                            .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .padding(.horizontal, 16)
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(.systemBackground))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(primaryColor, lineWidth: 2)
+                                    )
+                            )
                             
                             Button {
                                 feedbackGenerator.impactOccurred()
@@ -210,12 +203,11 @@ struct RecipeDetailView: View {
                                 }
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(Color(hex: "00AA00"))
+                                    .foregroundColor(primaryColor)
                                     .background(
                                         Circle()
-                                            .fill(Color(.systemGray5))
+                                            .fill(Color(.systemBackground))
                                             .frame(width: 24, height: 24)
-                                            .shadow(radius: 2)
                                     )
                                     .frame(width: 24, height: 24)
                             }
@@ -224,20 +216,7 @@ struct RecipeDetailView: View {
                             .accessibilityLabel("Close popup")
                             .accessibilityHint("Dismisses the details for \(detail)")
                         }
-                        .frame(width: 300)
-                        .background(
-                            ZStack {
-                                Color(.systemGray5)
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color(hex: "00AA00"), lineWidth: 2)
-                            }
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .shadow(
-                                color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
-                                radius: colorScheme == .light ? 6 : 8
-                            )
-                        )
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, 16)
                         .transition(.scale)
                         .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedDetail)
                         .accessibilityElement(children: .contain)
@@ -247,11 +226,6 @@ struct RecipeDetailView: View {
                                 : (detail == recipe.name ? "Output: \(detail)" : "Ingredient: \(detail)")
                         )
                         .accessibilityHint("Tap the close button or select another item to dismiss")
-                    }
-                    
-                    if selectedDetail != nil {
-                        Spacer()
-                            .frame(height: 32)
                     }
                     
                     if recipe.imageremark?.isEmpty == false {
@@ -265,7 +239,7 @@ struct RecipeDetailView: View {
                                         .overlay(
                                             selectedItem == .imageremark
                                             ? RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color(hex: "00AA00"), lineWidth: 2)
+                                                .stroke(primaryColor, lineWidth: 2)
                                                 .shadow(radius: 4)
                                             : nil
                                         )
@@ -305,20 +279,13 @@ struct RecipeDetailView: View {
                             .background(
                                 Color(.systemGray5)
                                     .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    .shadow(
-                                        color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
-                                        radius: colorScheme == .light ? 6 : 8
-                                    )
                             )
                             .padding(.top, 16)
                             .padding(.bottom, 32)
                             .accessibilityLabel("Category: \(recipe.category)")
                     }
-                    
-                    Spacer()
-                        .frame(height: 32)
                 }
-                .padding()
+                .padding(.vertical, 16)
             }
             .accessibilityElement(children: .contain)
         }
@@ -337,7 +304,7 @@ struct RecipeDetailView: View {
                     }
                 } label: {
                     Image(systemName: dataManager.isFavorite(recipe: recipe) ? "heart.fill" : "heart")
-                        .foregroundColor(Color(hex: "00AA00"))
+                        .foregroundColor(primaryColor)
                         .font(.title2)
                         .scaleEffect(animateHeart ? 1.3 : 1.0)
                 }
@@ -352,7 +319,6 @@ struct RecipeDetailView: View {
     }
 }
 
-// Extracted GridView to support dynamic grid based on imageremark
 struct GridView: View {
     let recipe: Recipe
     @Binding var selectedItem: RecipeDetailView.SelectedItem?
@@ -361,19 +327,16 @@ struct GridView: View {
     let ingredients: [String]
     let output: Int
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
-
+    
     var body: some View {
         VStack {
             HStack(alignment: .center, spacing: 16) {
-                // Determine grid type based on imageremark
                 switch true {
                 case recipe.imageremark == "Furnace":
-                    // 1x3 grid (vertical, aligned with middle column of 3x3 grid) for Furnace recipes
                     VStack(spacing: 6) {
-                        // First row
                         HStack(spacing: 0) {
                             Spacer()
-                                .frame(width: 70) // Reduced to avoid clipping, align with 3x3 grid
+                                .frame(width: 70)
                             GridCell(
                                 index: 0,
                                 ingredient: ingredients[0],
@@ -383,7 +346,6 @@ struct GridView: View {
                             Spacer()
                         }
                         
-                        // Second row
                         HStack(spacing: 0) {
                             Spacer()
                                 .frame(width: 70)
@@ -392,18 +354,16 @@ struct GridView: View {
                                     .fill(Color(.systemGray5))
                                     .frame(width: 70, height: 70)
                                     .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                                Image(systemName: "flame.fill")
+                                Image(UIImage(named: "Furnace Fire") != nil ? "Furnace Fire" : "photo")
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 40, height: 40)
-                                    .foregroundColor(.orange)
                             }
-                            .accessibilityLabel("Furnace")
-                            .accessibilityHidden(true)
+                            .accessibilityLabel("Furnace Fire slot")
+                            .accessibilityHint("Represents the furnace in the crafting process")
                             Spacer()
                         }
                         
-                        // Third row
                         HStack(spacing: 0) {
                             Spacer()
                                 .frame(width: 70)
@@ -419,7 +379,6 @@ struct GridView: View {
                     .frame(height: craftingHeight)
                 
                 default:
-                    // 3x3 grid for Crafting, Smithing, and other categories
                     VStack(spacing: 6) {
                         ForEach(0..<3) { row in
                             HStack(spacing: 6) {
@@ -500,14 +459,13 @@ struct GridView: View {
     }
 }
 
-// Reusable GridCell view to reduce duplication
 struct GridCell: View {
     let index: Int
     let ingredient: String
     let isSelected: Bool
     let feedbackGenerator: UIImpactFeedbackGenerator
     let onTap: () -> Void
-
+    
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 12)
