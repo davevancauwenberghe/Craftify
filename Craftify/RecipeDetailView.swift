@@ -149,7 +149,7 @@ struct RecipeDetailView: View {
                                             .scaledToFit()
                                             .frame(width: 80, height: 80)
                                             .padding(8)
-                                            .background(Color(.systemBackground))
+                                            .background(Color(.systemGray5))
                                             .cornerRadius(12)
                                             .accessibilityLabel("Image of \(detail)")
                                     } else {
@@ -159,7 +159,7 @@ struct RecipeDetailView: View {
                                             .frame(width: 80, height: 80)
                                             .padding(8)
                                             .foregroundColor(.gray)
-                                            .background(Color(.systemBackground))
+                                            .background(Color(.systemGray5))
                                             .cornerRadius(12)
                                             .accessibilityLabel("Image unavailable for \(detail)")
                                     }
@@ -187,12 +187,16 @@ struct RecipeDetailView: View {
                             .padding(.horizontal, 16)
                             .frame(maxWidth: .infinity)
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(.systemBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(primaryColor, lineWidth: 2)
-                                    )
+                                ZStack {
+                                    Color(.systemGray5)
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(primaryColor, lineWidth: 2)
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .shadow(
+                                    color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
+                                    radius: colorScheme == .light ? 6 : 8
+                                )
                             )
                             
                             Button {
@@ -206,8 +210,9 @@ struct RecipeDetailView: View {
                                     .foregroundColor(primaryColor)
                                     .background(
                                         Circle()
-                                            .fill(Color(.systemBackground))
+                                            .fill(Color(.systemGray5))
                                             .frame(width: 24, height: 24)
+                                            .shadow(radius: 2)
                                     )
                                     .frame(width: 24, height: 24)
                             }
@@ -330,13 +335,14 @@ struct GridView: View {
     
     var body: some View {
         VStack {
+            Spacer()
             HStack(alignment: .center, spacing: 16) {
                 switch true {
                 case recipe.imageremark == "Furnace":
                     VStack(spacing: 6) {
                         HStack(spacing: 0) {
                             Spacer()
-                                .frame(width: 70)
+                                .frame(width: 16)
                             GridCell(
                                 index: 0,
                                 ingredient: ingredients[0],
@@ -348,17 +354,12 @@ struct GridView: View {
                         
                         HStack(spacing: 0) {
                             Spacer()
-                                .frame(width: 70)
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemGray5))
-                                    .frame(width: 70, height: 70)
-                                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                                Image(UIImage(named: "Furnace Fire") != nil ? "Furnace Fire" : "photo")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 40, height: 40)
-                            }
+                                .frame(width: 16)
+                            Image(UIImage(named: "Furnace Fire") != nil ? "Furnace Fire" : "photo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 40, height: 40)
+                                .frame(width: 70, height: 70)
                             .accessibilityLabel("Furnace Fire slot")
                             .accessibilityHint("Represents the furnace in the crafting process")
                             Spacer()
@@ -366,7 +367,7 @@ struct GridView: View {
                         
                         HStack(spacing: 0) {
                             Spacer()
-                                .frame(width: 70)
+                                .frame(width: 16)
                             GridCell(
                                 index: 1,
                                 ingredient: ingredients[1],
@@ -450,6 +451,9 @@ struct GridView: View {
                 .frame(height: craftingHeight)
             }
             .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, selectedDetail == nil ? 16 : 0)
+            Spacer()
         }
         .frame(maxWidth: 360)
         .ignoresSafeArea(edges: .horizontal)
