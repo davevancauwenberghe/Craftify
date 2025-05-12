@@ -18,144 +18,235 @@ struct MoreView: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        GeometryReader { geometry in
-            NavigationStack {
-                ZStack {
-                    Color(.systemBackground)
-                        .ignoresSafeArea()
-                    List {
-                        Section(header: Text("Appearance")) {
-                            Picker("Appearance", selection: $colorSchemePreference) {
-                                Text("System").tag("system")
-                                Text("Light").tag("light")
-                                Text("Dark").tag("dark")
-                            }
-                            .pickerStyle(.segmented)
-                            .accessibilityLabel("Appearance")
-                            .accessibilityHint("Choose between System, Light, or Dark mode")
-                        }
-
-                        Section(header: Text("Need Help?")) {
-                            NavigationLink(destination: ReportMissingRecipeView()) {
-                                buttonStyle(title: "Report missing recipe", systemImage: "envelope.fill", geometry: geometry)
-                            }
-                            .accessibilityLabel("Report missing recipe")
-                            .accessibilityHint("Navigate to report a missing recipe")
-                        }
-
-                        Section(header: Text("About")) {
-                            NavigationLink(destination: AboutView()) {
-                                buttonStyle(title: "About Craftify", systemImage: "info.circle.fill", geometry: geometry)
-                            }
-                            .accessibilityLabel("About Craftify")
-                            .accessibilityHint("View information about the Craftify app")
-                            
-                            Text("Craftify for Minecraft is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
-                                .padding(.vertical, min(geometry.size.height * 0.005, 4))
-                                .accessibilityLabel("Disclaimer")
-                                .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
-                        }
-
-                        Section(header: Text("Data Management")) {
-                            VStack(alignment: .center, spacing: min(geometry.size.height * 0.015, 10)) {
-                                Text("\(dataManager.recipes.count) recipes available")
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .accessibilityLabel("Recipe Count")
-                                    .accessibilityHint("\(dataManager.recipes.count) Minecraft recipes are available")
-
-                                Text(dataManager.syncStatus)
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .accessibilityLabel("Sync Status")
-                                    .accessibilityHint(dataManager.syncStatus)
-
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                    isSyncing = true
-                                    dataManager.loadData {
-                                        dataManager.syncFavorites()
-                                        isSyncing = false
-                                    }
-                                }) {
-                                    HStack {
-                                        if isSyncing {
-                                            ProgressView()
-                                                .progressViewStyle(.circular)
-                                                .padding(.trailing, min(geometry.size.width * 0.01, 4))
-                                                .accessibilityLabel("Syncing")
-                                                .accessibilityHint("Recipes are currently syncing")
-                                        } else {
-                                            Image(systemName: "arrow.clockwise")
-                                                .font(.title2)
-                                                .foregroundColor(.primaryColor)
-                                        }
-                                        Text("Sync Recipes")
-                                    }
-                                }
-                                .buttonStyle(PrimaryButtonStyle())
-                                .disabled(isSyncing)
-                                .accessibilityLabel("Sync Recipes")
-                                .accessibilityHint("Syncs Minecraft recipes from CloudKit")
-
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                    dataManager.clearCache { success in
-                                        if !success {
-                                            errorMessage = "Failed to clear cache. Please try again."
-                                            showErrorAlert = true
-                                        }
-                                    }
-                                }) {
-                                    HStack {
-                                        Image(systemName: "trash.fill")
-                                            .font(.title2)
-                                            .foregroundColor(.red)
-                                        Text("Clear Cache")
-                                    }
-                                }
-                                .buttonStyle(PrimaryButtonStyle())
-                                .accessibilityLabel("Clear Cache")
-                                .accessibilityHint("Clears the cached Minecraft recipes")
-                            }
-                            .padding(.vertical, min(geometry.size.height * 0.005, 4))
-                        }
+        NavigationStack {
+            List {
+                Section(header: Text("Appearance")) {
+                    Picker("Appearance", selection: $colorSchemePreference) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
                     }
-                    .listStyle(.grouped) // macOS-compatible, consistent with iOS
-                    .scrollContentBackground(.hidden)
+                    .pickerStyle(.segmented)
+                    .accessibilityLabel("Appearance")
+                    .accessibilityHint("Choose between System, Light, or Dark mode")
                 }
-                .navigationTitle("More")
-                .navigationBarTitleDisplayMode(.large)
-                .alert("Error", isPresented: $showErrorAlert) {
-                    Button("OK", role: .cancel) {}
-                } message: {
-                    Text(errorMessage)
+
+                Section(header: Text("Need Help?")) {
+                    NavigationLink(destination: ReportMissingRecipeView()) {
+                        buttonStyle(title: "Report missing recipe", systemImage: "envelope.fill")
+                    }
+                    .accessibilityLabel("Report missing recipe")
+                    .accessibilityHint("Navigate to report a missing recipe")
                 }
-                .preferredColorScheme(
-                    colorSchemePreference == "system" ? nil :
-                    (colorSchemePreference == "light" ? .light : .dark)
-                )
-                .navigationViewStyle(.stack)
-                .toolbarBackground(.automatic, for: .navigationBar)
+
+                Section(header: Text("About")) {
+                    NavigationLink(destination: AboutView()) {
+                        buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
+                    }
+                    .accessibilityLabel("About Craftify")
+                    .accessibilityHint("View information about the Craftify app")
+                    
+                    Text("Craftify for Minecraft is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 4)
+                        .accessibilityLabel("Disclaimer")
+                        .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
+                }
+
+                Section(header: Text("Data Management")) {
+                    VStack(alignment: .center, spacing: 10) {
+                        Text("\(dataManager.recipes.count) recipes available")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityLabel("Recipe Count")
+                            .accessibilityHint("\(dataManager.recipes.count) Minecraft recipes are available")
+
+                        Text(dataManager.syncStatus)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityLabel("Sync Status")
+                            .accessibilityHint(dataManager.syncStatus)
+
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            isSyncing = true
+                            dataManager.loadData {
+                                dataManager.syncFavorites()
+                                isSyncing = false
+                            }
+                        }) {
+                            HStack {
+                                if isSyncing {
+                                    ProgressView()
+                                        .progressViewStyle(.circular)
+                                        .padding(.trailing, 4)
+                                        .accessibilityLabel("Syncing")
+                                        .accessibilityHint("Recipes are currently syncing")
+                                } else {
+                                    Image(systemName: "arrow.clockwise")
+                                        .font(.title2)
+                                        .foregroundColor(Color(hex: "00AA00"))
+                                }
+                                Text("Sync Recipes")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color(UIColor.systemGray5))
+                            .cornerRadius(10)
+                        }
+                        .disabled(isSyncing)
+                        .accessibilityLabel("Sync Recipes")
+                        .accessibilityHint("Syncs Minecraft recipes from CloudKit")
+
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            dataManager.clearCache { success in
+                                if !success {
+                                    errorMessage = "Failed to clear cache. Please try again."
+                                    showErrorAlert = true
+                                }
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "trash.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.red)
+                                Text("Clear Cache")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color(UIColor.systemGray5))
+                            .cornerRadius(10)
+                        }
+                        .accessibilityLabel("Clear Cache")
+                        .accessibilityHint("Clears the cached Minecraft recipes")
+                    }
+                    .padding(.vertical, 4)
+                }
             }
+            .listStyle(InsetGroupedListStyle())
+            .navigationTitle("More")
+            .navigationBarTitleDisplayMode(.large)
+            .alert("Error", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
+            }
+            .preferredColorScheme(
+                colorSchemePreference == "system" ? nil :
+                (colorSchemePreference == "light" ? .light : .dark)
+            )
         }
     }
 
-    private func buttonStyle(title: String, systemImage: String, geometry: GeometryProxy) -> some View {
+    private func buttonStyle(title: String, systemImage: String) -> some View {
         HStack {
             Image(systemName: systemImage)
                 .font(.title2)
-                .foregroundColor(.primaryColor)
+                .foregroundColor(Color(hex: "00AA00"))
             Text(title)
                 .font(.headline)
                 .foregroundColor(.primary)
             Spacer()
         }
-        .padding(.vertical, min(geometry.size.height * 0.01, 8))
+        .padding(.vertical, 8)
+    }
+}
+
+struct AboutView: View {
+    // Fetch version and build number dynamically from Bundle
+    private var appVersion: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "33"
+        return "Version \(version) - Build \(build)"
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                // App Info
+                VStack(spacing: 8) {
+                    Text("Craftify for Minecraft")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+
+                    Text(appVersion)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                .padding(.top, 20)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
+                .accessibilityHint("About the Craftify app and its purpose")
+
+                // Release Notes Button
+                NavigationLink(destination: ReleaseNotesView()) {
+                    buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
+                }
+                .simultaneousGesture(TapGesture().onEnded {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                })
+                .accessibilityLabel("Release Notes")
+                .accessibilityHint("View the release notes for Craftify")
+
+                // Contact Support Button
+                Link(destination: URL(string: "mailto:hello@davevancauwenberghe.be")!) {
+                    buttonStyle(title: "Contact Support", systemImage: "envelope.fill")
+                }
+                .accessibilityLabel("Contact Support")
+                .accessibilityHint("Opens the mail app to contact support at hello@davevancauwenberghe.be")
+
+                // Disclaimer
+                Text("Craftify for Minecraft is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .accessibilityLabel("Disclaimer")
+                    .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
+
+                Spacer()
+            }
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(Color(UIColor.systemGroupedBackground))
+            .navigationTitle("About Craftify")
+            .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                // Preload haptics for smoother feedback
+                UIImpactFeedbackGenerator(style: .medium).prepare()
+            }
+        }
+    }
+
+    private func buttonStyle(title: String, systemImage: String) -> some View {
+        HStack {
+            Image(systemName: systemImage)
+                .font(.title2)
+                .foregroundColor(Color(hex: "00AA00"))
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.primary)
+            Spacer()
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(8)
     }
 }
 
