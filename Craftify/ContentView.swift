@@ -12,27 +12,13 @@ import CloudKit
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
-    
+
     @State private var searchText = ""
     @State private var isSearchActive = false
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
     @State private var isLoading = true
-
-    init() {
-        let navAppearance = UINavigationBarAppearance()
-        navAppearance.configureWithOpaqueBackground()
-        navAppearance.shadowColor = nil
-        UINavigationBar.appearance().standardAppearance = navAppearance
-        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
-        UINavigationBar.appearance().isTranslucent = false
-        
-        let tabAppearance = UITabBarAppearance()
-        tabAppearance.configureWithDefaultBackground()
-        UITabBar.appearance().standardAppearance = tabAppearance
-        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
-    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -65,30 +51,34 @@ struct ContentView: View {
                 Label("Recipes", systemImage: "square.grid.2x2")
             }
             .tag(0)
-            
+
             FavoritesView()
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
-            .tag(1)
-            
+                .tag(1)
+
             MoreView()
                 .tabItem {
                     Label("More", systemImage: "ellipsis.circle")
                 }
-            .tag(2)
+                .tag(2)
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
             (colorSchemePreference == "light" ? .light : .dark)
         )
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .onChange(of: isSearchActive) {
             if !isSearchActive {
                 searchText = ""
             }
         }
         .onChange(of: selectedTab) { oldValue, newValue in
+            #if os(iOS)
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            #endif
         }
         .task {
             if dataManager.recipes.isEmpty {
@@ -106,26 +96,26 @@ struct CategoryView: View {
     @Binding var navigationPath: NavigationPath
     @Binding var searchText: String
     @Binding var isSearching: Bool
-    
+
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
     @State private var isCraftifyPicksExpanded = true
     @State private var filteredRecipes: [String: [Recipe]] = [:]
-    
+
     private let primaryColor = Color(hex: "00AA00")
 
     private func updateFilteredRecipes() {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
             : dataManager.recipes.filter { $0.category == selectedCategory }
-        
+
         let filtered = searchText.isEmpty ? categoryFiltered :
             categoryFiltered.filter { recipe in
                 recipe.name.localizedCaseInsensitiveContains(searchText) ||
                 recipe.category.localizedCaseInsensitiveContains(searchText) ||
                 recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
             }
-        
+
         var groups = [String: [Recipe]]()
         for recipe in filtered {
             let key = String(recipe.name.prefix(1).uppercased())
@@ -136,14 +126,16 @@ struct CategoryView: View {
         }
         filteredRecipes = groups
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     Button {
                         selectedCategory = nil
+                        #if os(iOS)
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        #endif
                     } label: {
                         Text("All")
                             .fontWeight(.bold)
@@ -155,11 +147,13 @@ struct CategoryView: View {
                     }
                     .accessibilityLabel("Show all recipes")
                     .accessibilityHint("Displays recipes from all categories")
-                    
+
                     ForEach(dataManager.categories, id: \.self) { category in
                         Button {
                             selectedCategory = category
+                            #if os(iOS)
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            #endif
                         } label: {
                             Text(category)
                                 .fontWeight(.bold)
@@ -176,7 +170,7 @@ struct CategoryView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             }
-            
+
             ScrollView {
                 LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                     if !recommendedRecipes.isEmpty && !isSearching {
@@ -246,9 +240,9 @@ struct CategoryView: View {
 struct RecipeCell: View {
     let recipe: Recipe
     let isCraftifyPick: Bool
-    
+
     private let primaryColor = Color(hex: "00AA00")
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(recipe.image)
@@ -258,14 +252,14 @@ struct RecipeCell: View {
                 .cornerRadius(8)
                 .padding(4)
                 .accessibilityLabel("Image of \(recipe.name)")
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(recipe.name)
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                     .lineLimit(1)
-                
+
                 if !recipe.category.isEmpty {
                     Text(recipe.category)
                         .font(.subheadline)
@@ -273,9 +267,9 @@ struct RecipeCell: View {
                         .lineLimit(1)
                 }
             }
-            
+
             Spacer()
-            
+
             Image(systemName: "chevron.right")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.gray)
@@ -309,7 +303,7 @@ struct RecipeCell: View {
 struct CraftifyPicksHeader: View {
     var isExpanded: Bool
     var toggle: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 8) {
             Button {
@@ -325,12 +319,12 @@ struct CraftifyPicksHeader: View {
             .contentShape(Rectangle())
             .accessibilityLabel(isExpanded ? "Collapse Craftify Picks" : "Expand Craftify Picks")
             .accessibilityHint("Toggles the visibility of recommended recipes")
-            
+
             Text("Craftify Picks")
                 .font(.title3)
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
-            
+
             Spacer()
         }
         .padding(.horizontal, 16)
