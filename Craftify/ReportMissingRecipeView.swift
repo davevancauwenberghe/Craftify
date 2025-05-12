@@ -25,123 +25,119 @@ struct ReportMissingRecipeView: View {
     private let fieldHeight: CGFloat = 44
     private let maxRecipeNameLength = 100
     private let maxAdditionalInfoLength = 1000
+    private let primaryColor = Color(hex: "00AA00")
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    // Category Picker
-                    Picker("Category", selection: $selectedCategory) {
-                        Text("Select category").tag("")
-                        ForEach(categories, id: \.self) { cat in
-                            Text(cat).tag(cat)
-                        }
-                    }
-                    .font(.body)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity, minHeight: fieldHeight)
-                    .background(Color(.systemGray5))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(
-                                showValidationErrors && selectedCategory.isEmpty ? Color.red : Color(hex: "00AA00"),
-                                lineWidth: 2
-                            )
-                    )
-                    .shadow(
-                        color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
-                        radius: colorScheme == .light ? 6 : 8
-                    )
-                    .pickerStyle(.menu)
-                    .accessibilityLabel("Category")
-                    .accessibilityHint("Select the category of the missing recipe")
-
-                    // Grouped Input Section (Recipe Name + Additional Info)
-                    VStack(spacing: 0) {
-                        // Recipe Name
-                        TextField("Recipe name", text: $recipeName)
-                            .font(.body)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: .infinity, minHeight: fieldHeight)
-                            .background(Color(UIColor.secondarySystemGroupedBackground))
-                            .onChange(of: recipeName) { oldValue, newValue in
-                                if newValue.count > maxRecipeNameLength {
-                                    recipeName = String(newValue.prefix(maxRecipeNameLength))
-                                }
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Category Picker
+                        Picker("Category", selection: $selectedCategory) {
+                            Text("Select category").tag("")
+                            ForEach(categories, id: \.self) { cat in
+                                Text(cat).tag(cat)
                             }
-                            .accessibilityLabel("Recipe name")
-                            .accessibilityHint("Enter the name of the missing recipe")
+                        }
+                        .font(.body)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, minHeight: fieldHeight)
+                        .background(Color(.systemGray5))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(
+                                    showValidationErrors && selectedCategory.isEmpty ? Color.red : primaryColor,
+                                    lineWidth: 2
+                                )
+                        )
+                        .pickerStyle(.menu)
+                        .accessibilityLabel("Category")
+                        .accessibilityHint("Select the category of the missing recipe")
 
-                        Divider()
-                            .background(Color(UIColor.separator))
-
-                        ZStack(alignment: .topLeading) {
-                            Text("Add details...")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary.opacity(0.7))
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 14)
-                                .opacity(additionalInfo.isEmpty ? 1.0 : 0)
-                                .animation(.easeInOut(duration: 0.2), value: additionalInfo.isEmpty)
-                            TextEditorRepresentable(text: $additionalInfo)
+                        // Grouped Input Section (Recipe Name + Additional Info)
+                        VStack(spacing: 0) {
+                            // Recipe Name
+                            TextField("Recipe name", text: $recipeName)
                                 .font(.body)
-                                .padding(.horizontal, 8)
+                                .padding(.horizontal, 12)
                                 .padding(.vertical, 12)
-                                .frame(maxWidth: .infinity, minHeight: fieldHeight * 2)
-                                .onChange(of: additionalInfo) { oldValue, newValue in
-                                    if newValue.count > maxAdditionalInfoLength {
-                                        additionalInfo = String(newValue.prefix(maxAdditionalInfoLength))
+                                .frame(maxWidth: .infinity, minHeight: fieldHeight)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .onChange(of: recipeName) {
+                                    if recipeName.count > maxRecipeNameLength {
+                                        recipeName = String(recipeName.prefix(maxRecipeNameLength))
                                     }
                                 }
-                        }
-                        .accessibilityLabel("Additional Information")
-                        .accessibilityHint("Enter details about the missing recipe")
-                        .accessibilityValue(additionalInfo.isEmpty ? "No details entered" : additionalInfo)
-                    }
-                    .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(
-                                showValidationErrors && (recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? Color.red : Color(hex: "00AA00"),
-                                lineWidth: 2
-                            )
-                    )
-                    .shadow(
-                        color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
-                        radius: colorScheme == .light ? 6 : 8
-                    )
+                                .accessibilityLabel("Recipe name")
+                                .accessibilityHint("Enter the name of the missing recipe")
 
-                    Button(action: sendEmail) {
-                        HStack {
-                            Image(systemName: "paperplane.fill")
-                            Text("Send report")
-                                .font(.headline)
-                                .bold()
+                            Divider()
+                                .background(Color(.separator))
+
+                            ZStack(alignment: .topLeading) {
+                                Text("Add details...")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary.opacity(additionalInfo.isEmpty ? 0.7 : 0))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 14)
+                                    .onChange(of: additionalInfo) {
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            // Opacity updated via binding
+                                        }
+                                    }
+                                TextEditorRepresentable(text: $additionalInfo)
+                                    .font(.body)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 12)
+                                    .frame(maxWidth: .infinity, minHeight: fieldHeight * 2)
+                                    .onChange(of: additionalInfo) {
+                                        if additionalInfo.count > maxAdditionalInfoLength {
+                                            additionalInfo = String(additionalInfo.prefix(maxAdditionalInfoLength))
+                                        }
+                                    }
+                            }
+                            .accessibilityLabel("Additional Information")
+                            .accessibilityHint("Enter details about the missing recipe")
+                            .accessibilityValue(additionalInfo.isEmpty ? "No details entered" : additionalInfo)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 24)
-                        .background(isFormIncomplete ? Color.accentColor.opacity(0.5) : Color.accentColor)
-                        .foregroundColor(.white)
+                        .background(Color(.secondarySystemGroupedBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .shadow(
-                            color: colorScheme == .light ? .black.opacity(0.15) : .black.opacity(0.3),
-                            radius: colorScheme == .light ? 6 : 8
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(
+                                    showValidationErrors && (recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? Color.red : primaryColor,
+                                    lineWidth: 2
+                                )
                         )
+
+                        Button(action: sendEmail) {
+                            HStack {
+                                Image(systemName: "paperplane.fill")
+                                Text("Send report")
+                                    .font(.headline)
+                                    .bold()
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 24)
+                            .background(isFormIncomplete ? Color.accentColor.opacity(0.5) : Color.accentColor)
+                            .foregroundColor(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                        .disabled(isFormIncomplete)
+                        .accessibilityLabel("Send report")
+                        .accessibilityHint("Sends the missing recipe report via email")
                     }
-                    .disabled(isFormIncomplete)
-                    .accessibilityLabel("Send report")
-                    .accessibilityHint("Sends the missing recipe report via email")
+                    .frame(maxWidth: 400)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 24)
                 }
-                .frame(maxWidth: 400)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 24)
             }
-            .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle("Report missing recipe")
             .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $isShowingMailView) {
@@ -153,10 +149,12 @@ struct ReportMissingRecipeView: View {
                     supportEmail: supportEmail
                 )
             }
-            .alert("Report sent", isPresented: $isShowingConfirmation) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Thank you for reporting \(recipeName) in \(selectedCategory)!")
+            .alert(isPresented: $isShowingConfirmation) {
+                Alert(
+                    title: Text("Report sent"),
+                    message: Text("Thank you for reporting \(recipeName) in \(selectedCategory)!"),
+                    dismissButton: .cancel(Text("OK"))
+                )
             }
         }
     }
@@ -277,7 +275,7 @@ struct TextEditorRepresentable: UIViewRepresentable {
         }
 
         func textViewDidChange(_ textView: UITextView) {
-            parent.text = textView.text
+            parent.text = textView.text ?? ""
         }
     }
 }
