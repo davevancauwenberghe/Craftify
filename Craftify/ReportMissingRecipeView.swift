@@ -10,31 +10,34 @@ import MessageUI
 
 struct ReportMissingRecipeView: View {
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var recipeName: String = ""
     @State private var selectedCategory: String = ""
     @State private var additionalInfo: String = ""
     @State private var isShowingMailView = false
     @State private var isShowingConfirmation = false
     @State private var showValidationErrors = false
-
+    
     private let categories: [String] = [
         "Beds", "Crafting", "Food", "Lighting", "Planks",
         "Smelting", "Storage", "Tools", "Transportation", "Utilities", "Not listed"
     ]
     private let supportEmail = "hello@davevancauwenberghe.be"
-    private let fieldHeight: CGFloat = 44
+    private var fieldHeight: CGFloat {
+        horizontalSizeClass == .regular ? 48 : 44
+    }
     private let maxRecipeNameLength = 100
     private let maxAdditionalInfoLength = 1000
     private let primaryColor = Color(hex: "00AA00")
-
+    
     var body: some View {
         NavigationStack {
             ZStack {
                 Color(.systemBackground)
-                    .ignoresSafeArea()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: horizontalSizeClass == .regular ? 24 : 16) {
                         // Category Picker
                         Picker("Category", selection: $selectedCategory) {
                             Text("Select category").tag("")
@@ -43,8 +46,8 @@ struct ReportMissingRecipeView: View {
                             }
                         }
                         .font(.body)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
+                        .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
+                        .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                         .frame(maxWidth: .infinity, minHeight: fieldHeight)
                         .background(Color(.systemGray5))
                         .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -58,44 +61,44 @@ struct ReportMissingRecipeView: View {
                         .pickerStyle(.menu)
                         .accessibilityLabel("Category")
                         .accessibilityHint("Select the category of the missing recipe")
-
+                        
                         // Grouped Input Section (Recipe Name + Additional Info)
                         VStack(spacing: 0) {
                             // Recipe Name
                             TextField("Recipe name", text: $recipeName)
                                 .font(.body)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 12)
+                                .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
+                                .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                                 .frame(maxWidth: .infinity, minHeight: fieldHeight)
                                 .background(Color(.secondarySystemGroupedBackground))
-                                .onChange(of: recipeName) {
+                                .onChange(of: recipeName) { // Updated to modern zero-parameter syntax (fixes warning at line 74)
                                     if recipeName.count > maxRecipeNameLength {
                                         recipeName = String(recipeName.prefix(maxRecipeNameLength))
                                     }
                                 }
                                 .accessibilityLabel("Recipe name")
                                 .accessibilityHint("Enter the name of the missing recipe")
-
+                            
                             Divider()
                                 .background(Color(.separator))
-
+                            
                             ZStack(alignment: .topLeading) {
                                 Text("Add details...")
-                                    .font(.subheadline)
+                                    .font(horizontalSizeClass == .regular ? .callout : .subheadline)
                                     .foregroundColor(.secondary.opacity(additionalInfo.isEmpty ? 0.7 : 0))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 14)
-                                    .onChange(of: additionalInfo) {
+                                    .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
+                                    .padding(.vertical, horizontalSizeClass == .regular ? 18 : 14)
+                                    .onChange(of: additionalInfo) { // Updated to modern zero-parameter syntax (fixes warning at line 91)
                                         withAnimation(.easeInOut(duration: 0.2)) {
                                             // Opacity updated via binding
                                         }
                                     }
                                 TextEditorRepresentable(text: $additionalInfo)
                                     .font(.body)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 12)
+                                    .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
+                                    .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                                     .frame(maxWidth: .infinity, minHeight: fieldHeight * 2)
-                                    .onChange(of: additionalInfo) {
+                                    .onChange(of: additionalInfo) { // Updated to modern zero-parameter syntax (fixes warning at line 101)
                                         if additionalInfo.count > maxAdditionalInfoLength {
                                             additionalInfo = String(additionalInfo.prefix(maxAdditionalInfoLength))
                                         }
@@ -114,17 +117,20 @@ struct ReportMissingRecipeView: View {
                                     lineWidth: 2
                                 )
                         )
-
-                        Button(action: sendEmail) {
+                        
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            sendEmail()
+                        } label: {
                             HStack {
                                 Image(systemName: "paperplane.fill")
                                 Text("Send report")
-                                    .font(.headline)
+                                    .font(horizontalSizeClass == .regular ? .title3 : .headline)
                                     .bold()
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 24)
+                            .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
                             .background(isFormIncomplete ? Color.accentColor.opacity(0.5) : Color.accentColor)
                             .foregroundColor(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -133,13 +139,16 @@ struct ReportMissingRecipeView: View {
                         .accessibilityLabel("Send report")
                         .accessibilityHint("Sends the missing recipe report via email")
                     }
-                    .frame(maxWidth: 400)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 24)
+                    .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
+                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                    .padding(.vertical, horizontalSizeClass == .regular ? 32 : 24)
                 }
+                .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
+                .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             }
             .navigationTitle("Report missing recipe")
             .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .sheet(isPresented: $isShowingMailView) {
                 MailView(
                     isShowing: $isShowingMailView,
@@ -156,21 +165,24 @@ struct ReportMissingRecipeView: View {
                     dismissButton: .cancel(Text("OK"))
                 )
             }
+            .onAppear {
+                UIImpactFeedbackGenerator(style: .medium).prepare()
+            }
         }
     }
-
+    
     private var isFormIncomplete: Bool {
         recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         selectedCategory.isEmpty
     }
-
+    
     private func sendEmail() {
         if isFormIncomplete {
             showValidationErrors = true
             return
         }
-
+        
         if MFMailComposeViewController.canSendMail() {
             isShowingMailView = true
         } else {
@@ -189,7 +201,7 @@ struct ReportMissingRecipeView: View {
             }
         }
     }
-
+    
     private func emailBody() -> String {
         """
         Category: \(selectedCategory)
@@ -207,14 +219,14 @@ struct MailView: UIViewControllerRepresentable {
     var subject: String
     var body: String
     var supportEmail: String
-
+    
     class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
         var parent: MailView
-
+        
         init(parent: MailView) {
             self.parent = parent
         }
-
+        
         func mailComposeController(_ controller: MFMailComposeViewController,
                                    didFinishWith result: MFMailComposeResult,
                                    error: Error?) {
@@ -229,11 +241,11 @@ struct MailView: UIViewControllerRepresentable {
             }
         }
     }
-
+    
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
-
+    
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
         let vc = MFMailComposeViewController()
         vc.setSubject(subject)
@@ -242,13 +254,13 @@ struct MailView: UIViewControllerRepresentable {
         vc.mailComposeDelegate = context.coordinator
         return vc
     }
-
+    
     func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
 }
 
 struct TextEditorRepresentable: UIViewRepresentable {
     @Binding var text: String
-
+    
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.font = .preferredFont(forTextStyle: .body)
@@ -257,23 +269,24 @@ struct TextEditorRepresentable: UIViewRepresentable {
         textView.delegate = context.coordinator
         return textView
     }
-
+    
     func updateUIView(_ uiView: UITextView, context: Context) {
         uiView.text = text
         uiView.backgroundColor = UIColor.secondarySystemGroupedBackground
+        uiView.font = .preferredFont(forTextStyle: .body)
     }
-
+    
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-
+    
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: TextEditorRepresentable
-
+        
         init(_ parent: TextEditorRepresentable) {
             self.parent = parent
         }
-
+        
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.text ?? ""
         }
