@@ -8,6 +8,7 @@
 import SwiftUI
 import Combine
 import CloudKit
+import UIKit // Added for UIApplication.shared.open
 
 struct MoreView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
@@ -65,20 +66,19 @@ struct MoreView: View {
                 }
                 
                 Section(header: Text("Data Management")) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        Text("\(dataManager.recipes.count) recipes available")
-                            .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                            .foregroundColor(.secondary)
-                            .allowsHitTesting(false)
-                            .accessibilityLabel("Recipe Count")
-                            .accessibilityHint("\(dataManager.recipes.count) Minecraft recipes are available")
-                        
-                        Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
-                            .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                            .foregroundColor(.secondary)
-                            .allowsHitTesting(false)
-                            .accessibilityLabel("Sync Status")
-                            .accessibilityHint(dataManager.syncStatus)
+                    VStack(alignment: .leading, spacing: 12) { // Reduced spacing for buttons
+                        // Nested VStack for text views with no spacing
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("\(dataManager.recipes.count) recipes available")
+                            Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
+                        }
+                        .font(horizontalSizeClass == .regular ? .callout : .subheadline) // .subheadline for iPhone readability
+                        .foregroundColor(.secondary)
+                        .allowsHitTesting(false)
+                        // Individual accessibility for each Text
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel("Recipe Count and Sync Status")
+                        .accessibilityHint("\(dataManager.recipes.count) Minecraft recipes are available. \(dataManager.syncStatus)")
                         
                         Button(action: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -105,8 +105,8 @@ struct MoreView: View {
                                     .foregroundColor(.primary)
                                 Spacer()
                             }
-                            .padding(horizontalSizeClass == .regular ? 24 : 16)
-                            .frame(maxWidth: .infinity)
+                            .padding(horizontalSizeClass == .regular ? 16 : 12) // Reduced padding
+                            .frame(maxWidth: .infinity, minHeight: 44) // Accessible touch target
                             .background(Color(UIColor.systemGray5))
                             .cornerRadius(10)
                         }
@@ -133,8 +133,8 @@ struct MoreView: View {
                                     .foregroundColor(.primary)
                                 Spacer()
                             }
-                            .padding(horizontalSizeClass == .regular ? 24 : 16)
-                            .frame(maxWidth: .infinity)
+                            .padding(horizontalSizeClass == .regular ? 16 : 12) // Reduced padding
+                            .frame(maxWidth: .infinity, minHeight: 44) // Accessible touch target
                             .background(Color(UIColor.systemGray5))
                             .cornerRadius(10)
                         }
@@ -143,9 +143,10 @@ struct MoreView: View {
                         .accessibilityLabel("Clear Cache")
                         .accessibilityHint("Clears the cached Minecraft recipes")
                     }
-                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                    .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                    .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12) // Fixed typo: Removed 'Parent'
+                    .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12) // Increased for breathing room
                 }
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)) // Align with VStack padding
             }
             .listStyle(InsetGroupedListStyle())
             .navigationTitle("More")
@@ -223,7 +224,20 @@ struct AboutView: View {
                     .accessibilityLabel("Release Notes")
                     .accessibilityHint("View the release notes for Craftify")
                     
-                    NavigationLink(destination: ContactSupportView()) {
+                    // Replaced NavigationLink with Button for direct mailto
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        let supportEmail = "hello@davevancauwenberghe.be"
+                        if let url = URL(string: "mailto:\(supportEmail)") {
+                            UIApplication.shared.open(url) { success in
+                                if !success {
+                                    print("Failed to open mail client")
+                                }
+                            }
+                        } else {
+                            print("Invalid mailto URL")
+                        }
+                    }) {
                         buttonStyle(title: "Contact Support", systemImage: "envelope.fill")
                     }
                     .accessibilityLabel("Contact Support")
@@ -328,30 +342,6 @@ struct ReleaseNotesView: View {
         .onAppear {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
-    }
-}
-
-struct ContactSupportView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    private let supportEmail = "hello@davevancauwenberghe.be"
-    
-    var body: some View {
-        EmptyView()
-            .onAppear {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                if let url = URL(string: "mailto:\(supportEmail)") {
-                    UIApplication.shared.open(url) { success in
-                        if !success {
-                            print("Failed to open mail client")
-                        }
-                        dismiss() // Pop the view immediately
-                    }
-                } else {
-                    print("Invalid mailto URL")
-                    dismiss()
-                }
-            }
     }
 }
 
