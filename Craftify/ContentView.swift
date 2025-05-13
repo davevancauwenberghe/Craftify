@@ -12,52 +12,34 @@ import CloudKit
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
-
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
     @State private var searchText = ""
     @State private var isSearchActive = false
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @State private var isSearching = false
     @State private var isLoading = true
-
+    
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack(path: $navigationPath) {
-                ZStack {
-                    if isLoading {
-                        ProgressView("Loading recipes from Cloud...")
-                            .progressViewStyle(.circular)
-                            .padding()
-                    } else {
-                        CategoryView(
-                            selectedTab: $selectedTab,
-                            navigationPath: $navigationPath,
-                            searchText: $searchText,
-                            isSearching: $isSearching
-                        )
-                    }
-                }
-                .navigationTitle("Craftify")
-                .navigationBarTitleDisplayMode(.large)
-                .toolbar(.visible, for: .navigationBar)
-                .searchable(
-                    text: $searchText,
-                    isPresented: $isSearchActive,
-                    placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: "Search recipes"
-                )
-            }
+            RecipesTabView(
+                navigationPath: $navigationPath,
+                searchText: $searchText,
+                isSearching: $isSearching,
+                isLoading: $isLoading
+            )
             .tabItem {
                 Label("Recipes", systemImage: "square.grid.2x2")
             }
             .tag(0)
-
+            
             FavoritesView()
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
                 .tag(1)
-
+            
             MoreView()
                 .tabItem {
                     Label("More", systemImage: "ellipsis.circle")
@@ -75,47 +57,84 @@ struct ContentView: View {
                 searchText = ""
             }
         }
-        .onChange(of: selectedTab) { oldValue, newValue in
-            #if os(iOS)
+        .onChange(of: selectedTab) { _, _ in
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            #endif
         }
-        .task {
-            if dataManager.recipes.isEmpty {
-                await dataManager.loadDataAsync()
+    }
+}
+
+struct RecipesTabView: View {
+    @EnvironmentObject private var dataManager: DataManager
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Binding var navigationPath: NavigationPath
+    @Binding var searchText: String
+    @Binding var isSearching: Bool
+    @Binding var isLoading: Bool
+    
+    var body: some View {
+        NavigationStack(path: $navigationPath) {
+            ZStack {
+                if isLoading {
+                    ProgressView("Loading recipes from Cloud...")
+                        .progressViewStyle(.circular)
+                        .padding()
+                } else {
+                    CategoryView(
+                        navigationPath: $navigationPath,
+                        searchText: $searchText,
+                        isSearching: $isSearching
+                    )
+                }
             }
-            dataManager.syncFavorites()
-            isLoading = false
+            .navigationTitle("Craftify")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar(.visible, for: .navigationBar)
+            .searchable(
+                text: $searchText,
+                isPresented: Binding(
+                    get: { isSearching },
+                    set: { isSearching = $0 }
+                ),
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: "Search recipes"
+            )
+            .task {
+                if dataManager.recipes.isEmpty {
+                    await dataManager.loadDataAsync()
+                }
+                dataManager.syncFavorites()
+                isLoading = false
+            }
         }
     }
 }
 
 struct CategoryView: View {
     @EnvironmentObject var dataManager: DataManager
-    @Binding var selectedTab: Int
     @Binding var navigationPath: NavigationPath
     @Binding var searchText: String
     @Binding var isSearching: Bool
-
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
     @State private var isCraftifyPicksExpanded = true
     @State private var filteredRecipes: [String: [Recipe]] = [:]
-
+    
     private let primaryColor = Color(hex: "00AA00")
-
+    
     private func updateFilteredRecipes() {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
             : dataManager.recipes.filter { $0.category == selectedCategory }
-
+        
         let filtered = searchText.isEmpty ? categoryFiltered :
             categoryFiltered.filter { recipe in
                 recipe.name.localizedCaseInsensitiveContains(searchText) ||
                 recipe.category.localizedCaseInsensitiveContains(searchText) ||
                 recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
             }
-
+        
         var groups = [String: [Recipe]]()
         for recipe in filtered {
             let key = String(recipe.name.prefix(1).uppercased())
@@ -126,20 +145,18 @@ struct CategoryView: View {
         }
         filteredRecipes = groups
     }
-
+    
     var body: some View {
         VStack(spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     Button {
                         selectedCategory = nil
-                        #if os(iOS)
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        #endif
                     } label: {
                         Text("All")
                             .fontWeight(.bold)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                             .padding(.vertical, 8)
                             .background(selectedCategory == nil ? primaryColor : Color.gray.opacity(0.2))
                             .foregroundColor(.white)
@@ -147,17 +164,15 @@ struct CategoryView: View {
                     }
                     .accessibilityLabel("Show all recipes")
                     .accessibilityHint("Displays recipes from all categories")
-
+                    
                     ForEach(dataManager.categories, id: \.self) { category in
                         Button {
                             selectedCategory = category
-                            #if os(iOS)
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            #endif
                         } label: {
                             Text(category)
                                 .fontWeight(.bold)
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                 .padding(.vertical, 8)
                                 .background(selectedCategory == category ? primaryColor : Color.gray.opacity(0.2))
                                 .foregroundColor(.white)
@@ -167,10 +182,11 @@ struct CategoryView: View {
                         .accessibilityHint("Filters recipes to show only \(category) category")
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                 .padding(.vertical, 8)
             }
-
+            .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
+            
             ScrollView {
                 LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                     if !recommendedRecipes.isEmpty && !isSearching {
@@ -188,7 +204,7 @@ struct CategoryView: View {
                                             .contentShape(Rectangle())
                                         }
                                     }
-                                    .padding(.horizontal, 16)
+                                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                     .padding(.vertical, 8)
                                 }
                             }
@@ -199,7 +215,7 @@ struct CategoryView: View {
                             .background(Color(.systemBackground))
                         }
                     }
-
+                    
                     ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
                         Section {
                             ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
@@ -215,7 +231,7 @@ struct CategoryView: View {
                             Text(letter)
                                 .font(.headline)
                                 .fontWeight(.bold)
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                 .padding(.vertical, 8)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .background(Color(.systemBackground))
@@ -224,42 +240,47 @@ struct CategoryView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .onAppear {
-                recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
-                updateFilteredRecipes()
-            }
-            .task(id: "\(searchText)\(selectedCategory ?? "")") {
-                updateFilteredRecipes()
-            }
+            .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
         }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
+            updateFilteredRecipes()
+        }
+        .task(id: "\(searchText)\(selectedCategory ?? "")") {
+            updateFilteredRecipes()
+        }
     }
 }
 
 struct RecipeCell: View {
     let recipe: Recipe
     let isCraftifyPick: Bool
-
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
     private let primaryColor = Color(hex: "00AA00")
-
+    
     var body: some View {
         HStack(spacing: 12) {
             Image(recipe.image)
                 .resizable()
                 .scaledToFit()
-                .frame(width: isCraftifyPick ? 72 : 64, height: isCraftifyPick ? 72 : 64)
+                .frame(
+                    width: isCraftifyPick ? (horizontalSizeClass == .regular ? 96 : 72) : (horizontalSizeClass == .regular ? 80 : 64),
+                    height: isCraftifyPick ? (horizontalSizeClass == .regular ? 96 : 72) : (horizontalSizeClass == .regular ? 80 : 64)
+                )
                 .cornerRadius(8)
                 .padding(4)
                 .accessibilityLabel("Image of \(recipe.name)")
-
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text(recipe.name)
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                     .lineLimit(1)
-
+                
                 if !recipe.category.isEmpty {
                     Text(recipe.category)
                         .font(.subheadline)
@@ -267,15 +288,15 @@ struct RecipeCell: View {
                         .lineLimit(1)
                 }
             }
-
+            
             Spacer()
-
+            
             Image(systemName: "chevron.right")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.gray)
-                .padding(.trailing, 8)
+                .padding(.trailing, horizontalSizeClass == .regular ? 12 : 8)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
         .padding(.vertical, 10)
         .background(
             LinearGradient(
@@ -292,7 +313,7 @@ struct RecipeCell: View {
                     style: isCraftifyPick ? StrokeStyle(lineWidth: 1) : StrokeStyle(lineWidth: 1, dash: [4, 4])
                 )
         )
-        .padding(.horizontal, 16)
+        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(recipe.name), \(recipe.category.isEmpty ? "recipe" : "\(recipe.category) recipe")")
@@ -303,7 +324,8 @@ struct RecipeCell: View {
 struct CraftifyPicksHeader: View {
     var isExpanded: Bool
     var toggle: () -> Void
-
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
     var body: some View {
         HStack(spacing: 8) {
             Button {
@@ -319,16 +341,18 @@ struct CraftifyPicksHeader: View {
             .contentShape(Rectangle())
             .accessibilityLabel(isExpanded ? "Collapse Craftify Picks" : "Expand Craftify Picks")
             .accessibilityHint("Toggles the visibility of recommended recipes")
-
+            
             Text("Craftify Picks")
                 .font(.title3)
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
-
+            
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
         .padding(.vertical, 8)
+        .background(Color(.systemBackground))
+        .frame(height: horizontalSizeClass == .regular ? 44 : 36)
     }
 }
 

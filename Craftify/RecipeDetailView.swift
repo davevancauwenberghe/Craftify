@@ -11,6 +11,7 @@ import CloudKit
 struct RecipeDetailView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass // Added for dynamic sizing
     let recipe: Recipe
     @Binding var navigationPath: NavigationPath
     @State private var selectedDetail: String?
@@ -21,7 +22,7 @@ struct RecipeDetailView: View {
     @State private var ingredientSets: [[String]] = []
     @State private var outputs: [Int] = []
     
-    private let craftingHeight: CGFloat = 222
+    private var craftingHeight: CGFloat { horizontalSizeClass == .regular ? 270 : 222 } // Dynamic height
     private let primaryColor = Color(hex: "00AA00")
     
     enum SelectedItem: Equatable {
@@ -73,21 +74,9 @@ struct RecipeDetailView: View {
         return outputs
     }
     
-    init(recipe: Recipe, navigationPath: Binding<NavigationPath>) {
-        self.recipe = recipe
-        self._navigationPath = navigationPath
-        let navAppearance = UINavigationBarAppearance()
-        navAppearance.configureWithOpaqueBackground()
-        navAppearance.shadowColor = nil
-        UINavigationBar.appearance().standardAppearance = navAppearance
-        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
-        UINavigationBar.appearance().isTranslucent = false
-    }
-    
     var body: some View {
         ZStack {
             Color(.systemBackground)
-                .ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: 16) {
@@ -95,7 +84,7 @@ struct RecipeDetailView: View {
                         Text("No alternate crafting options available")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16) // Dynamic padding
                             .padding(.top, 8)
                             .accessibilityLabel("No alternate crafting options available for \(recipe.name)")
                     }
@@ -114,7 +103,7 @@ struct RecipeDetailView: View {
                                     } label: {
                                         Text("Recipe \(index + 1)")
                                             .fontWeight(.bold)
-                                            .padding(.horizontal, 16)
+                                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                             .padding(.vertical, 8)
                                             .background(selectedCraftingOption == index ? primaryColor : Color.gray.opacity(0.2))
                                             .foregroundColor(.white)
@@ -124,7 +113,7 @@ struct RecipeDetailView: View {
                                     .accessibilityHint("Selects ingredient combination \(index + 1) for crafting \(recipe.name)")
                                 }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                             .padding(.top, 8)
                         }
                         .frame(maxWidth: .infinity, minHeight: 44)
@@ -150,7 +139,10 @@ struct RecipeDetailView: View {
                                         Image(detail)
                                             .resizable()
                                             .scaledToFit()
-                                            .frame(width: 80, height: 80)
+                                            .frame(
+                                                width: horizontalSizeClass == .regular ? 100 : 80,
+                                                height: horizontalSizeClass == .regular ? 100 : 80
+                                            ) // Dynamic size
                                             .padding(8)
                                             .background(Color(.systemGray5))
                                             .cornerRadius(12)
@@ -159,7 +151,10 @@ struct RecipeDetailView: View {
                                         Image(systemName: "photo")
                                             .resizable()
                                             .scaledToFit()
-                                            .frame(width: 80, height: 80)
+                                            .frame(
+                                                width: horizontalSizeClass == .regular ? 100 : 80,
+                                                height: horizontalSizeClass == .regular ? 100 : 80
+                                            )
                                             .padding(8)
                                             .foregroundColor(.gray)
                                             .background(Color(.systemGray5))
@@ -187,7 +182,7 @@ struct RecipeDetailView: View {
                                     .minimumScaleFactor(0.8)
                             }
                             .padding(.vertical, 12)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                             .frame(maxWidth: .infinity)
                             .background(
                                 ZStack {
@@ -224,7 +219,7 @@ struct RecipeDetailView: View {
                             .accessibilityLabel("Close popup")
                             .accessibilityHint("Dismisses the details for \(detail)")
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                         .transition(.scale)
                         .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedDetail)
                         .accessibilityElement(children: .contain)
@@ -242,7 +237,10 @@ struct RecipeDetailView: View {
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(Color(.systemGray5))
-                                        .frame(width: 40, height: 40)
+                                        .frame(
+                                            width: horizontalSizeClass == .regular ? 50 : 40,
+                                            height: horizontalSizeClass == .regular ? 50 : 40
+                                        )
                                         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
                                         .overlay(
                                             selectedItem == .imageremark
@@ -255,12 +253,18 @@ struct RecipeDetailView: View {
                                         Image(imageRemark)
                                             .resizable()
                                             .scaledToFit()
-                                            .frame(width: 24, height: 24)
+                                            .frame(
+                                                width: horizontalSizeClass == .regular ? 30 : 24,
+                                                height: horizontalSizeClass == .regular ? 30 : 24
+                                            )
                                     } else {
                                         Image(systemName: "photo")
                                             .resizable()
                                             .scaledToFit()
-                                            .frame(width: 24, height: 24)
+                                            .frame(
+                                                width: horizontalSizeClass == .regular ? 30 : 24,
+                                                height: horizontalSizeClass == .regular ? 30 : 24
+                                            )
                                             .foregroundColor(.gray)
                                     }
                                 }
@@ -283,7 +287,7 @@ struct RecipeDetailView: View {
                             .font(.subheadline)
                             .foregroundColor(.primary)
                             .padding(.vertical, 10)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                             .background(
                                 Color(.systemGray5)
                                     .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -294,9 +298,11 @@ struct RecipeDetailView: View {
                     }
                 }
                 .padding(.vertical, 16)
-                .padding(.bottom, 50) // Extra padding for tab bar
+                .padding(.bottom, 50)
                 .animation(nil, value: selectedCraftingOption)
             }
+            .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) }) // Added for safe areas
+            .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             .accessibilityElement(children: .contain)
             .onAppear {
                 feedbackGenerator.prepare()
@@ -311,6 +317,7 @@ struct RecipeDetailView: View {
         }
         .navigationTitle(recipe.name)
         .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar) // Replaced UINavigationBarAppearance
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -343,6 +350,7 @@ struct GridView: View {
     let ingredients: [String]
     let output: Int
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass // Added for dynamic sizing
     
     var body: some View {
         VStack {
@@ -356,7 +364,8 @@ struct GridView: View {
                                 index: 0,
                                 ingredient: ingredients.count > 0 ? ingredients[0] : "",
                                 isSelected: selectedItem == .grid(index: 0),
-                                feedbackGenerator: feedbackGenerator
+                                feedbackGenerator: feedbackGenerator,
+                                cellSize: horizontalSizeClass == .regular ? 90 : 70 // Dynamic size
                             ) { selectedDetail = ingredients.count > 0 ? ingredients[0] : ""; selectedItem = .grid(index: 0) }
                             Spacer()
                         }
@@ -365,8 +374,8 @@ struct GridView: View {
                             Image(UIImage(named: "Furnace Fire") != nil ? "Furnace Fire" : "photo")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 40, height: 40)
-                                .frame(width: 70, height: 70)
+                                .frame(width: horizontalSizeClass == .regular ? 50 : 40, height: horizontalSizeClass == .regular ? 50 : 40)
+                                .frame(width: horizontalSizeClass == .regular ? 90 : 70, height: horizontalSizeClass == .regular ? 90 : 70)
                                 .accessibilityLabel("Furnace Fire slot")
                                 .accessibilityHint("Represents the furnace in the crafting process")
                             Spacer()
@@ -377,12 +386,13 @@ struct GridView: View {
                                 index: 1,
                                 ingredient: ingredients.count > 1 ? ingredients[1] : "",
                                 isSelected: selectedItem == .grid(index: 1),
-                                feedbackGenerator: feedbackGenerator
+                                feedbackGenerator: feedbackGenerator,
+                                cellSize: horizontalSizeClass == .regular ? 90 : 70
                             ) { selectedDetail = ingredients.count > 1 ? ingredients[1] : ""; selectedItem = .grid(index: 1) }
                             Spacer()
                         }
                     }
-                    .frame(width: 222, height: craftingHeight)
+                    .frame(width: craftingHeight, height: craftingHeight)
                 
                 default:
                     VStack(spacing: 6) {
@@ -394,26 +404,30 @@ struct GridView: View {
                                         index: index,
                                         ingredient: index < ingredients.count ? ingredients[index] : "",
                                         isSelected: selectedItem == .grid(index: index),
-                                        feedbackGenerator: feedbackGenerator
-                                    ) { selectedDetail = ingredients[index]; selectedItem = .grid(index: index) }
+                                        feedbackGenerator: feedbackGenerator,
+                                        cellSize: horizontalSizeClass == .regular ? 90 : 70
+                                    ) { selectedDetail = index < ingredients.count ? ingredients[index] : ""; selectedItem = .grid(index: index) }
                                 }
                             }
                         }
                     }
-                    .frame(width: 222, height: craftingHeight)
+                    .frame(width: craftingHeight, height: craftingHeight)
                 }
                 
                 Image(systemName: "arrow.right")
                     .font(.largeTitle)
                     .foregroundColor(.gray)
-                    .frame(width: 40, height: craftingHeight)
+                    .frame(width: horizontalSizeClass == .regular ? 50 : 40, height: craftingHeight)
                     .accessibilityHidden(true)
                 
                 VStack {
                     ZStack {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(Color(.systemGray5))
-                            .frame(width: 70, height: 70)
+                            .frame(
+                                width: horizontalSizeClass == .regular ? 90 : 70,
+                                height: horizontalSizeClass == .regular ? 90 : 70
+                            )
                             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                             .overlay(
                                 selectedItem == .output
@@ -427,12 +441,18 @@ struct GridView: View {
                             Image(recipe.image)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 60, height: 60)
+                                .frame(
+                                    width: horizontalSizeClass == .regular ? 80 : 60,
+                                    height: horizontalSizeClass == .regular ? 80 : 60
+                                )
                         } else {
                             Image(systemName: "photo")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 60, height: 60)
+                                .frame(
+                                    width: horizontalSizeClass == .regular ? 80 : 60,
+                                    height: horizontalSizeClass == .regular ? 80 : 60
+                                )
                                 .foregroundColor(.gray)
                         }
                     }
@@ -454,7 +474,7 @@ struct GridView: View {
                 .frame(height: craftingHeight)
             }
             .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
         }
         .frame(height: craftingHeight)
         .animation(nil, value: selectedDetail)
@@ -469,13 +489,14 @@ struct GridCell: View {
     let ingredient: String
     let isSelected: Bool
     let feedbackGenerator: UIImpactFeedbackGenerator
+    let cellSize: CGFloat // Added for dynamic sizing
     let onTap: () -> Void
     
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 12)
                 .fill(!ingredient.isEmpty ? Color(.systemGray5) : Color(.systemGray6))
-                .frame(width: 70, height: 70)
+                .frame(width: cellSize, height: cellSize)
                 .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                 .overlay(
                     isSelected
@@ -490,12 +511,12 @@ struct GridCell: View {
                     Image(ingredient)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 60, height: 60)
+                        .frame(width: cellSize - 10, height: cellSize - 10)
                 } else {
                     Image(systemName: "photo")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 60, height: 60)
+                        .frame(width: cellSize - 10, height: cellSize - 10)
                         .foregroundColor(.gray)
                 }
             }

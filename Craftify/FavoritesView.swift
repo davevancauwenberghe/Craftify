@@ -15,11 +15,11 @@ struct EmptyFavoritesView: View {
             Image(systemName: "heart.slash")
                 .font(.largeTitle)
                 .foregroundColor(.gray)
-
+            
             Text("No favorite recipes")
                 .font(.title)
                 .bold()
-
+            
             Text("You haven't added any favorite recipes yet.\nExplore recipes and tap the heart to mark them as favorites.")
                 .font(.headline)
                 .multilineTextAlignment(.center)
@@ -32,44 +32,33 @@ struct EmptyFavoritesView: View {
 
 struct FavoritesView: View {
     @EnvironmentObject var dataManager: DataManager
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
     @State private var isSearchActive = false
-    @State private var isSearching = false
     @State private var recommendedRecipes: [Recipe] = []
     @State private var selectedCategory: String? = nil
     @State private var isCraftifyPicksExpanded = true
     @State private var filteredFavorites: [String: [Recipe]] = [:]
-
+    
     private let primaryColor = Color(hex: "00AA00")
-
+    
     private var favoriteCategories: [String] {
-        let cats = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
-            .compactMap { $0.category.isEmpty ? nil : $0.category }
-        return Array(Set(cats)).sorted()
+        Array(Set(dataManager.favorites.compactMap { $0.category.isEmpty ? nil : $0.category })).sorted()
     }
-
+    
     private func updateFilteredFavorites() {
-        let favorites = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
+        let favorites = dataManager.favorites
         let byCategory = selectedCategory == nil ? favorites : favorites.filter { $0.category == selectedCategory }
         let filtered = searchText.isEmpty ? byCategory : byCategory.filter { recipe in
             recipe.name.localizedCaseInsensitiveContains(searchText) ||
             recipe.category.localizedCaseInsensitiveContains(searchText) ||
             recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
         }
-        let grouped = Dictionary(grouping: filtered, by: { String($0.name.prefix(1).uppercased()) })
-        filteredFavorites = grouped.mapValues { $0.sorted { $0.name < $1.name } }
+        filteredFavorites = Dictionary(grouping: filtered, by: { String($0.name.prefix(1).uppercased()) })
+            .mapValues { $0.sorted { $0.name < $1.name } }
     }
-
-    init() {
-        let navAppearance = UINavigationBarAppearance()
-        navAppearance.configureWithOpaqueBackground()
-        navAppearance.shadowColor = nil
-        UINavigationBar.appearance().standardAppearance = navAppearance
-        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
-        UINavigationBar.appearance().isTranslucent = false
-    }
-
+    
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
@@ -85,7 +74,7 @@ struct FavoritesView: View {
                                 } label: {
                                     Text("All")
                                         .fontWeight(.bold)
-                                        .padding(.horizontal, 16)
+                                        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                         .padding(.vertical, 8)
                                         .background(selectedCategory == nil ? primaryColor : Color.gray.opacity(0.2))
                                         .foregroundColor(.white)
@@ -101,7 +90,7 @@ struct FavoritesView: View {
                                     } label: {
                                         Text(category)
                                             .fontWeight(.bold)
-                                            .padding(.horizontal, 16)
+                                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                             .padding(.vertical, 8)
                                             .background(selectedCategory == category ? primaryColor : Color.gray.opacity(0.2))
                                             .foregroundColor(.white)
@@ -111,14 +100,15 @@ struct FavoritesView: View {
                                     .accessibilityHint("Filters favorite recipes to show only \(category) category")
                                 }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                             .padding(.vertical, 8)
                         }
+                        .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
                     }
-
+                    
                     ScrollView {
                         LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                            if !recommendedRecipes.isEmpty && !isSearching {
+                            if !recommendedRecipes.isEmpty && searchText.isEmpty {
                                 Section {
                                     if isCraftifyPicksExpanded {
                                         ScrollView(.horizontal, showsIndicators: false) {
@@ -128,13 +118,12 @@ struct FavoritesView: View {
                                                         RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
                                                     } label: {
                                                         RecipeCell(recipe: recipe, isCraftifyPick: true)
-                                                            .padding(.vertical, 2)
                                                     }
                                                     .buttonStyle(.plain)
                                                     .contentShape(Rectangle())
                                                 }
                                             }
-                                            .padding(.horizontal, 16)
+                                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                             .padding(.vertical, 8)
                                         }
                                     }
@@ -145,7 +134,7 @@ struct FavoritesView: View {
                                     .background(Color(.systemBackground))
                                 }
                             }
-
+                            
                             ForEach(filteredFavorites.keys.sorted(), id: \.self) { letter in
                                 Section {
                                     ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
@@ -153,7 +142,6 @@ struct FavoritesView: View {
                                             RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
                                         } label: {
                                             RecipeCell(recipe: recipe, isCraftifyPick: false)
-                                                .padding(.vertical, 2)
                                         }
                                         .buttonStyle(.plain)
                                         .contentShape(Rectangle())
@@ -162,7 +150,7 @@ struct FavoritesView: View {
                                     Text(letter)
                                         .font(.headline)
                                         .fontWeight(.bold)
-                                        .padding(.horizontal, 16)
+                                        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                         .padding(.vertical, 8)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .background(Color(.systemBackground))
@@ -171,35 +159,43 @@ struct FavoritesView: View {
                         }
                         .scrollContentBackground(.hidden)
                     }
+                    .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
                 }
             }
             .navigationTitle("Favorite Recipes")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .searchable(
                 text: $searchText,
                 isPresented: $isSearchActive,
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: "Search favorites"
             )
-            .onChange(of: searchText) { oldValue, newValue in
-                isSearching = !newValue.isEmpty
+            .onChange(of: searchText) { _, newValue in
+                isSearchActive = !newValue.isEmpty
             }
-            .onChange(of: isSearchActive) { oldValue, newValue in
+            .onChange(of: isSearchActive) { _, newValue in
                 if !newValue {
                     searchText = ""
                 }
             }
             .onAppear {
-                recommendedRecipes = Array(
-                    dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
-                        .shuffled()
-                        .prefix(5)
-                )
+                recommendedRecipes = Array(dataManager.favorites.shuffled().prefix(5))
                 updateFilteredFavorites()
             }
             .task(id: "\(searchText)\(selectedCategory ?? "")") {
                 updateFilteredFavorites()
+            }
+            .alert(isPresented: Binding(
+                get: { dataManager.errorMessage != nil },
+                set: { if !$0 { dataManager.errorMessage = nil } }
+            )) {
+                Alert(
+                    title: Text("Error"),
+                    message: Text(dataManager.errorMessage ?? "Unknown error"),
+                    dismissButton: .default(Text("OK"))
+                )
             }
         }
     }
