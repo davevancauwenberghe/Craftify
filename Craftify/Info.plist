@@ -8,9 +8,11 @@
 	</array>
 	<key>MinimumOSVersion</key>
 	<string>17.0</string>
+	<key>NSMailComposeUsageDescription</key>
+	<string>Craftify uses email to let you report missing recipes and contact support.</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
-		<key>iCloud.be.ghentphotography.www/Craftify</key>
+		<key>iCloud.be.ghentphotography.www.Craftify</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>
@@ -19,15 +21,6 @@
 			<key>NSUbiquitousContainerSupportedFolderLevels</key>
 			<string>All</string>
 		</dict>
-	</dict>
-	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIColorName</key>
-		<string>#000000</string>
-		<key>UIImageContentMode</key>
-		<string>scaleAspectFit</string>
-		<key>UIImageName</key>
-		<string>LaunchScreen</string>
 	</dict>
 </dict>
 </plist>
