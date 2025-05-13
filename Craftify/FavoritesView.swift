@@ -44,14 +44,9 @@ struct FavoritesView: View {
     private let primaryColor = Color(hex: "00AA00")
 
     private var favoriteCategories: [String] {
-        Array(
-            Set(
-                dataManager.recipes
-                    .filter { dataManager.isFavorite(recipe: $0) }
-                    .compactMap { $0.category.isEmpty ? nil : $0.category }
-            )
-        )
-        .sorted()
+        let cats = dataManager.recipes.filter { dataManager.isFavorite(recipe: $0) }
+            .compactMap { $0.category.isEmpty ? nil : $0.category }
+        return Array(Set(cats)).sorted()
     }
 
     private func updateFilteredFavorites() {
@@ -66,6 +61,15 @@ struct FavoritesView: View {
         filteredFavorites = grouped.mapValues { $0.sorted { $0.name < $1.name } }
     }
 
+    init() {
+        let navAppearance = UINavigationBarAppearance()
+        navAppearance.configureWithOpaqueBackground()
+        navAppearance.shadowColor = nil
+        UINavigationBar.appearance().standardAppearance = navAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
+        UINavigationBar.appearance().isTranslucent = false
+    }
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
@@ -77,10 +81,7 @@ struct FavoritesView: View {
                             HStack(spacing: 8) {
                                 Button {
                                     selectedCategory = nil
-                                    #if os(iOS)
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    #endif
-                                    updateFilteredFavorites()
                                 } label: {
                                     Text("All")
                                         .fontWeight(.bold)
@@ -92,14 +93,11 @@ struct FavoritesView: View {
                                 }
                                 .accessibilityLabel("Show all favorite recipes")
                                 .accessibilityHint("Displays all favorite recipes across all categories")
-
+                                
                                 ForEach(favoriteCategories, id: \.self) { category in
                                     Button {
                                         selectedCategory = category
-                                        #if os(iOS)
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        #endif
-                                        updateFilteredFavorites()
                                     } label: {
                                         Text(category)
                                             .fontWeight(.bold)
@@ -171,28 +169,25 @@ struct FavoritesView: View {
                                 }
                             }
                         }
+                        .scrollContentBackground(.hidden)
                     }
-                    .scrollContentBackground(.hidden)
                 }
             }
             .navigationTitle("Favorite Recipes")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .searchable(
                 text: $searchText,
                 isPresented: $isSearchActive,
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: "Search favorites"
             )
-            .onChange(of: searchText) {
-                isSearching = !searchText.isEmpty
-                updateFilteredFavorites()
+            .onChange(of: searchText) { oldValue, newValue in
+                isSearching = !newValue.isEmpty
             }
-            .onChange(of: isSearchActive) {
-                if !isSearchActive {
+            .onChange(of: isSearchActive) { oldValue, newValue in
+                if !newValue {
                     searchText = ""
-                    updateFilteredFavorites()
                 }
             }
             .onAppear {
