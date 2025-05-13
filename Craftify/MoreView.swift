@@ -8,7 +8,6 @@
 import SwiftUI
 import Combine
 import CloudKit
-import UIKit // Added for UIApplication.shared.open
 
 struct MoreView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
@@ -17,7 +16,6 @@ struct MoreView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isSyncing: Bool = false
     
-    // Format sync date with user's locale
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
         let formatter = DateFormatter()
@@ -66,26 +64,28 @@ struct MoreView: View {
                 }
                 
                 Section(header: Text("Data Management")) {
-                    VStack(alignment: .leading, spacing: 12) { // Reduced spacing for buttons
-                        // Nested VStack for text views with no spacing
+                    VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 0) {
                             Text("\(dataManager.recipes.count) recipes available")
+                                .accessibilityLabel("Recipe Count")
+                                .accessibilityHint("\(dataManager.recipes.count) Minecraft recipes are available")
                             Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
+                                .accessibilityLabel("Sync Status")
+                                .accessibilityHint(dataManager.syncStatus)
                         }
-                        .font(horizontalSizeClass == .regular ? .callout : .subheadline) // .subheadline for iPhone readability
+                        .font(horizontalSizeClass == .regular ? .callout : .footnote)
                         .foregroundColor(.secondary)
                         .allowsHitTesting(false)
-                        // Individual accessibility for each Text
-                        .accessibilityElement(children: .contain)
-                        .accessibilityLabel("Recipe Count and Sync Status")
-                        .accessibilityHint("\(dataManager.recipes.count) Minecraft recipes are available. \(dataManager.syncStatus)")
+                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
                         
                         Button(action: {
+                            print("Sync Recipes tapped")
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             isSyncing = true
                             dataManager.loadData {
                                 dataManager.syncFavorites()
                                 isSyncing = false
+                                print("Sync Recipes completed")
                             }
                         }) {
                             HStack {
@@ -105,8 +105,8 @@ struct MoreView: View {
                                     .foregroundColor(.primary)
                                 Spacer()
                             }
-                            .padding(horizontalSizeClass == .regular ? 16 : 12) // Reduced padding
-                            .frame(maxWidth: .infinity, minHeight: 44) // Accessible touch target
+                            .padding(horizontalSizeClass == .regular ? 16 : 12)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                             .background(Color(UIColor.systemGray5))
                             .cornerRadius(10)
                         }
@@ -117,11 +117,13 @@ struct MoreView: View {
                         .accessibilityHint("Syncs Minecraft recipes from CloudKit")
                         
                         Button(action: {
+                            print("Clear Cache tapped")
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             dataManager.clearCache { success in
                                 if !success {
                                     dataManager.errorMessage = "Failed to clear cache. Please try again."
                                 }
+                                print("Clear Cache completed, success: \(success)")
                             }
                         }) {
                             HStack {
@@ -133,8 +135,8 @@ struct MoreView: View {
                                     .foregroundColor(.primary)
                                 Spacer()
                             }
-                            .padding(horizontalSizeClass == .regular ? 16 : 12) // Reduced padding
-                            .frame(maxWidth: .infinity, minHeight: 44) // Accessible touch target
+                            .padding(horizontalSizeClass == .regular ? 16 : 12)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                             .background(Color(UIColor.systemGray5))
                             .cornerRadius(10)
                         }
@@ -143,10 +145,7 @@ struct MoreView: View {
                         .accessibilityLabel("Clear Cache")
                         .accessibilityHint("Clears the cached Minecraft recipes")
                     }
-                    .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12) // Fixed typo: Removed 'Parent'
-                    .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12) // Increased for breathing room
                 }
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)) // Align with VStack padding
             }
             .listStyle(InsetGroupedListStyle())
             .navigationTitle("More")
@@ -195,7 +194,7 @@ struct AboutView: View {
     }
     
     var body: some View {
-        VStack(spacing: horizontalSizeClass == .regular ? 24 : 16) {
+        VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
             VStack(spacing: 8) {
                 Text("Craftify for Minecraft")
                     .font(horizontalSizeClass == .regular ? .title : .largeTitle)
@@ -209,9 +208,9 @@ struct AboutView: View {
                 Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
                     .font(horizontalSizeClass == .regular ? .body : .subheadline)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                    .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
             }
-            .padding(.top, horizontalSizeClass == .regular ? 24 : 20)
+            .padding(.top, horizontalSizeClass == .regular ? 16 : 12)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
             .accessibilityHint("About the Craftify app and its purpose")
@@ -221,10 +220,13 @@ struct AboutView: View {
                     NavigationLink(destination: ReleaseNotesView()) {
                         buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
                     }
+                    .listRowInsets(EdgeInsets(top: horizontalSizeClass == .regular ? 12 : 8,
+                                              leading: horizontalSizeClass == .regular ? 16 : 12,
+                                              bottom: horizontalSizeClass == .regular ? 12 : 8,
+                                              trailing: horizontalSizeClass == .regular ? 16 : 12))
                     .accessibilityLabel("Release Notes")
                     .accessibilityHint("View the release notes for Craftify")
                     
-                    // Replaced NavigationLink with Button for direct mailto
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         let supportEmail = "hello@davevancauwenberghe.be"
@@ -238,28 +240,32 @@ struct AboutView: View {
                             print("Invalid mailto URL")
                         }
                     }) {
-                        buttonStyle(title: "Contact Support", systemImage: "envelope.fill")
+                        buttonStyle(title: "Contact Support", systemImage: "envelope.fill", showChevron: true)
                     }
+                    .listRowInsets(EdgeInsets(top: horizontalSizeClass == .regular ? 12 : 8,
+                                              leading: horizontalSizeClass == .regular ? 16 : 12,
+                                              bottom: horizontalSizeClass == .regular ? 12 : 8,
+                                              trailing: horizontalSizeClass == .regular ? 16 : 12))
                     .accessibilityLabel("Contact Support")
                     .accessibilityHint("Opens the mail app to contact support at hello@davevancauwenberghe.be")
                 }
             }
             .listStyle(InsetGroupedListStyle())
             .scrollDisabled(true)
-            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+            .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
             
             Text("Craftify for Minecraft is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.")
                 .font(horizontalSizeClass == .regular ? .callout : .footnote)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                 .padding(.top, 8)
                 .accessibilityLabel("Disclaimer")
                 .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
             
             Spacer()
         }
-        .padding(horizontalSizeClass == .regular ? 24 : 16)
+        .padding(horizontalSizeClass == .regular ? 12 : 8)
         .frame(maxWidth: .infinity)
         .background(Color(UIColor.systemGroupedBackground))
         .navigationTitle("About Craftify")
@@ -272,7 +278,7 @@ struct AboutView: View {
         }
     }
     
-    private func buttonStyle(title: String, systemImage: String) -> some View {
+    private func buttonStyle(title: String, systemImage: String, showChevron: Bool = false) -> some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
                 .font(.title2)
@@ -281,6 +287,11 @@ struct AboutView: View {
                 .font(.headline)
                 .foregroundColor(.primary)
             Spacer()
+            if showChevron {
+                Image(systemName: "chevron.right")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
     }
@@ -327,7 +338,7 @@ struct ReleaseNotesView: View {
                         Text("• \(change)")
                             .font(horizontalSizeClass == .regular ? .subheadline : .footnote)
                             .foregroundColor(.primary)
-                            .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
+                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
                             .accessibilityLabel(change)
                     }
                 }
