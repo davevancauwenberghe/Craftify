@@ -196,6 +196,20 @@ struct AboutView: View {
     var body: some View {
         VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
             VStack(spacing: 8) {
+                // App Icon Preview styled as an iOS app icon
+                Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage())
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 18)) // iOS app icon corner radius
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
+                    .shadow(radius: 2, x: 0, y: 1) // Subtle shadow for depth
+                    .accessibilityLabel("Craftify app icon")
+                    .accessibilityAddTraits(.isImage)
+                
                 Text("Craftify for Minecraft")
                     .font(horizontalSizeClass == .regular ? .title : .largeTitle)
                     .fontWeight(.bold)
@@ -217,25 +231,37 @@ struct AboutView: View {
             
             List {
                 Section {
-                    NavigationLink(destination: ReleaseNotesView()) {
-                        buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
-                    }
-                    .listRowInsets(EdgeInsets(top: horizontalSizeClass == .regular ? 12 : 8,
-                                              leading: horizontalSizeClass == .regular ? 16 : 12,
-                                              bottom: horizontalSizeClass == .regular ? 12 : 8,
-                                              trailing: horizontalSizeClass == .regular ? 16 : 12))
-                    .accessibilityLabel("Release Notes")
-                    .accessibilityHint("View the release notes for Craftify")
-                    
                     NavigationLink(destination: AppIconsView()) {
                         buttonStyle(title: "App Icons", systemImage: "app.badge.fill")
                     }
+                    .buttonStyle(.plain) // Ensure consistent button behavior
+                    .simultaneousGesture(TapGesture().onEnded {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        print("App Icons button tapped")
+                    })
                     .listRowInsets(EdgeInsets(top: horizontalSizeClass == .regular ? 12 : 8,
                                               leading: horizontalSizeClass == .regular ? 16 : 12,
                                               bottom: horizontalSizeClass == .regular ? 12 : 8,
                                               trailing: horizontalSizeClass == .regular ? 16 : 12))
                     .accessibilityLabel("App Icons")
                     .accessibilityHint("Choose an alternate app icon for Craftify")
+                    .accessibilityAddTraits(.isButton)
+                    
+                    NavigationLink(destination: ReleaseNotesView()) {
+                        buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
+                    }
+                    .buttonStyle(.plain) // Ensure consistent button behavior
+                    .simultaneousGesture(TapGesture().onEnded {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        print("Release Notes button tapped")
+                    })
+                    .listRowInsets(EdgeInsets(top: horizontalSizeClass == .regular ? 12 : 8,
+                                              leading: horizontalSizeClass == .regular ? 16 : 12,
+                                              bottom: horizontalSizeClass == .regular ? 12 : 8,
+                                              trailing: horizontalSizeClass == .regular ? 16 : 12))
+                    .accessibilityLabel("Release Notes")
+                    .accessibilityHint("View the release notes for Craftify")
+                    .accessibilityAddTraits(.isButton)
                 }
             }
             .listStyle(InsetGroupedListStyle())
@@ -364,9 +390,6 @@ struct ReleaseNotesView: View {
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
-        .onAppear {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        }
     }
 }
 

@@ -51,7 +51,6 @@ struct ContentView: View {
             (colorSchemePreference == "light" ? .light : .dark)
         )
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .onChange(of: isSearchActive) {
             if !isSearchActive {
                 searchText = ""

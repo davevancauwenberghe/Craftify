@@ -21,14 +21,14 @@ struct AppIconsView: View {
     @State private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons
 
     private let appIcons: [AppIcon] = [
-        .init(id: nil,              name: "Default",     previewName: "AppIconPreview"),
-        .init(id: "AlternateIcon1", name: "Alternate 1", previewName: "AlternateIcon1Preview"),
-        .init(id: "AlternateIcon2", name: "Alternate 2", previewName: "AlternateIcon2Preview")
+        .init(id: nil,              name: "Craftify",     previewName: "AppIconPreview"),
+        .init(id: "AlternateIcon1", name: "Craftify Grass", previewName: "AlternateIcon1Preview"),
+        .init(id: "AlternateIcon2", name: "Craftify Grid", previewName: "AlternateIcon2Preview")
     ]
 
     var body: some View {
         List {
-            Section("App Icons") {
+            Section {
                 if supportsAlternateIcons {
                     ForEach(appIcons) { icon in
                         Button {
@@ -51,6 +51,7 @@ struct AppIconsView: View {
 
                                 Text(icon.name)
                                     .font(.headline)
+                                    .minimumScaleFactor(0.8) // Support Dynamic Type scaling
                                 Spacer()
                                 if selectedAppIcon == icon.id {
                                     Image(systemName: "checkmark.circle.fill")
@@ -61,13 +62,21 @@ struct AppIconsView: View {
                             .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
                         }
                         .accessibilityLabel("Select \(icon.name) icon")
+                        .accessibilityHint(selectedAppIcon == icon.id ? "Currently selected" : "Double tap to select this icon")
+                        .accessibilityAddTraits(.isButton)
                     }
                 } else {
                     Text("Alternate icons aren’t available yet.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                        .minimumScaleFactor(0.8) // Support Dynamic Type scaling
                         .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                        .accessibilityLabel("Alternate icons not available")
+                        .accessibilityHint("Check back later for new icon options")
                 }
+            } header: {
+                Text("App Icons")
+                    .accessibilityAddTraits(.isHeader)
             }
         }
         .listStyle(.insetGrouped)
@@ -79,7 +88,7 @@ struct AppIconsView: View {
                    set: { if !$0 { errorMessage = nil } }
                ),
                actions: { Button("OK", role: .cancel) {} },
-               message: { Text(errorMessage ?? "") }
+               message: { Text(errorMessage ?? "An unknown error occurred") }
         )
         .onAppear {
             // Keep in sync if the user changed the icon elsewhere
@@ -95,6 +104,8 @@ struct AppIconsView: View {
                     errorMessage = "Failed to change icon: \(err.localizedDescription)"
                 } else {
                     selectedAppIcon = iconName
+                    // Announce success to VoiceOver users
+                    UIAccessibility.post(notification: .announcement, argument: "App icon changed to \(appIcons.first(where: { $0.id == iconName })?.name ?? "Default")")
                 }
             }
         }
