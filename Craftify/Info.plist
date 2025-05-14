@@ -7,10 +7,13 @@
     <array>
         <string>iPhoneOS</string>
     </array>
+
     <key>MinimumOSVersion</key>
     <string>17.0</string>
+
     <key>NSMailComposeUsageDescription</key>
     <string>Craftify uses email to let you report missing recipes and contact support.</string>
+
     <key>NSUbiquitousContainers</key>
     <dict>
         <key>iCloud.be.ghentphotography.www.Craftify</key>
@@ -21,34 +24,6 @@
             <string>Craftify</string>
             <key>NSUbiquitousContainerSupportedFolderLevels</key>
             <string>All</string>
-        </dict>
-    </dict>
-    <key>CFBundleIcons</key>
-    <dict>
-        <!-- Primary (default) icon asset set name -->
-        <key>CFBundlePrimaryIcon</key>
-        <dict>
-            <key>CFBundleIconName</key>
-            <string>AppIcon</string>
-            <key>UIPrerenderedIcon</key>
-            <false/>
-        </dict>
-        <key>CFBundleAlternateIcons</key>
-        <dict>
-            <key>AlternateIcon1</key>
-            <dict>
-                <key>CFBundleIconName</key>
-                <string>AlternateIcon1</string>
-                <key>UIPrerenderedIcon</key>
-                <false/>
-            </dict>
-            <key>AlternateIcon2</key>
-            <dict>
-                <key>CFBundleIconName</key>
-                <string>AlternateIcon2</string>
-                <key>UIPrerenderedIcon</key>
-                <false/>
-            </dict>
         </dict>
     </dict>
 </dict>
