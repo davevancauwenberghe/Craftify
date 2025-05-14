@@ -36,4 +36,4 @@ To get started with Craftify, follow these steps:
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/yourusername/craftify.git
+   git clone https://github.com/davevancauwenberghe/craftify.git
