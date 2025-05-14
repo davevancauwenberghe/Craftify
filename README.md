@@ -1,8 +1,7 @@
 # Craftify
+## Crafting recipes for Minecraft
 
 Craftify is a sleek iOS app designed for Minecraft players to browse, search, and manage crafting recipes with ease. Built with SwiftUI and CloudKit, Craftify offers a seamless experience for discovering recipes, saving favorites, and personalizing the app with alternate icons—all optimized for accessibility and performance.
-
-![Craftify App Icon](Assets/AppIconPreview.png#width=100)
 
 ---
 
