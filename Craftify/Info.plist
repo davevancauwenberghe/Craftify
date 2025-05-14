@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>CFBundleSupportedPlatforms</key>
@@ -24,12 +25,11 @@
     </dict>
     <key>CFBundleIcons</key>
     <dict>
+        <!-- Primary (default) icon asset set name -->
         <key>CFBundlePrimaryIcon</key>
         <dict>
-            <key>CFBundleIconFiles</key>
-            <array>
-                <string>AppIcon</string>
-            </array>
+            <key>CFBundleIconName</key>
+            <string>AppIcon</string>
             <key>UIPrerenderedIcon</key>
             <false/>
         </dict>
@@ -37,19 +37,15 @@
         <dict>
             <key>AlternateIcon1</key>
             <dict>
-                <key>CFBundleIconFiles</key>
-                <array>
-                    <string>AlternateIcon1</string>
-                </array>
+                <key>CFBundleIconName</key>
+                <string>AlternateIcon1</string>
                 <key>UIPrerenderedIcon</key>
                 <false/>
             </dict>
             <key>AlternateIcon2</key>
             <dict>
-                <key>CFBundleIconFiles</key>
-                <array>
-                    <string>AlternateIcon2</string>
-                </array>
+                <key>CFBundleIconName</key>
+                <string>AlternateIcon2</string>
                 <key>UIPrerenderedIcon</key>
                 <false/>
             </dict>
