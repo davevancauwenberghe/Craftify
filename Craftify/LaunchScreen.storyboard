@@ -2,7 +2,6 @@
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23727" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23721"/>
-        <capability name="Named colors" minToolsVersion="9.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -15,30 +14,21 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <!-- App Icon Image View -->
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="AppIconPreview" translatesAutoresizingMaskIntoConstraints="NO" id="sXl-Vt-bkI">
+                            <!-- App Logo Image View -->
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchScreen" translatesAutoresizingMaskIntoConstraints="NO" id="sXl-Vt-bkI">
                                 <constraints>
                                     <constraint firstAttribute="width" secondItem="sXl-Vt-bkI" secondAttribute="height" multiplier="1:1" id="widthHeightConstraint"/>
-                                    <constraint firstAttribute="width" secondItem="Ze5-6b-2t3" secondAttribute="width" multiplier="0.3" id="widthConstraint"/>
+                                    <constraint firstAttribute="width" secondItem="Ze5-6b-2t3" secondAttribute="width" multiplier="0.5" id="widthConstraint"/>
                                 </constraints>
                             </imageView>
-                            <!-- App Name Label -->
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Craftify" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontForContentSizeCategory="YES" translatesAutoresizingMaskIntoConstraints="NO" id="lbl-app-name">
-                                <fontDescription key="fontDescription" style="UICTFontTextStyleTitle1"/>
-                                <color key="textColor" name="labelColor"/>
-                            </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
-                        <color key="backgroundColor" name="systemGroupedBackground"/>
+                        <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <constraints>
                             <!-- Center the image horizontally -->
                             <constraint firstItem="sXl-Vt-bkI" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="imageCenterX"/>
                             <!-- Center the image vertically -->
-                            <constraint firstItem="sXl-Vt-bkI" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="-20" id="imageCenterY"/>
-                            <!-- Position the label below the image -->
-                            <constraint firstItem="lbl-app-name" firstAttribute="top" secondItem="sXl-Vt-bkI" secondAttribute="bottom" constant="16" id="labelTopConstraint"/>
-                            <!-- Center the label horizontally -->
-                            <constraint firstItem="lbl-app-name" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="labelCenterX"/>
+                            <constraint firstItem="sXl-Vt-bkI" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="imageCenterY"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -48,12 +38,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="AppIconPreview" width="44" height="44"/>
-        <namedColor name="labelColor">
-            <color red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-        </namedColor>
-        <namedColor name="systemGroupedBackground">
-            <color red="0.94901960784313721" green="0.94901960784313721" blue="0.96862745098039216" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-        </namedColor>
+        <image name="LaunchScreen" width="341.33334350585938" height="341.33334350585938"/>
     </resources>
 </document>
