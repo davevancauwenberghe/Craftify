@@ -26,5 +26,35 @@
             <string>All</string>
         </dict>
     </dict>
+    <!-- App Icon configuration -->
+    <key>CFBundleIcons</key>
+    <dict>
+        <!-- Primary (default) icon set -->
+        <key>CFBundlePrimaryIcon</key>
+        <dict>
+            <key>CFBundleIconName</key>
+            <string>AppIcon</string>
+            <key>UIPrerenderedIcon</key>
+            <false/>
+        </dict>
+        <!-- Alternate icons -->
+        <key>CFBundleAlternateIcons</key>
+        <dict>
+            <key>AlternateIcon1</key>
+            <dict>
+                <key>CFBundleIconName</key>
+                <string>AlternateIcon1</string>
+                <key>UIPrerenderedIcon</key>
+                <false/>
+            </dict>
+            <key>AlternateIcon2</key>
+            <dict>
+                <key>CFBundleIconName</key>
+                <string>AlternateIcon2</string>
+                <key>UIPrerenderedIcon</key>
+                <false/>
+            </dict>
+        </dict>
+    </dict>
 </dict>
 </plist>

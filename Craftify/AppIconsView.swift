@@ -9,9 +9,9 @@ import SwiftUI
 import UIKit
 
 private struct AppIcon: Identifiable {
-    let id: String?       // nil = default; otherwise the CFBundleAlternateIcons key
-    let name: String      // user-facing label
-    let previewName: String
+    let id: String?        // nil = primary, otherwise CFBundleAlternateIcons key
+    let name: String       // user‐facing label
+    let previewName: String// your normal Image set name
 }
 
 struct AppIconsView: View {
@@ -21,9 +21,9 @@ struct AppIconsView: View {
     @State private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons
 
     private let appIcons: [AppIcon] = [
-        .init(id: nil,                name: "Default",      previewName: "AppIconPreview"),
-        .init(id: "AlternateIcon1",   name: "Alternate 1",  previewName: "AlternateIcon1Preview"),
-        .init(id: "AlternateIcon2",   name: "Alternate 2",  previewName: "AlternateIcon2Preview")
+        .init(id: nil,              name: "Default",     previewName: "AppIconPreview"),
+        .init(id: "AlternateIcon1", name: "Alternate 1", previewName: "AlternateIcon1Preview"),
+        .init(id: "AlternateIcon2", name: "Alternate 2", previewName: "AlternateIcon2Preview")
     ]
 
     var body: some View {
@@ -35,11 +35,19 @@ struct AppIconsView: View {
                             changeIcon(to: icon.id)
                         } label: {
                             HStack(spacing: 12) {
-                                Image(icon.previewName)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 44, height: 44)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                // Use your real preview image set:
+                                if let uiImage = UIImage(named: icon.previewName) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 44, height: 44)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                } else {
+                                    // Should never happen if your preview sets exist
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.secondary.opacity(0.2))
+                                        .frame(width: 44, height: 44)
+                                }
 
                                 Text(icon.name)
                                     .font(.headline)
@@ -74,6 +82,7 @@ struct AppIconsView: View {
                message: { Text(errorMessage ?? "") }
         )
         .onAppear {
+            // Keep in sync if the user changed the icon elsewhere
             selectedAppIcon = UIApplication.shared.alternateIconName
         }
     }
@@ -91,4 +100,3 @@ struct AppIconsView: View {
         }
     }
 }
-
