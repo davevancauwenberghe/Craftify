@@ -227,32 +227,51 @@ struct AboutView: View {
                     .accessibilityLabel("Release Notes")
                     .accessibilityHint("View the release notes for Craftify")
                     
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        let supportEmail = "hello@davevancauwenberghe.be"
-                        if let url = URL(string: "mailto:\(supportEmail)") {
-                            UIApplication.shared.open(url) { success in
-                                if !success {
-                                    print("Failed to open mail client")
-                                }
-                            }
-                        } else {
-                            print("Invalid mailto URL")
-                        }
-                    }) {
-                        buttonStyle(title: "Contact Support", systemImage: "envelope.fill", showChevron: true)
+                    NavigationLink(destination: AppIconsView()) {
+                        buttonStyle(title: "App Icons", systemImage: "app.badge.fill")
                     }
                     .listRowInsets(EdgeInsets(top: horizontalSizeClass == .regular ? 12 : 8,
                                               leading: horizontalSizeClass == .regular ? 16 : 12,
                                               bottom: horizontalSizeClass == .regular ? 12 : 8,
                                               trailing: horizontalSizeClass == .regular ? 16 : 12))
-                    .accessibilityLabel("Contact Support")
-                    .accessibilityHint("Opens the mail app to contact support at hello@davevancauwenberghe.be")
+                    .accessibilityLabel("App Icons")
+                    .accessibilityHint("Choose an alternate app icon for Craftify")
                 }
             }
             .listStyle(InsetGroupedListStyle())
             .scrollDisabled(true)
             .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
+            
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                let supportEmail = "hello@davevancauwenberghe.be"
+                if let url = URL(string: "mailto:\(supportEmail)") {
+                    UIApplication.shared.open(url) { success in
+                        if !success {
+                            print("Failed to open mail client")
+                        }
+                    }
+                } else {
+                    print("Invalid mailto URL")
+                }
+            }) {
+                HStack {
+                    Image(systemName: "envelope.fill")
+                    Text("Contact Support")
+                        .font(horizontalSizeClass == .regular ? .title3 : .headline)
+                        .bold()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
+                .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
+                .background(Color.accentColor)
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+            .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
+            .padding(.bottom, 8)
+            .accessibilityLabel("Contact Support")
+            .accessibilityHint("Opens the mail app to contact support at hello@davevancauwenberghe.be")
             
             Text("Craftify for Minecraft is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.")
                 .font(horizontalSizeClass == .regular ? .callout : .footnote)
@@ -278,7 +297,7 @@ struct AboutView: View {
         }
     }
     
-    private func buttonStyle(title: String, systemImage: String, showChevron: Bool = false) -> some View {
+    private func buttonStyle(title: String, systemImage: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
                 .font(.title2)
@@ -287,11 +306,6 @@ struct AboutView: View {
                 .font(.headline)
                 .foregroundColor(.primary)
             Spacer()
-            if showChevron {
-                Image(systemName: "chevron.right")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-            }
         }
         .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
     }
