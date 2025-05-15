@@ -41,8 +41,8 @@ struct RecipeSearchView: View {
                     print("Skipping invalid recent search name: \(name) - no matching recipe found")
                 }
             }
-            // Apply filter to recent searches
-            return Array((searchFilter == .all ? recipes : recipes.filter { recipe in dataManager.favorites.contains { $0.id == recipe.id } }).prefix(5))
+            // Apply filter to recent searches, increased limit to 10
+            return Array((searchFilter == .all ? recipes : recipes.filter { recipe in dataManager.favorites.contains { $0.id == recipe.id } }).prefix(10))
         } catch {
             print("Failed to decode recent searches: \(error)")
             return []
@@ -63,7 +63,7 @@ struct RecipeSearchView: View {
         
         names.removeAll { $0 == recipe.name }
         names.insert(recipe.name, at: 0)
-        names = Array(names.prefix(5))
+        names = Array(names.prefix(10)) // Increased limit to 10
         print("Updated recent search names: \(names)")
         
         do {
@@ -141,25 +141,60 @@ struct RecipeSearchView: View {
                 if searchText.isEmpty && !isSearchActive {
                     // Initial state when not searching
                     VStack(spacing: 16) {
-                        // Show only the "Search for Recipes" empty state
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 48))
-                            .foregroundColor(primaryColor.opacity(0.8))
-                        Text("Search for Recipes")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.primary)
-                        Text("Find recipes by name, category, or ingredients.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
+                        if recentSearchRecipes.isEmpty {
+                            // No recent searches
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 48))
+                                .foregroundColor(primaryColor.opacity(0.8))
+                            Text("Search for Recipes")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+                            Text("Find recipes by name, category, or ingredients.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
+                        } else {
+                            // Show recent searches
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("Recent Searches")
+                                        .font(.title3)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    Button(action: {
+                                        clearRecentSearches()
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    }) {
+                                        Text("Clear All")
+                                            .font(.subheadline)
+                                            .foregroundColor(primaryColor)
+                                    }
+                                    .disabled(recentSearchRecipes.isEmpty)
+                                    .contentShape(Rectangle())
+                                    .accessibilityLabel("Clear All Recent Searches")
+                                    .accessibilityHint("Removes all recent search history")
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.top, 8)
+                                
+                                RecentSearchesList(
+                                    recipes: recentSearchRecipes,
+                                    navigationPath: $navigationPath,
+                                    onDelete: deleteRecentSearch
+                                )
+                            }
+                        }
                     }
-                    .padding(.vertical, 32)
+                    .padding(.vertical, 16)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Search for Recipes")
-                    .accessibilityHint("Enter a search term to find recipes by name, category, or ingredients")
+                    .accessibilityLabel(recentSearchRecipes.isEmpty ? "Search for Recipes" : "Recent Searches")
+                    .accessibilityHint(recentSearchRecipes.isEmpty ? "Enter a search term to find recipes by name, category, or ingredients" : "Shows the last 10 recipes you searched for")
                 } else {
                     // Search is active (either tapped or typing)
                     VStack(spacing: 0) {
@@ -197,7 +232,7 @@ struct RecipeSearchView: View {
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
                                 }
-                                .padding(.vertical, 32)
+                                .padding(.vertical, 16)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel("No Recent Searches")
@@ -226,8 +261,8 @@ struct RecipeSearchView: View {
                                         .accessibilityLabel("Clear All Recent Searches")
                                         .accessibilityHint("Removes all recent search history")
                                     }
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                    .padding(.top, 16)
+                                    .padding(.horizontal, 16)
+                                    .padding(.top, 8)
                                     
                                     RecentSearchesList(
                                         recipes: recentSearchRecipes,
@@ -365,8 +400,8 @@ struct RecentSearchItem: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.gray)
         }
-        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(recipe.name) recent search")
         .accessibilityHint("Navigates to the detailed view of \(recipe.name)")
@@ -404,12 +439,12 @@ struct RecentSearchesList: View {
                 
                 if index < recipes.count - 1 {
                     Divider()
-                        .padding(.leading, horizontalSizeClass == .regular ? 72 : 56)
+                        .padding(.leading, horizontalSizeClass == .regular ? 56 : 48)
                 }
             }
         }
         .background(Color(.systemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+        .padding(.horizontal, 0)
     }
 }
