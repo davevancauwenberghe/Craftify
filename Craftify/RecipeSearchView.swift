@@ -18,99 +18,37 @@ struct RecipeSearchView: View {
     @State private var filteredRecipes: [String: [Recipe]] = [:]
     @State private var navigationPath = NavigationPath()
     @State private var searchFilter: SearchFilter = .all
-    @AppStorage("recentSearches") private var recentSearchNames: String = "[]"
     
     private let primaryColor = Color(hex: "00AA00")
     
     enum SearchFilter: String, CaseIterable {
-        case all = "All Recipes"
-        case favorites = "Favorited Recipes Only"
+        case all = "All recipes"
+        case favorites = "Favorite Recipes"
     }
     
     // Computed property to get recent search recipes, filtered by searchFilter
     private var recentSearchRecipes: [Recipe] {
-        do {
-            let decoder = JSONDecoder()
-            let names = try decoder.decode([String].self, from: recentSearchNames.data(using: .utf8) ?? Data())
-            var recipes: [Recipe] = []
-            for name in names {
-                if let recipe = dataManager.recipes.first(where: { $0.name == name }),
-                   !recipes.contains(where: { $0.name == name }) {
-                    recipes.append(recipe)
-                } else {
-                    print("Skipping invalid recent search name: \(name) - no matching recipe found")
-                }
+        var recipes: [Recipe] = []
+        for name in dataManager.recentSearchNames {
+            if let recipe = dataManager.recipes.first(where: { $0.name == name }),
+               !recipes.contains(where: { $0.name == name }) {
+                recipes.append(recipe)
+            } else {
+                print("Skipping invalid recent search name: \(name) - no matching recipe found")
             }
-            // Apply filter to recent searches, increased limit to 10
-            return Array((searchFilter == .all ? recipes : recipes.filter { recipe in dataManager.favorites.contains { $0.id == recipe.id } }).prefix(10))
-        } catch {
-            print("Failed to decode recent searches: \(error)")
-            return []
         }
+        // Apply filter to recent searches, limit set to 10
+        return Array((searchFilter == .all ? recipes : recipes.filter { recipe in dataManager.favorites.contains { $0.id == recipe.id } }).prefix(10))
     }
     
-    // Save a new recent search
+    // Save a new recent search using DataManager
     private func saveRecentSearch(_ recipe: Recipe) {
-        var names: [String] = []
-        do {
-            let decoder = JSONDecoder()
-            names = try decoder.decode([String].self, from: recentSearchNames.data(using: .utf8) ?? Data())
-            print("Loaded recent search names for saving: \(names)")
-        } catch {
-            print("Failed to decode recent searches for saving: \(error)")
-            names = []
-        }
-        
-        names.removeAll { $0 == recipe.name }
-        names.insert(recipe.name, at: 0)
-        names = Array(names.prefix(10)) // Increased limit to 10
-        print("Updated recent search names: \(names)")
-        
-        do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(names)
-            recentSearchNames = String(data: data, encoding: .utf8) ?? "[]"
-            print("Saved recent search names: \(recentSearchNames)")
-        } catch {
-            print("Failed to encode recent searches: \(error)")
-        }
+        dataManager.saveRecentSearch(recipe)
     }
     
-    // Delete a specific recent search
-    private func deleteRecentSearch(_ recipe: Recipe) {
-        var names: [String] = []
-        do {
-            let decoder = JSONDecoder()
-            names = try decoder.decode([String].self, from: recentSearchNames.data(using: .utf8) ?? Data())
-            print("Loaded recent search names for deletion: \(names)")
-        } catch {
-            print("Failed to decode recent searches for deletion: \(error)")
-            names = []
-        }
-        
-        names.removeAll { $0 == recipe.name }
-        print("Updated recent search names after deletion: \(names)")
-        
-        do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(names)
-            recentSearchNames = String(data: data, encoding: .utf8) ?? "[]"
-            print("Saved recent search names after deletion: \(recentSearchNames)")
-        } catch {
-            print("Failed to encode recent searches after deletion: \(error)")
-        }
-    }
-    
-    // Clear all recent searches
+    // Clear all recent searches using DataManager
     private func clearRecentSearches() {
-        do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode([String]())
-            recentSearchNames = String(data: data, encoding: .utf8) ?? "[]"
-            print("Cleared recent search names: \(recentSearchNames)")
-        } catch {
-            print("Failed to encode empty recent searches: \(error)")
-        }
+        dataManager.clearRecentSearches()
     }
     
     private func updateFilteredRecipes() {
@@ -137,24 +75,30 @@ struct RecipeSearchView: View {
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            VStack(spacing: 0) {
-                if searchText.isEmpty && !isSearchActive {
-                    // Initial state when not searching
-                    VStack(spacing: 16) {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    if searchText.isEmpty && !isSearchActive {
+                        // Initial state when not searching
                         if recentSearchRecipes.isEmpty {
                             // No recent searches
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 48))
-                                .foregroundColor(primaryColor.opacity(0.8))
-                            Text("Search for Recipes")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                            Text("Find recipes by name, category, or ingredients.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
+                            VStack(spacing: 16) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(primaryColor.opacity(0.8))
+                                Text("Search for Recipes")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.primary)
+                                Text("Find recipes by name, category, or ingredients.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
+                            }
+                            .padding(.vertical, 16)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Search for Recipes")
+                            .accessibilityHint("Enter a search term to find recipes by name, category, or ingredients")
                         } else {
                             // Show recent searches
                             VStack(alignment: .leading, spacing: 8) {
@@ -181,23 +125,20 @@ struct RecipeSearchView: View {
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.top, 8)
+                                .padding(.bottom, 4)
+                                .background(Color(.systemBackground))
                                 
                                 RecentSearchesList(
                                     recipes: recentSearchRecipes,
-                                    navigationPath: $navigationPath,
-                                    onDelete: deleteRecentSearch
+                                    navigationPath: $navigationPath
                                 )
                             }
+                            .padding(.vertical, 16)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Recent Searches")
+                            .accessibilityHint("Shows the last 10 recipes you searched for")
                         }
-                    }
-                    .padding(.vertical, 16)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(recentSearchRecipes.isEmpty ? "Search for Recipes" : "Recent Searches")
-                    .accessibilityHint(recentSearchRecipes.isEmpty ? "Enter a search term to find recipes by name, category, or ingredients" : "Shows the last 10 recipes you searched for")
-                } else {
-                    // Search is active (either tapped or typing)
-                    VStack(spacing: 0) {
+                    } else {
                         // Search filter picker (always visible when search is active)
                         Picker("Search Filter", selection: $searchFilter) {
                             ForEach(SearchFilter.allCases, id: \.self) { filter in
@@ -208,7 +149,7 @@ struct RecipeSearchView: View {
                         .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                         .padding(.vertical, 8)
                         .accessibilityLabel("Search Filter")
-                        .accessibilityHint("Choose to search all recipes or only favorited recipes")
+                        .accessibilityHint("Choose to search all recipes or only favorite recipes")
                         .onChange(of: searchFilter) { _, _ in
                             updateFilteredRecipes()
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -233,7 +174,6 @@ struct RecipeSearchView: View {
                                         .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
                                 }
                                 .padding(.vertical, 16)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel("No Recent Searches")
                                 .accessibilityHint("Your recent searches will appear here. Start searching to populate this list.")
@@ -263,36 +203,39 @@ struct RecipeSearchView: View {
                                     }
                                     .padding(.horizontal, 16)
                                     .padding(.top, 8)
+                                    .padding(.bottom, 4)
+                                    .background(Color(.systemBackground))
                                     
                                     RecentSearchesList(
                                         recipes: recentSearchRecipes,
-                                        navigationPath: $navigationPath,
-                                        onDelete: deleteRecentSearch
+                                        navigationPath: $navigationPath
                                     )
                                 }
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .padding(.vertical, 16)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("Recent Searches")
+                                .accessibilityHint("Shows the last 10 recipes you searched for")
                             }
                         } else if searchFilter == .favorites && dataManager.favorites.isEmpty {
-                            // Empty state when no favorited recipes exist and filter is set to favorites
+                            // Empty state when no favorite recipes exist and filter is set to favorites
                             VStack(spacing: 16) {
                                 Image(systemName: "heart.fill")
                                     .font(.system(size: 48))
                                     .foregroundColor(primaryColor.opacity(0.8))
-                                Text("No Favorited Recipes")
+                                Text("No Favorite Recipes")
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
-                                Text("You haven't favorited any recipes yet.\nAdd some favorites or switch to All Recipes.")
+                                Text("You haven't favorited any recipes yet.\nAdd some favorites or switch to All recipes.")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
                             }
                             .padding(.vertical, 32)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .accessibilityElement(children: .combine)
-                            .accessibilityLabel("No Favorited Recipes")
-                            .accessibilityHint("You haven't favorited any recipes yet. Add some favorites or switch to All Recipes.")
+                            .accessibilityLabel("No Favorite Recipes")
+                            .accessibilityHint("You haven't favorited any recipes yet. Add some favorites or switch to All recipes.")
                         } else if !searchText.isEmpty && filteredRecipes.isEmpty {
                             // Empty state when no recipes are found after searching
                             VStack(spacing: 16) {
@@ -303,54 +246,51 @@ struct RecipeSearchView: View {
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
-                                Text("Try adjusting your search term\(searchFilter == .favorites ? " or switch to All Recipes" : "").")
+                                Text("Try adjusting your search term\(searchFilter == .favorites ? " or switch to All recipes" : "").")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
                             }
                             .padding(.vertical, 32)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("No recipes found")
-                            .accessibilityHint("No recipes match your search term. Try adjusting your search\(searchFilter == .favorites ? " or switch to All Recipes" : "").")
+                            .accessibilityHint("No recipes match your search term. Try adjusting your search\(searchFilter == .favorites ? " or switch to All recipes" : "").")
                         } else {
                             // Search results
-                            ScrollView {
-                                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                                    ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
-                                        Section {
-                                            ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
-                                                NavigationLink {
-                                                    RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                                        .onAppear {
-                                                            saveRecentSearch(recipe)
-                                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                                        }
-                                                } label: {
-                                                    RecipeCell(recipe: recipe, isCraftifyPick: false)
-                                                }
-                                                .buttonStyle(.plain)
-                                                .contentShape(Rectangle())
+                            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                                ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
+                                    Section {
+                                        ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
+                                            NavigationLink {
+                                                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                                    .onAppear {
+                                                        saveRecentSearch(recipe)
+                                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                    }
+                                            } label: {
+                                                RecipeCell(recipe: recipe, isCraftifyPick: false)
                                             }
-                                        } header: {
-                                            Text(letter)
-                                                .font(.headline)
-                                                .fontWeight(.bold)
-                                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                                .padding(.vertical, 8)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .background(Color(.systemBackground))
+                                            .buttonStyle(.plain)
+                                            .contentShape(Rectangle())
                                         }
+                                    } header: {
+                                        Text(letter)
+                                            .font(.headline)
+                                            .fontWeight(.bold)
+                                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                                            .padding(.vertical, 8)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(Color(.systemBackground))
                                     }
                                 }
                             }
-                            .scrollContentBackground(.hidden)
-                            .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
                         }
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
@@ -402,6 +342,7 @@ struct RecentSearchItem: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(recipe.name) recent search")
         .accessibilityHint("Navigates to the detailed view of \(recipe.name)")
@@ -412,11 +353,10 @@ struct RecentSearchItem: View {
 struct RecentSearchesList: View {
     let recipes: [Recipe]
     @Binding var navigationPath: NavigationPath
-    let onDelete: (Recipe) -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     var body: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             ForEach(Array(recipes.enumerated()), id: \.element.name) { index, recipe in
                 NavigationLink {
                     RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
@@ -424,18 +364,6 @@ struct RecentSearchesList: View {
                     RecentSearchItem(recipe: recipe)
                 }
                 .buttonStyle(.plain)
-                .contentShape(Rectangle())
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                        onDelete(recipe)
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                    .tint(.red)
-                    .accessibilityLabel("Delete \(recipe.name) from recent searches")
-                    .accessibilityHint("Removes this recipe from your recent search history")
-                }
                 
                 if index < recipes.count - 1 {
                     Divider()
@@ -445,6 +373,6 @@ struct RecentSearchesList: View {
         }
         .background(Color(.systemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .padding(.horizontal, 0)
+        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
     }
 }

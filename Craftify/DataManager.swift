@@ -13,6 +13,7 @@ import UIKit
 class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []
     @Published var favorites: [Recipe] = []
+    @Published var recentSearchNames: [String] = [] // Added for recent searches
     @Published var selectedCategory: String? = nil
     @Published var lastUpdated: Date? = nil
     @Published var errorMessage: String? = nil
@@ -21,7 +22,8 @@ class DataManager: ObservableObject {
     @Published var accessibilityAnnouncement: String? = nil
     @Published var searchText: String = ""
 
-    private let iCloudKey = "favoriteRecipes"
+    private let iCloudFavoritesKey = "favoriteRecipes" // Renamed for clarity
+    private let iCloudRecentSearchesKey = "recentSearches" // New key for recent searches
     private var cancellables = Set<AnyCancellable>()
 
     enum ErrorType: String {
@@ -32,7 +34,7 @@ class DataManager: ObservableObject {
     }
 
     init() {
-        // Pull any existing iCloud favorites on launch
+        // Pull any existing iCloud data on launch
         NSUbiquitousKeyValueStore.default.synchronize()
 
         // Listen for changes in iCloud key-value store
@@ -77,12 +79,14 @@ class DataManager: ObservableObject {
             print("Loaded \(localRecipes.count) recipes from local cache.")
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncFavorites()
+            self.syncRecentSearches() // Added to sync recent searches
         } else {
             print("No local cache found; will fetch from CloudKit.")
         }
 
         loadData {
             self.syncFavorites()
+            self.syncRecentSearches() // Added to sync recent searches
         }
     }
 
@@ -91,7 +95,7 @@ class DataManager: ObservableObject {
     }
 
     @objc private func appWillEnterForeground() {
-        // Pull any updates made to favorites while backgrounded
+        // Pull any updates made while backgrounded
         NSUbiquitousKeyValueStore.default.synchronize()
     }
 
@@ -129,16 +133,46 @@ class DataManager: ObservableObject {
 
     func saveFavorites() {
         let favoriteIDs = favorites.map { $0.id }
-        NSUbiquitousKeyValueStore.default.set(favoriteIDs, forKey: iCloudKey)
+        NSUbiquitousKeyValueStore.default.set(favoriteIDs, forKey: iCloudFavoritesKey)
         NSUbiquitousKeyValueStore.default.synchronize()
     }
 
     func syncFavorites() {
-        if let savedIDs = NSUbiquitousKeyValueStore.default.array(forKey: iCloudKey) as? [Int] {
+        if let savedIDs = NSUbiquitousKeyValueStore.default.array(forKey: iCloudFavoritesKey) as? [Int] {
             let validIDs = savedIDs.filter { id in recipes.contains { $0.id == id } }
             favorites = recipes.filter { validIDs.contains($0.id) }
             if validIDs.count < savedIDs.count {
-                NSUbiquitousKeyValueStore.default.set(validIDs, forKey: iCloudKey)
+                NSUbiquitousKeyValueStore.default.set(validIDs, forKey: iCloudFavoritesKey)
+                NSUbiquitousKeyValueStore.default.synchronize()
+            }
+        }
+    }
+
+    // MARK: - Recent Searches Handling
+
+    func saveRecentSearch(_ recipe: Recipe) {
+        recentSearchNames.removeAll { $0 == recipe.name }
+        recentSearchNames.insert(recipe.name, at: 0)
+        recentSearchNames = Array(recentSearchNames.prefix(10)) // Limit to 10
+        print("Updated recent search names: \(recentSearchNames)")
+        
+        NSUbiquitousKeyValueStore.default.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
+        NSUbiquitousKeyValueStore.default.synchronize()
+    }
+
+    func clearRecentSearches() {
+        recentSearchNames = []
+        NSUbiquitousKeyValueStore.default.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
+        NSUbiquitousKeyValueStore.default.synchronize()
+        print("Cleared recent search names: \(recentSearchNames)")
+    }
+
+    func syncRecentSearches() {
+        if let savedNames = NSUbiquitousKeyValueStore.default.array(forKey: iCloudRecentSearchesKey) as? [String] {
+            let validNames = savedNames.filter { name in recipes.contains { $0.name == name } }
+            recentSearchNames = Array(validNames.prefix(10)) // Limit to 10
+            if validNames.count < savedNames.count {
+                NSUbiquitousKeyValueStore.default.set(validNames, forKey: iCloudRecentSearchesKey)
                 NSUbiquitousKeyValueStore.default.synchronize()
             }
         }
@@ -146,6 +180,7 @@ class DataManager: ObservableObject {
 
     @objc private func icloudDidChange() {
         syncFavorites()
+        syncRecentSearches() // Added to sync recent searches
     }
 
     // MARK: - CloudKit & Local File Caching
@@ -189,6 +224,7 @@ class DataManager: ObservableObject {
                         DispatchQueue.main.async {
                             self.recipes = fetchedRecipes.sorted(by: { $0.name < $1.name })
                             self.syncFavorites()
+                            self.syncRecentSearches() // Added to sync recent searches
                             self.saveRecipesToLocalCache(fetchedRecipes)
                             self.lastUpdated = Date()
                             self.isLoading = false
