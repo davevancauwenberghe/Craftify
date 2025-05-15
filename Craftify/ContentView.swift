@@ -14,19 +14,14 @@ struct ContentView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
-    @State private var searchText = ""
-    @State private var isSearchActive = false
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
-    @State private var isSearching = false
     @State private var isLoading = true
     
     var body: some View {
         TabView(selection: $selectedTab) {
             RecipesTabView(
                 navigationPath: $navigationPath,
-                searchText: $searchText,
-                isSearching: $isSearching,
                 isLoading: $isLoading
             )
             .tabItem {
@@ -45,17 +40,18 @@ struct ContentView: View {
                     Label("More", systemImage: "ellipsis.circle")
                 }
                 .tag(2)
+            
+            RecipeSearchView()
+                .tabItem {
+                    Label("Search", systemImage: "magnifyingglass")
+                }
+                .tag(3)
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :
             (colorSchemePreference == "light" ? .light : .dark)
         )
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .onChange(of: isSearchActive) {
-            if !isSearchActive {
-                searchText = ""
-            }
-        }
         .onChange(of: selectedTab) { _, _ in
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }
@@ -66,8 +62,6 @@ struct RecipesTabView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Binding var navigationPath: NavigationPath
-    @Binding var searchText: String
-    @Binding var isSearching: Bool
     @Binding var isLoading: Bool
     
     var body: some View {
@@ -78,25 +72,12 @@ struct RecipesTabView: View {
                         .progressViewStyle(.circular)
                         .padding()
                 } else {
-                    CategoryView(
-                        navigationPath: $navigationPath,
-                        searchText: $searchText,
-                        isSearching: $isSearching
-                    )
+                    CategoryView(navigationPath: $navigationPath)
                 }
             }
             .navigationTitle("Craftify")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
-            .searchable(
-                text: $searchText,
-                isPresented: Binding(
-                    get: { isSearching },
-                    set: { isSearching = $0 }
-                ),
-                placement: .navigationBarDrawer(displayMode: .always),
-                prompt: "Search recipes"
-            )
             .task {
                 if dataManager.recipes.isEmpty {
                     await dataManager.loadDataAsync()
@@ -111,8 +92,6 @@ struct RecipesTabView: View {
 struct CategoryView: View {
     @EnvironmentObject var dataManager: DataManager
     @Binding var navigationPath: NavigationPath
-    @Binding var searchText: String
-    @Binding var isSearching: Bool
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     @State private var selectedCategory: String? = nil
@@ -127,15 +106,8 @@ struct CategoryView: View {
             ? dataManager.recipes
             : dataManager.recipes.filter { $0.category == selectedCategory }
         
-        let filtered = searchText.isEmpty ? categoryFiltered :
-            categoryFiltered.filter { recipe in
-                recipe.name.localizedCaseInsensitiveContains(searchText) ||
-                recipe.category.localizedCaseInsensitiveContains(searchText) ||
-                recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
-            }
-        
         var groups = [String: [Recipe]]()
-        for recipe in filtered {
+        for recipe in categoryFiltered {
             let key = String(recipe.name.prefix(1).uppercased())
             groups[key, default: []].append(recipe)
         }
@@ -188,7 +160,7 @@ struct CategoryView: View {
             
             ScrollView {
                 LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    if !recommendedRecipes.isEmpty && !isSearching {
+                    if !recommendedRecipes.isEmpty {
                         Section {
                             if isCraftifyPicksExpanded {
                                 ScrollView(.horizontal, showsIndicators: false) {
@@ -247,7 +219,7 @@ struct CategoryView: View {
             recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             updateFilteredRecipes()
         }
-        .task(id: "\(searchText)\(selectedCategory ?? "")") {
+        .task(id: selectedCategory) {
             updateFilteredRecipes()
         }
     }

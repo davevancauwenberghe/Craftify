@@ -35,7 +35,6 @@ struct MoreView: View {
                         Text("Dark").tag("dark")
                     }
                     .pickerStyle(.segmented)
-                    .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
                     .accessibilityLabel("Appearance")
                     .accessibilityHint("Choose between System, Light, or Dark mode")
                 }

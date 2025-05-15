@@ -34,8 +34,6 @@ struct FavoritesView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var navigationPath = NavigationPath()
-    @State private var searchText = ""
-    @State private var isSearchActive = false
     @State private var recommendedRecipes: [Recipe] = []
     @State private var selectedCategory: String? = nil
     @State private var isCraftifyPicksExpanded = true
@@ -50,12 +48,7 @@ struct FavoritesView: View {
     private func updateFilteredFavorites() {
         let favorites = dataManager.favorites
         let byCategory = selectedCategory == nil ? favorites : favorites.filter { $0.category == selectedCategory }
-        let filtered = searchText.isEmpty ? byCategory : byCategory.filter { recipe in
-            recipe.name.localizedCaseInsensitiveContains(searchText) ||
-            recipe.category.localizedCaseInsensitiveContains(searchText) ||
-            recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
-        }
-        filteredFavorites = Dictionary(grouping: filtered, by: { String($0.name.prefix(1).uppercased()) })
+        filteredFavorites = Dictionary(grouping: byCategory, by: { String($0.name.prefix(1).uppercased()) })
             .mapValues { $0.sorted { $0.name < $1.name } }
     }
     
@@ -108,7 +101,7 @@ struct FavoritesView: View {
                     
                     ScrollView {
                         LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                            if !recommendedRecipes.isEmpty && searchText.isEmpty {
+                            if !recommendedRecipes.isEmpty {
                                 Section {
                                     if isCraftifyPicksExpanded {
                                         ScrollView(.horizontal, showsIndicators: false) {
@@ -166,25 +159,11 @@ struct FavoritesView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .searchable(
-                text: $searchText,
-                isPresented: $isSearchActive,
-                placement: .navigationBarDrawer(displayMode: .always),
-                prompt: "Search favorites"
-            )
-            .onChange(of: searchText) { _, newValue in
-                isSearchActive = !newValue.isEmpty
-            }
-            .onChange(of: isSearchActive) { _, newValue in
-                if !newValue {
-                    searchText = ""
-                }
-            }
             .onAppear {
                 recommendedRecipes = Array(dataManager.favorites.shuffled().prefix(5))
                 updateFilteredFavorites()
             }
-            .task(id: "\(searchText)\(selectedCategory ?? "")") {
+            .task(id: selectedCategory) {
                 updateFilteredFavorites()
             }
             .alert(isPresented: Binding(
