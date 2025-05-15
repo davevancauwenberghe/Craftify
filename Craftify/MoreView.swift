@@ -186,39 +186,38 @@ struct MoreView: View {
 
 struct AboutView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    
+
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "33"
-        return "Version \(version) - Build \(build)"
+        let build   = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+        return "Version \(version) – Build \(build)"
     }
-    
+
     var body: some View {
         VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
             VStack(spacing: 8) {
-                // App Icon Preview styled as an iOS app icon
                 Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage())
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 18)) // iOS app icon corner radius
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
                     .overlay(
                         RoundedRectangle(cornerRadius: 18)
                             .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                     )
-                    .shadow(radius: 2, x: 0, y: 1) // Subtle shadow for depth
+                    .shadow(radius: 2, x: 0, y: 1)
                     .accessibilityLabel("Craftify app icon")
                     .accessibilityAddTraits(.isImage)
-                
+
                 Text("Craftify for Minecraft")
                     .font(horizontalSizeClass == .regular ? .title : .largeTitle)
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
-                
+
                 Text(appVersion)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                
+
                 Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
                     .font(horizontalSizeClass == .regular ? .body : .subheadline)
                     .multilineTextAlignment(.center)
@@ -228,57 +227,55 @@ struct AboutView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
             .accessibilityHint("About the Craftify app and its purpose")
-            
+
             List {
                 Section {
                     NavigationLink(destination: AppIconsView()) {
                         buttonStyle(title: "App Icons", systemImage: "app.badge.fill")
                     }
-                    .buttonStyle(.plain) // Ensure consistent button behavior
-                    .simultaneousGesture(TapGesture().onEnded {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        print("App Icons button tapped")
-                    })
-                    .listRowInsets(EdgeInsets(top: horizontalSizeClass == .regular ? 12 : 8,
-                                              leading: horizontalSizeClass == .regular ? 16 : 12,
-                                              bottom: horizontalSizeClass == .regular ? 12 : 8,
-                                              trailing: horizontalSizeClass == .regular ? 16 : 12))
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        }
+                    )
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(
+                        top:    horizontalSizeClass == .regular ? 12 : 8,
+                        leading:horizontalSizeClass == .regular ? 16 : 12,
+                        bottom: horizontalSizeClass == .regular ? 12 : 8,
+                        trailing:horizontalSizeClass == .regular ? 16 : 12
+                    ))
                     .accessibilityLabel("App Icons")
                     .accessibilityHint("Choose an alternate app icon for Craftify")
-                    .accessibilityAddTraits(.isButton)
-                    
+
                     NavigationLink(destination: ReleaseNotesView()) {
                         buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
                     }
-                    .buttonStyle(.plain) // Ensure consistent button behavior
-                    .simultaneousGesture(TapGesture().onEnded {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        print("Release Notes button tapped")
-                    })
-                    .listRowInsets(EdgeInsets(top: horizontalSizeClass == .regular ? 12 : 8,
-                                              leading: horizontalSizeClass == .regular ? 16 : 12,
-                                              bottom: horizontalSizeClass == .regular ? 12 : 8,
-                                              trailing: horizontalSizeClass == .regular ? 16 : 12))
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        }
+                    )
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(
+                        top:    horizontalSizeClass == .regular ? 12 : 8,
+                        leading:horizontalSizeClass == .regular ? 16 : 12,
+                        bottom: horizontalSizeClass == .regular ? 12 : 8,
+                        trailing:horizontalSizeClass == .regular ? 16 : 12
+                    ))
                     .accessibilityLabel("Release Notes")
                     .accessibilityHint("View the release notes for Craftify")
-                    .accessibilityAddTraits(.isButton)
                 }
             }
             .listStyle(InsetGroupedListStyle())
             .scrollDisabled(true)
             .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-            
+
             Button(action: {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 let supportEmail = "hello@davevancauwenberghe.be"
                 if let url = URL(string: "mailto:\(supportEmail)") {
-                    UIApplication.shared.open(url) { success in
-                        if !success {
-                            print("Failed to open mail client")
-                        }
-                    }
-                } else {
-                    print("Invalid mailto URL")
+                    UIApplication.shared.open(url)
                 }
             }) {
                 HStack {
@@ -297,17 +294,16 @@ struct AboutView: View {
             .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
             .padding(.bottom, 8)
             .accessibilityLabel("Contact Support")
-            .accessibilityHint("Opens the mail app to contact support at hello@davevancauwenberghe.be")
-            
-            Text("Craftify for Minecraft is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.")
+            .accessibilityHint("Opens the mail app to contact support")
+
+            Text("Craftify for Minecraft is not an official Minecraft product; it is not approved or associated with Mojang or Microsoft.")
                 .font(horizontalSizeClass == .regular ? .callout : .footnote)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-                .padding(.top, 8)
                 .accessibilityLabel("Disclaimer")
                 .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
-            
+
             Spacer()
         }
         .padding(horizontalSizeClass == .regular ? 12 : 8)
@@ -316,13 +312,13 @@ struct AboutView: View {
         .navigationTitle("About Craftify")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
-        .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
+        .safeAreaInset(edge: .top)    { Color.clear.frame(height: 0) }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
         .onAppear {
             UIImpactFeedbackGenerator(style: .medium).prepare()
         }
     }
-    
+
     private func buttonStyle(title: String, systemImage: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
