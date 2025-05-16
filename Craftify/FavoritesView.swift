@@ -27,14 +27,13 @@ struct EmptyFavoritesView: View {
                 .padding(.horizontal)
         }
         .padding()
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("No favorite recipes, You haven't added any favorite recipes yet. Explore recipes and tap the heart to mark them as favorites.")
     }
 }
 
 struct FavoritesView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var navigationPath = NavigationPath()
     @State private var recommendedRecipes: [Recipe] = []
     @State private var selectedCategory: String? = nil
     @State private var isCraftifyPicksExpanded = true
@@ -42,24 +41,19 @@ struct FavoritesView: View {
     
     private let primaryColor = Color(hex: "00AA00")
     
-    private var favoriteRecipes: [Recipe] {
-        dataManager.favorites.compactMap { name in
-            dataManager.recipes.first(where: { $0.name == name })
-        }
-    }
-    
     private var favoriteCategories: [String] {
-        Array(Set(favoriteRecipes.compactMap { $0.category.isEmpty ? nil : $0.category })).sorted()
+        Array(Set(dataManager.favorites.compactMap { $0.category.isEmpty ? nil : $0.category })).sorted()
     }
     
     private func updateFilteredFavorites() {
-        let byCategory = selectedCategory == nil ? favoriteRecipes : favoriteRecipes.filter { $0.category == selectedCategory }
+        let favorites = dataManager.favorites
+        let byCategory = selectedCategory == nil ? favorites : favorites.filter { $0.category == selectedCategory }
         filteredFavorites = Dictionary(grouping: byCategory, by: { String($0.name.prefix(1).uppercased()) })
             .mapValues { $0.sorted { $0.name < $1.name } }
     }
     
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 if filteredFavorites.isEmpty {
                     EmptyFavoritesView()
@@ -114,7 +108,7 @@ struct FavoritesView: View {
                                             LazyHStack(spacing: 8) {
                                                 ForEach(recommendedRecipes, id: \.name) { recipe in
                                                     NavigationLink {
-                                                        RecipeDetailView(recipe: recipe)
+                                                        RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
                                                     } label: {
                                                         RecipeCell(recipe: recipe, isCraftifyPick: true)
                                                     }
@@ -138,7 +132,7 @@ struct FavoritesView: View {
                                 Section {
                                     ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
                                         NavigationLink {
-                                            RecipeDetailView(recipe: recipe)
+                                            RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
                                         } label: {
                                             RecipeCell(recipe: recipe, isCraftifyPick: false)
                                         }
@@ -166,12 +160,7 @@ struct FavoritesView: View {
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .onAppear {
-                dataManager.syncFavorites()
-                recommendedRecipes = Array(favoriteRecipes.shuffled().prefix(5))
-                updateFilteredFavorites()
-            }
-            .onChange(of: dataManager.favorites) { _, _ in
-                recommendedRecipes = Array(favoriteRecipes.shuffled().prefix(5))
+                recommendedRecipes = Array(dataManager.favorites.shuffled().prefix(5))
                 updateFilteredFavorites()
             }
             .task(id: selectedCategory) {

@@ -391,7 +391,7 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 54-56", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 54-57", changes: [
         "Improved search",
         "Onboarding added",
         "Image assets added"
