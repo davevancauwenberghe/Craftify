@@ -14,7 +14,6 @@ struct MoreView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var isSyncing: Bool = false
     
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
@@ -80,15 +79,13 @@ struct MoreView: View {
                         Button(action: {
                             print("Sync Recipes tapped")
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            isSyncing = true
-                            dataManager.loadData {
+                            dataManager.loadData(isManual: true) {
                                 dataManager.syncFavorites()
-                                isSyncing = false
                                 print("Sync Recipes completed")
                             }
                         }) {
                             HStack {
-                                if isSyncing {
+                                if dataManager.isLoading {
                                     ProgressView()
                                         .progressViewStyle(.circular)
                                         .padding(.trailing, 8)
@@ -111,7 +108,7 @@ struct MoreView: View {
                         }
                         .buttonStyle(.plain)
                         .contentShape(Rectangle())
-                        .disabled(isSyncing)
+                        .disabled(dataManager.isLoading)
                         .accessibilityLabel("Sync Recipes")
                         .accessibilityHint("Syncs Minecraft recipes from CloudKit")
                         
@@ -394,8 +391,9 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 54-55", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 54-56", changes: [
         "Improved search",
+        "Onboarding added",
         "Image assets added"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 47-53", changes: [

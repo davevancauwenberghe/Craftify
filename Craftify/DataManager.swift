@@ -13,17 +13,18 @@ import UIKit
 class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []
     @Published var favorites: [Recipe] = []
-    @Published var recentSearchNames: [String] = [] // Added for recent searches
+    @Published var recentSearchNames: [String] = []
     @Published var selectedCategory: String? = nil
     @Published var lastUpdated: Date? = nil
     @Published var errorMessage: String? = nil
     @Published var cacheClearedMessage: String? = nil
     @Published var isLoading: Bool = false
+    @Published var isManualSyncing: Bool = false
     @Published var accessibilityAnnouncement: String? = nil
     @Published var searchText: String = ""
 
-    private let iCloudFavoritesKey = "favoriteRecipes" // Renamed for clarity
-    private let iCloudRecentSearchesKey = "recentSearches" // New key for recent searches
+    private let iCloudFavoritesKey = "favoriteRecipes"
+    private let iCloudRecentSearchesKey = "recentSearches"
     private var cancellables = Set<AnyCancellable>()
 
     enum ErrorType: String {
@@ -79,14 +80,9 @@ class DataManager: ObservableObject {
             print("Loaded \(localRecipes.count) recipes from local cache.")
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncFavorites()
-            self.syncRecentSearches() // Added to sync recent searches
+            self.syncRecentSearches()
         } else {
-            print("No local cache found; will fetch from CloudKit.")
-        }
-
-        loadData {
-            self.syncFavorites()
-            self.syncRecentSearches() // Added to sync recent searches
+            print("No local cache found; will fetch from CloudKit on first view load.")
         }
     }
 
@@ -109,8 +105,8 @@ class DataManager: ObservableObject {
             return "Last synced: \(formatter.string(from: lastUpdated))"
         } else if isLoading {
             return "Syncing recipes..."
-        } else if let error = errorMessage {
-            return "Sync failed: \(error)"
+        } else if let errorMessage = errorMessage {
+            return "Sync failed: \(errorMessage)"
         } else {
             return "Not synced"
         }
@@ -153,7 +149,7 @@ class DataManager: ObservableObject {
     func saveRecentSearch(_ recipe: Recipe) {
         recentSearchNames.removeAll { $0 == recipe.name }
         recentSearchNames.insert(recipe.name, at: 0)
-        recentSearchNames = Array(recentSearchNames.prefix(10)) // Limit to 10
+        recentSearchNames = Array(recentSearchNames.prefix(10))
         print("Updated recent search names: \(recentSearchNames)")
         
         NSUbiquitousKeyValueStore.default.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
@@ -170,7 +166,7 @@ class DataManager: ObservableObject {
     func syncRecentSearches() {
         if let savedNames = NSUbiquitousKeyValueStore.default.array(forKey: iCloudRecentSearchesKey) as? [String] {
             let validNames = savedNames.filter { name in recipes.contains { $0.name == name } }
-            recentSearchNames = Array(validNames.prefix(10)) // Limit to 10
+            recentSearchNames = Array(validNames.prefix(10))
             if validNames.count < savedNames.count {
                 NSUbiquitousKeyValueStore.default.set(validNames, forKey: iCloudRecentSearchesKey)
                 NSUbiquitousKeyValueStore.default.synchronize()
@@ -180,14 +176,17 @@ class DataManager: ObservableObject {
 
     @objc private func icloudDidChange() {
         syncFavorites()
-        syncRecentSearches() // Added to sync recent searches
+        syncRecentSearches()
     }
 
     // MARK: - CloudKit & Local File Caching
 
-    func loadData(completion: @escaping () -> Void) {
+    func loadData(isManual: Bool, completion: @escaping () -> Void) {
         DispatchQueue.main.async {
             self.isLoading = true
+            if isManual {
+                self.isManualSyncing = true
+            }
             self.errorMessage = nil
         }
 
@@ -224,10 +223,11 @@ class DataManager: ObservableObject {
                         DispatchQueue.main.async {
                             self.recipes = fetchedRecipes.sorted(by: { $0.name < $1.name })
                             self.syncFavorites()
-                            self.syncRecentSearches() // Added to sync recent searches
+                            self.syncRecentSearches()
                             self.saveRecipesToLocalCache(fetchedRecipes)
                             self.lastUpdated = Date()
                             self.isLoading = false
+                            self.isManualSyncing = false
                             completion()
                         }
                     }
@@ -237,9 +237,13 @@ class DataManager: ObservableObject {
                         self.errorMessage = errorType.rawValue
                         self.accessibilityAnnouncement = errorType.rawValue
                         self.isLoading = false
+                        self.isManualSyncing = false
                     }
 
                     if let ckError = error as? CKError, ckError.isRetryable, retryCount < 3 {
+                        DispatchQueue.main.async {
+                            self.isLoading = true // Ensure isLoading is true during retry
+                        }
                         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
                             let retryOperation = CKQueryOperation(query: query)
                             fetch(with: retryOperation, retryCount: retryCount + 1)
@@ -259,9 +263,9 @@ class DataManager: ObservableObject {
         fetch(with: initialOperation)
     }
 
-    func loadDataAsync() async {
+    func loadDataAsync(isManual: Bool = false) async {
         await withCheckedContinuation { continuation in
-            loadData {
+            loadData(isManual: isManual) {
                 continuation.resume()
             }
         }
@@ -363,8 +367,8 @@ class DataManager: ObservableObject {
 
     // MARK: - Error Handling
 
-    private func errorType(for error: Error) -> ErrorType {
-        if let ckError = error as? CKError {
+    private func errorType(for err: Swift.Error) -> ErrorType {
+        if let ckError = err as? CKError {
             switch ckError.code {
             case .networkFailure, .networkUnavailable, .serviceUnavailable, .requestRateLimited:
                 return .network

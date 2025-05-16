@@ -12,48 +12,83 @@ import CloudKit
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
-    @State private var isLoading = true
+    @State private var showOnboarding = false
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            RecipesTabView(
-                navigationPath: $navigationPath,
-                isLoading: $isLoading
-            )
-            .tabItem {
-                Label("Recipes", systemImage: "square.grid.2x2")
+        ZStack {
+            TabView(selection: $selectedTab) {
+                RecipesTabView(navigationPath: $navigationPath)
+                    .tabItem {
+                        Label("Recipes", systemImage: "square.grid.2x2")
+                    }
+                    .tag(0)
+                
+                FavoritesView()
+                    .tabItem {
+                        Label("Favorites", systemImage: "heart.fill")
+                    }
+                    .tag(1)
+                
+                MoreView()
+                    .tabItem {
+                        Label("More", systemImage: "ellipsis.circle")
+                    }
+                    .tag(2)
+                
+                RecipeSearchView()
+                    .tabItem {
+                        Label("Search", systemImage: "magnifyingglass")
+                    }
+                    .tag(3)
             }
-            .tag(0)
+            .preferredColorScheme(
+                colorSchemePreference == "system" ? nil :
+                (colorSchemePreference == "light" ? .light : .dark)
+            )
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .onChange(of: selectedTab) { _, _ in
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
             
-            FavoritesView()
-                .tabItem {
-                    Label("Favorites", systemImage: "heart.fill")
-                }
-                .tag(1)
-            
-            MoreView()
-                .tabItem {
-                    Label("More", systemImage: "ellipsis.circle")
-                }
-                .tag(2)
-            
-            RecipeSearchView()
-                .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
-                }
-                .tag(3)
+            // Show onboarding if first launch or manual sync
+            if showOnboarding || dataManager.isManualSyncing {
+                OnboardingView(
+                    title: showOnboarding ? "Welcome to Craftify!" : "Syncing Your Recipes…",
+                    message: "Fetching your recipes from the cloud…",
+                    isLoading: dataManager.isLoading,
+                    errorMessage: dataManager.errorMessage,
+                    isFirstLaunch: showOnboarding,
+                    onDismiss: {
+                        hasCompletedOnboarding = true
+                        showOnboarding = false
+                    },
+                    onRetry: {
+                        dataManager.loadData(isManual: !showOnboarding) {
+                            dataManager.syncFavorites()
+                        }
+                    },
+                    horizontalSizeClass: horizontalSizeClass
+                )
+                .opacity(showOnboarding || dataManager.isManualSyncing ? 1 : 0)
+                .animation(.easeInOut(duration: 0.3), value: showOnboarding || dataManager.isManualSyncing)
+            }
         }
-        .preferredColorScheme(
-            colorSchemePreference == "system" ? nil :
-            (colorSchemePreference == "light" ? .light : .dark)
-        )
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .onChange(of: selectedTab) { _, _ in
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        .onAppear {
+            // Check if this is the first launch
+            if !hasCompletedOnboarding {
+                showOnboarding = true
+            }
+        }
+        .onChange(of: dataManager.isLoading) { _, newValue in
+            // For manual syncs, dismiss automatically when loading completes
+            if !newValue && dataManager.isManualSyncing {
+                // View updates are handled reactively
+            }
         }
     }
 }
@@ -62,29 +97,18 @@ struct RecipesTabView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Binding var navigationPath: NavigationPath
-    @Binding var isLoading: Bool
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack {
-                if isLoading {
-                    ProgressView("Loading recipes from Cloud...")
-                        .progressViewStyle(.circular)
-                        .padding()
-                } else {
-                    CategoryView(navigationPath: $navigationPath)
+            CategoryView(navigationPath: $navigationPath)
+                .navigationTitle("Craftify")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar(.visible, for: .navigationBar)
+                .task {
+                    // Always load data to ensure we have the latest recipes
+                    await dataManager.loadDataAsync(isManual: false)
+                    dataManager.syncFavorites()
                 }
-            }
-            .navigationTitle("Craftify")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar(.visible, for: .navigationBar)
-            .task {
-                if dataManager.recipes.isEmpty {
-                    await dataManager.loadDataAsync()
-                }
-                dataManager.syncFavorites()
-                isLoading = false
-            }
         }
     }
 }
@@ -119,99 +143,21 @@ struct CategoryView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    Button {
-                        selectedCategory = nil
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    } label: {
-                        Text("All")
-                            .fontWeight(.bold)
-                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                            .padding(.vertical, 8)
-                            .background(selectedCategory == nil ? primaryColor : Color.gray.opacity(0.2))
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
-                    .accessibilityLabel("Show all recipes")
-                    .accessibilityHint("Displays recipes from all categories")
-                    
-                    ForEach(dataManager.categories, id: \.self) { category in
-                        Button {
-                            selectedCategory = category
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        } label: {
-                            Text(category)
-                                .fontWeight(.bold)
-                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                .padding(.vertical, 8)
-                                .background(selectedCategory == category ? primaryColor : Color.gray.opacity(0.2))
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                        }
-                        .accessibilityLabel("Show \(category) recipes")
-                        .accessibilityHint("Filters recipes to show only \(category) category")
-                    }
-                }
-                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                .padding(.vertical, 8)
-            }
-            .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
+            CategoryFilterBar(
+                selectedCategory: $selectedCategory,
+                categories: dataManager.categories,
+                primaryColor: primaryColor,
+                horizontalSizeClass: horizontalSizeClass
+            )
             
-            ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    if !recommendedRecipes.isEmpty {
-                        Section {
-                            if isCraftifyPicksExpanded {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    LazyHStack(spacing: 8) {
-                                        ForEach(recommendedRecipes, id: \.name) { recipe in
-                                            NavigationLink {
-                                                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                            } label: {
-                                                RecipeCell(recipe: recipe, isCraftifyPick: true)
-                                            }
-                                            .buttonStyle(.plain)
-                                            .contentShape(Rectangle())
-                                        }
-                                    }
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                    .padding(.vertical, 8)
-                                }
-                            }
-                        } header: {
-                            CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
-                                withAnimation { isCraftifyPicksExpanded.toggle() }
-                            }
-                            .background(Color(.systemBackground))
-                        }
-                    }
-                    
-                    ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
-                        Section {
-                            ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
-                                NavigationLink {
-                                    RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                } label: {
-                                    RecipeCell(recipe: recipe, isCraftifyPick: false)
-                                }
-                                .buttonStyle(.plain)
-                                .contentShape(Rectangle())
-                            }
-                        } header: {
-                            Text(letter)
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                .padding(.vertical, 8)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color(.systemBackground))
-                        }
-                    }
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
+            RecipeListView(
+                recommendedRecipes: $recommendedRecipes,
+                isCraftifyPicksExpanded: $isCraftifyPicksExpanded,
+                filteredRecipes: filteredRecipes,
+                navigationPath: $navigationPath,
+                primaryColor: primaryColor,
+                horizontalSizeClass: horizontalSizeClass
+            )
         }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
@@ -219,9 +165,129 @@ struct CategoryView: View {
             recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             updateFilteredRecipes()
         }
-        .task(id: selectedCategory) {
+        .onChange(of: dataManager.recipes) { _, _ in
+            recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
             updateFilteredRecipes()
         }
+        .onChange(of: selectedCategory) { _, _ in
+            updateFilteredRecipes()
+        }
+    }
+}
+
+// Extracted view for the category filter bar
+struct CategoryFilterBar: View {
+    @Binding var selectedCategory: String?
+    let categories: [String]
+    let primaryColor: Color
+    let horizontalSizeClass: UserInterfaceSizeClass?
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Button {
+                    selectedCategory = nil
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    Text("All")
+                        .fontWeight(.bold)
+                        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                        .padding(.vertical, 8)
+                        .background(selectedCategory == nil ? primaryColor : Color.gray.opacity(0.2))
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .accessibilityLabel("Show all recipes")
+                .accessibilityHint("Displays recipes from all categories")
+                
+                ForEach(categories, id: \.self) { category in
+                    Button {
+                        selectedCategory = category
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    } label: {
+                        Text(category)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                            .padding(.vertical, 8)
+                            .background(selectedCategory == category ? primaryColor : Color.gray.opacity(0.2))
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+                    .accessibilityLabel("Show \(category) recipes")
+                    .accessibilityHint("Filters recipes to show only \(category) category")
+                }
+            }
+            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+            .padding(.vertical, 8)
+        }
+        .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
+    }
+}
+
+// Extracted view for the recipe list
+struct RecipeListView: View {
+    @Binding var recommendedRecipes: [Recipe]
+    @Binding var isCraftifyPicksExpanded: Bool
+    let filteredRecipes: [String: [Recipe]]
+    @Binding var navigationPath: NavigationPath
+    let primaryColor: Color
+    let horizontalSizeClass: UserInterfaceSizeClass?
+    
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                if !recommendedRecipes.isEmpty {
+                    Section {
+                        if isCraftifyPicksExpanded {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(spacing: 8) {
+                                    ForEach(recommendedRecipes, id: \.name) { recipe in
+                                        NavigationLink {
+                                            RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                        } label: {
+                                            RecipeCell(recipe: recipe, isCraftifyPick: true)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .contentShape(Rectangle())
+                                    }
+                                }
+                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                                .padding(.vertical, 8)
+                            }
+                        }
+                    } header: {
+                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
+                            withAnimation { isCraftifyPicksExpanded.toggle() }
+                        }
+                        .background(Color(.systemBackground))
+                    }
+                }
+                
+                ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
+                    Section {
+                        ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
+                            NavigationLink {
+                                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                            } label: {
+                                RecipeCell(recipe: recipe, isCraftifyPick: false)
+                            }
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                        }
+                    } header: {
+                        Text(letter)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.systemBackground))
+                    }
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
     }
 }
 
@@ -324,6 +390,335 @@ struct CraftifyPicksHeader: View {
         .padding(.vertical, 8)
         .background(Color(.systemBackground))
         .frame(height: horizontalSizeClass == .regular ? 44 : 36)
+    }
+}
+
+struct OnboardingView: View {
+    let title: String
+    let message: String
+    let isLoading: Bool
+    let errorMessage: String?
+    let isFirstLaunch: Bool
+    let onDismiss: () -> Void
+    let onRetry: () -> Void
+    let horizontalSizeClass: UserInterfaceSizeClass?
+    
+    @State private var gradientAngle: Double = 0
+    @State private var isButtonEnabled: Bool
+    @State private var buttonScale: CGFloat = 1.0
+    @State private var onboardingStep: OnboardingStep = .loading
+    
+    private let primaryColor = Color(hex: "00AA00")
+    
+    // List of Minecraft crafting tips
+    private let craftingTips: [String] = [
+        "Did you know? You can craft a pickaxe with just 3 ingots and 2 sticks!",
+        "Crafting a furnace requires 8 cobblestones—perfect for smelting ores!",
+        "Combine 4 wooden planks to create a crafting table and unlock more recipes!",
+        "1 block of sand can be used to smelt glass"
+    ]
+    
+    // Adaptive styling based on device size
+    private var cardMaxWidth: CGFloat {
+        horizontalSizeClass == .regular ? 500 : .infinity
+    }
+    
+    private var cardHorizontalPadding: CGFloat {
+        horizontalSizeClass == .regular ? 48 : 32
+    }
+    
+    private var iconSize: CGFloat {
+        horizontalSizeClass == .regular ? 100 : 80
+    }
+    
+    private var titleFont: Font {
+        horizontalSizeClass == .regular ? .title : .title
+    }
+    
+    private var messageFont: Font {
+        horizontalSizeClass == .regular ? .title3 : .subheadline
+    }
+    
+    private var buttonFont: Font {
+        horizontalSizeClass == .regular ? .title3 : .headline
+    }
+    
+    private var contentSpacing: CGFloat {
+        horizontalSizeClass == .regular ? 32 : 24
+    }
+    
+    enum OnboardingStep {
+        case loading
+        case options
+        case tips
+    }
+    
+    init(title: String, message: String, isLoading: Bool, errorMessage: String?, isFirstLaunch: Bool, onDismiss: @escaping () -> Void, onRetry: @escaping () -> Void, horizontalSizeClass: UserInterfaceSizeClass?) {
+        self.title = title
+        self.message = message
+        self.isLoading = isLoading
+        self.errorMessage = errorMessage
+        self.isFirstLaunch = isFirstLaunch
+        self.onDismiss = onDismiss
+        self.onRetry = onRetry
+        self.horizontalSizeClass = horizontalSizeClass
+        // Initialize isButtonEnabled based on the initial isLoading state
+        self._isButtonEnabled = State(initialValue: !isLoading)
+    }
+    
+    var body: some View {
+        ZStack {
+            // Semi-transparent overlay to dim the background
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+            
+            switch onboardingStep {
+            case .loading:
+                loadingView
+            case .options:
+                optionsView
+            case .tips:
+                tipsView
+            }
+        }
+        .onChange(of: isLoading) { _, newValue in
+            if !newValue && errorMessage == nil {
+                // Transition directly to options step after loading completes
+                if isFirstLaunch {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                            isButtonEnabled = true
+                            buttonScale = 1.1
+                        }
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2)) {
+                            buttonScale = 1.0
+                            onboardingStep = .options
+                        }
+                    }
+                } else {
+                    // For manual syncs, dismiss immediately
+                    onDismiss()
+                }
+            }
+        }
+    }
+    
+    private var loadingView: some View {
+        VStack(spacing: contentSpacing) {
+            // Crafting table icon
+            Image(systemName: "circle.grid.2x2.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: iconSize, height: iconSize)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [primaryColor, primaryColor.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .rotationEffect(.degrees(gradientAngle))
+                .onAppear {
+                    withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                        gradientAngle = 360
+                    }
+                }
+            
+            Text(title)
+                .font(titleFont)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            Text(message)
+                .font(messageFont)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, cardHorizontalPadding)
+            
+            if isLoading && errorMessage == nil {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(primaryColor)
+            } else if let error = errorMessage {
+                Text(error)
+                    .font(messageFont)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, cardHorizontalPadding)
+                
+                Button(action: {
+                    // Reset state before retrying
+                    isButtonEnabled = false
+                    onboardingStep = .loading
+                    onRetry()
+                }) {
+                    Text("Retry")
+                        .font(buttonFont)
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(primaryColor)
+                        .cornerRadius(10)
+                        .padding(.horizontal, cardHorizontalPadding)
+                }
+                .accessibilityLabel("Retry Sync")
+                .accessibilityHint("Retries fetching recipes from the cloud")
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(.systemBackground))
+                .shadow(radius: 10)
+        )
+        .padding(.horizontal, cardHorizontalPadding)
+        .frame(maxWidth: cardMaxWidth, alignment: .center)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(message)\(errorMessage != nil ? ", Error: \(errorMessage!)" : isLoading ? ", Loading" : ", Complete")")
+        .accessibilityHint("\(errorMessage != nil ? "An error occurred. Tap to retry." : "Please wait while the app fetches your recipes.")")
+    }
+    
+    private var optionsView: some View {
+        VStack(spacing: contentSpacing) {
+            // Crafting table icon
+            Image(systemName: "circle.grid.2x2.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: iconSize, height: iconSize)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [primaryColor, primaryColor.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .rotationEffect(.degrees(gradientAngle))
+            
+            Text("Ready to Craft!")
+                .font(titleFont)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            Text("Your recipes are loaded. Would you like to see some crafting tips before you start?")
+                .font(messageFont)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, cardHorizontalPadding)
+            
+            Button(action: {
+                withAnimation {
+                    onboardingStep = .tips
+                }
+            }) {
+                Text("Show Tips")
+                    .font(buttonFont)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(primaryColor.opacity(0.8))
+                    .cornerRadius(10)
+                    .padding(.horizontal, cardHorizontalPadding)
+                    .scaleEffect(buttonScale)
+            }
+            .accessibilityLabel("Show Crafting Tips")
+            .accessibilityHint("View some helpful Minecraft crafting tips")
+            
+            Button(action: {
+                onDismiss()
+            }) {
+                Text("Start Crafting")
+                    .font(buttonFont)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(primaryColor)
+                    .cornerRadius(10)
+                    .padding(.horizontal, cardHorizontalPadding)
+                    .scaleEffect(buttonScale)
+            }
+            .accessibilityLabel("Start Crafting")
+            .accessibilityHint("Dismiss the onboarding and start using the app")
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(.systemBackground))
+                .shadow(radius: 10)
+        )
+        .padding(.horizontal, cardHorizontalPadding)
+        .frame(maxWidth: cardMaxWidth, alignment: .center)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Ready to Craft!, Your recipes are loaded. Would you like to see some crafting tips before you start?")
+        .accessibilityHint("Tap Show Tips to view crafting tips, or Start Crafting to begin using the app.")
+    }
+    
+    private var tipsView: some View {
+        VStack(spacing: contentSpacing) {
+            // Crafting table icon
+            Image(systemName: "circle.grid.2x2.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: iconSize, height: iconSize)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [primaryColor, primaryColor.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .rotationEffect(.degrees(gradientAngle))
+            
+            Text("Crafting Tips")
+                .font(titleFont)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            Text("Swipe to view more tips")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .accessibilityHidden(true) // Visual hint, not needed for VoiceOver
+            
+            TabView {
+                ForEach(craftingTips, id: \.self) { tip in
+                    Text(tip)
+                        .font(messageFont)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, cardHorizontalPadding)
+                        .padding(.vertical, 16)
+                        .padding(.bottom, 20) // Extra padding to avoid overlap with dots
+                }
+            }
+            .tabViewStyle(.page)
+            .frame(height: horizontalSizeClass == .regular ? 150 : 120) // Increased height to accommodate dots
+            
+            Button(action: {
+                onDismiss()
+            }) {
+                Text("Start Crafting")
+                    .font(buttonFont)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(primaryColor)
+                    .cornerRadius(10)
+                    .padding(.horizontal, cardHorizontalPadding)
+                    .scaleEffect(buttonScale)
+            }
+            .accessibilityLabel("Start Crafting")
+            .accessibilityHint("Dismiss the onboarding and start using the app")
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(.systemBackground))
+                .shadow(radius: 10)
+        )
+        .padding(.horizontal, cardHorizontalPadding)
+        .frame(maxWidth: cardMaxWidth, alignment: .center)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Crafting Tips, Swipe to read tips, Tap Start Crafting to continue")
+        .accessibilityHint("Swipe left or right to read Minecraft crafting tips, then tap to start using the app.")
     }
 }
 

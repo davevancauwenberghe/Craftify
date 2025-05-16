@@ -108,6 +108,16 @@ struct RecipeSearchView: View {
                                         .fontWeight(.bold)
                                         .foregroundColor(.primary)
                                     
+                                    // Add filter indicator
+                                    Text(searchFilter == .all ? "All" : "Favorites")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.gray.opacity(0.2))
+                                        .clipShape(Capsule())
+                                    
                                     Spacer()
                                     
                                     Button(action: {
@@ -135,8 +145,8 @@ struct RecipeSearchView: View {
                             }
                             .padding(.vertical, 16)
                             .accessibilityElement(children: .combine)
-                            .accessibilityLabel("Recent Searches")
-                            .accessibilityHint("Shows the last 10 recipes you searched for")
+                            .accessibilityLabel("Recent Searches, filtered by \(searchFilter == .all ? "All recipes" : "Favorite recipes")")
+                            .accessibilityHint("Shows the last 10 recipes you searched for, filtered by \(searchFilter == .all ? "all recipes" : "favorite recipes")")
                         }
                     } else {
                         // Search filter picker (always visible when search is active)
@@ -213,8 +223,8 @@ struct RecipeSearchView: View {
                                 }
                                 .padding(.vertical, 16)
                                 .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Recent Searches")
-                                .accessibilityHint("Shows the last 10 recipes you searched for")
+                                .accessibilityLabel("Recent Searches, filtered by \(searchFilter == .all ? "All recipes" : "Favorite recipes")")
+                                .accessibilityHint("Shows the last 10 recipes you searched for, filtered by \(searchFilter == .all ? "all recipes" : "favorite recipes")")
                             }
                         } else if searchFilter == .favorites && dataManager.favorites.isEmpty {
                             // Empty state when no favorite recipes exist and filter is set to favorites
