@@ -35,7 +35,6 @@ struct EmptyFavoritesView: View {
 struct FavoritesView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var navigationPath = NavigationPath()
     @State private var recommendedRecipes: [Recipe] = []
     @State private var selectedCategory: String? = nil
     @State private var isCraftifyPicksExpanded = true
@@ -60,7 +59,7 @@ struct FavoritesView: View {
     }
     
     var body: some View {
-        NavigationStack(path: $navigationPath) {
+        NavigationStack {
             VStack(spacing: 0) {
                 if filteredFavorites.isEmpty {
                     EmptyFavoritesView()
@@ -115,7 +114,7 @@ struct FavoritesView: View {
                                             LazyHStack(spacing: 8) {
                                                 ForEach(recommendedRecipes, id: \.name) { recipe in
                                                     NavigationLink {
-                                                        RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                                        RecipeDetailView(recipe: recipe)
                                                     } label: {
                                                         RecipeCell(recipe: recipe, isCraftifyPick: true)
                                                     }
@@ -139,7 +138,7 @@ struct FavoritesView: View {
                                 Section {
                                     ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
                                         NavigationLink {
-                                            RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                            RecipeDetailView(recipe: recipe)
                                         } label: {
                                             RecipeCell(recipe: recipe, isCraftifyPick: false)
                                         }
