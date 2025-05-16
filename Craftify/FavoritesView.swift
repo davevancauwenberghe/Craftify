@@ -27,6 +27,8 @@ struct EmptyFavoritesView: View {
                 .padding(.horizontal)
         }
         .padding()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("No favorite recipes, You haven't added any favorite recipes yet. Explore recipes and tap the heart to mark them as favorites.")
     }
 }
 
@@ -41,13 +43,18 @@ struct FavoritesView: View {
     
     private let primaryColor = Color(hex: "00AA00")
     
+    private var favoriteRecipes: [Recipe] {
+        dataManager.favorites.compactMap { name in
+            dataManager.recipes.first(where: { $0.name == name })
+        }
+    }
+    
     private var favoriteCategories: [String] {
-        Array(Set(dataManager.favorites.compactMap { $0.category.isEmpty ? nil : $0.category })).sorted()
+        Array(Set(favoriteRecipes.compactMap { $0.category.isEmpty ? nil : $0.category })).sorted()
     }
     
     private func updateFilteredFavorites() {
-        let favorites = dataManager.favorites
-        let byCategory = selectedCategory == nil ? favorites : favorites.filter { $0.category == selectedCategory }
+        let byCategory = selectedCategory == nil ? favoriteRecipes : favoriteRecipes.filter { $0.category == selectedCategory }
         filteredFavorites = Dictionary(grouping: byCategory, by: { String($0.name.prefix(1).uppercased()) })
             .mapValues { $0.sorted { $0.name < $1.name } }
     }
@@ -160,7 +167,12 @@ struct FavoritesView: View {
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .onAppear {
-                recommendedRecipes = Array(dataManager.favorites.shuffled().prefix(5))
+                dataManager.syncFavorites()
+                recommendedRecipes = Array(favoriteRecipes.shuffled().prefix(5))
+                updateFilteredFavorites()
+            }
+            .onChange(of: dataManager.favorites) { _, _ in
+                recommendedRecipes = Array(favoriteRecipes.shuffled().prefix(5))
                 updateFilteredFavorites()
             }
             .task(id: selectedCategory) {
