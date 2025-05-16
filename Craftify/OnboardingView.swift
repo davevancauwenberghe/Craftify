@@ -28,8 +28,7 @@ struct OnboardingView: View {
     private let craftingTips: [String] = [
         "Did you know? You can craft a pickaxe with just 3 ingots and 2 sticks!",
         "Crafting a furnace requires 8 cobblestones—perfect for smelting ores!",
-        "Combine 4 wooden planks to create a crafting table and unlock more recipes!",
-        "A single iron ingot and flint can craft a fire starter—great for survival!"
+        "Combine 4 wooden planks to create a crafting table and unlock more recipes!"
     ]
     
     // Adaptive styling based on device size
