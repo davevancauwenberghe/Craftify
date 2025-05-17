@@ -17,6 +17,8 @@ struct ReportMissingRecipeView: View {
     @State private var isShowingMailView = false
     @State private var isShowingConfirmation = false
     @State private var showValidationErrors = false
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     private let categories: [String] = [
         "Beds", "Crafting", "Food", "Lighting", "Planks",
@@ -28,7 +30,6 @@ struct ReportMissingRecipeView: View {
     }
     private let maxRecipeNameLength = 100
     private let maxAdditionalInfoLength = 1000
-    private let primaryColor = Color(hex: "00AA00")
     
     var body: some View {
         NavigationStack {
@@ -54,7 +55,7 @@ struct ReportMissingRecipeView: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
                                 .stroke(
-                                    showValidationErrors && selectedCategory.isEmpty ? Color.red : primaryColor,
+                                    showValidationErrors && selectedCategory.isEmpty ? Color.red : Color.userAccentColor,
                                     lineWidth: 2
                                 )
                         )
@@ -71,7 +72,7 @@ struct ReportMissingRecipeView: View {
                                 .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                                 .frame(maxWidth: .infinity, minHeight: fieldHeight)
                                 .background(Color(.secondarySystemGroupedBackground))
-                                .onChange(of: recipeName) { // Updated to modern zero-parameter syntax (fixes warning at line 74)
+                                .onChange(of: recipeName) {
                                     if recipeName.count > maxRecipeNameLength {
                                         recipeName = String(recipeName.prefix(maxRecipeNameLength))
                                     }
@@ -88,7 +89,7 @@ struct ReportMissingRecipeView: View {
                                     .foregroundColor(.secondary.opacity(additionalInfo.isEmpty ? 0.7 : 0))
                                     .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
                                     .padding(.vertical, horizontalSizeClass == .regular ? 18 : 14)
-                                    .onChange(of: additionalInfo) { // Updated to modern zero-parameter syntax (fixes warning at line 91)
+                                    .onChange(of: additionalInfo) {
                                         withAnimation(.easeInOut(duration: 0.2)) {
                                             // Opacity updated via binding
                                         }
@@ -98,7 +99,7 @@ struct ReportMissingRecipeView: View {
                                     .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                                     .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                                     .frame(maxWidth: .infinity, minHeight: fieldHeight * 2)
-                                    .onChange(of: additionalInfo) { // Updated to modern zero-parameter syntax (fixes warning at line 101)
+                                    .onChange(of: additionalInfo) {
                                         if additionalInfo.count > maxAdditionalInfoLength {
                                             additionalInfo = String(additionalInfo.prefix(maxAdditionalInfoLength))
                                         }
@@ -113,7 +114,7 @@ struct ReportMissingRecipeView: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
                                 .stroke(
-                                    showValidationErrors && (recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? Color.red : primaryColor,
+                                    showValidationErrors && (recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? Color.red : Color.userAccentColor,
                                     lineWidth: 2
                                 )
                         )
@@ -131,7 +132,7 @@ struct ReportMissingRecipeView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                             .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
-                            .background(isFormIncomplete ? Color.accentColor.opacity(0.5) : Color.accentColor)
+                            .background(isFormIncomplete ? Color.userAccentColor.opacity(0.5) : Color.userAccentColor)
                             .foregroundColor(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                         }
@@ -167,6 +168,9 @@ struct ReportMissingRecipeView: View {
             }
             .onAppear {
                 UIImpactFeedbackGenerator(style: .medium).prepare()
+            }
+            .onChange(of: accentColorPreference) { _, newValue in
+                currentAccentPreference = newValue
             }
         }
     }

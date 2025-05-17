@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ReleaseNotesView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -26,7 +28,7 @@ struct ReleaseNotesView: View {
                     
                     Text(appVersion)
                         .font(horizontalSizeClass == .regular ? .title3 : .headline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Color.userAccentColor)
                     
                     Text("Stay updated with the latest improvements, fixes, and new features added to Craftify.")
                         .font(horizontalSizeClass == .regular ? .body : .subheadline)
@@ -60,6 +62,9 @@ struct ReleaseNotesView: View {
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
+        .onChange(of: accentColorPreference) { _, newValue in
+            currentAccentPreference = newValue
+        }
     }
 }
 
@@ -69,6 +74,9 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
+    ReleaseNote(version: "Version 1.0 - Build 58", changes: [
+        "Accent themes added"
+    ]),
     ReleaseNote(version: "Version 1.0 - Build 54-57", changes: [
         "Improved search",
         "Onboarding added",

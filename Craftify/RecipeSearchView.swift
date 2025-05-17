@@ -12,14 +12,13 @@ import CloudKit
 struct RecipeSearchView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var searchText = ""
     @State private var isSearchActive = false
     @State private var filteredRecipes: [String: [Recipe]] = [:]
     @State private var navigationPath = NavigationPath()
     @State private var searchFilter: SearchFilter = .all
-    
-    private let primaryColor = Color(hex: "00AA00")
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     enum SearchFilter: String, CaseIterable {
         case all = "All recipes"
@@ -84,7 +83,7 @@ struct RecipeSearchView: View {
                             VStack(spacing: 16) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.system(size: 48))
-                                    .foregroundColor(primaryColor.opacity(0.8))
+                                    .foregroundColor(Color.userAccentColor.opacity(0.8))
                                 Text("Search for Recipes")
                                     .font(.title2)
                                     .fontWeight(.bold)
@@ -126,7 +125,7 @@ struct RecipeSearchView: View {
                                     }) {
                                         Text("Clear All")
                                             .font(.subheadline)
-                                            .foregroundColor(primaryColor)
+                                            .foregroundColor(Color.userAccentColor)
                                     }
                                     .disabled(recentSearchRecipes.isEmpty)
                                     .contentShape(Rectangle())
@@ -172,7 +171,7 @@ struct RecipeSearchView: View {
                                 VStack(spacing: 16) {
                                     Image(systemName: "magnifyingglass")
                                         .font(.system(size: 48))
-                                        .foregroundColor(primaryColor.opacity(0.8))
+                                        .foregroundColor(Color.userAccentColor.opacity(0.8))
                                     Text("No Recent Searches")
                                         .font(.title2)
                                         .fontWeight(.bold)
@@ -204,7 +203,7 @@ struct RecipeSearchView: View {
                                         }) {
                                             Text("Clear All")
                                                 .font(.subheadline)
-                                                .foregroundColor(primaryColor)
+                                                .foregroundColor(Color.userAccentColor)
                                         }
                                         .disabled(recentSearchRecipes.isEmpty)
                                         .contentShape(Rectangle())
@@ -231,7 +230,7 @@ struct RecipeSearchView: View {
                             VStack(spacing: 16) {
                                 Image(systemName: "heart.fill")
                                     .font(.system(size: 48))
-                                    .foregroundColor(primaryColor.opacity(0.8))
+                                    .foregroundColor(Color.userAccentColor.opacity(0.8))
                                 Text("No Favorite Recipes")
                                     .font(.title2)
                                     .fontWeight(.bold)
@@ -315,6 +314,9 @@ struct RecipeSearchView: View {
                     searchText = ""
                 }
             }
+            .onChange(of: accentColorPreference) { _, newValue in
+                currentAccentPreference = newValue
+            }
             .task(id: searchText) {
                 updateFilteredRecipes()
             }
@@ -326,8 +328,6 @@ struct RecipeSearchView: View {
 struct RecentSearchItem: View {
     let recipe: Recipe
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    
-    private let primaryColor = Color(hex: "00AA00")
     
     var body: some View {
         HStack(spacing: 12) {
@@ -348,7 +348,7 @@ struct RecentSearchItem: View {
             
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.gray)
+                .foregroundColor(Color.userAccentColor)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)

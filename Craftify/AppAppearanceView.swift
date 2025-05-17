@@ -27,6 +27,7 @@ struct AppAppearanceView: View {
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var errorMessage: String?
     @State private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
 
     private let appIcons: [AppIcon] = [
         .init(id: nil,              name: "Craftify",     previewName: "AppIconPreview"),
@@ -35,11 +36,14 @@ struct AppAppearanceView: View {
     ]
 
     private let accentColors: [AccentColorOption] = [
-        .init(id: "default", name: "Default", color: .accentColor),
-        .init(id: "green", name: "Green", color: Color(hex: "00AA00")),
+        .init(id: "default", name: "Default", color: Color(hex: "00AA00")),
         .init(id: "blue", name: "Blue", color: .blue),
         .init(id: "orange", name: "Orange", color: .orange),
-        .init(id: "purple", name: "Purple", color: .purple)
+        .init(id: "purple", name: "Purple", color: .purple),
+        .init(id: "red", name: "Red", color: .red),
+        .init(id: "teal", name: "Teal", color: .teal),
+        .init(id: "pink", name: "Pink", color: .pink),
+        .init(id: "yellow", name: "Yellow", color: .yellow)
     ]
 
     var body: some View {
@@ -93,11 +97,12 @@ struct AppAppearanceView: View {
                                 Text(icon.name)
                                     .font(.headline)
                                     .minimumScaleFactor(0.8)
+                                    .foregroundColor(Color.userAccentColor)
                                 Spacer()
                                 if selectedAppIcon == icon.id {
                                     Image(systemName: "checkmark.circle.fill")
                                         .imageScale(.large)
-                                        .foregroundColor(.accentColor)
+                                        .foregroundColor(Color.userAccentColor)
                                 }
                             }
                             .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
@@ -133,6 +138,9 @@ struct AppAppearanceView: View {
         )
         .onAppear {
             selectedAppIcon = UIApplication.shared.alternateIconName
+        }
+        .onChange(of: accentColorPreference) { _, newValue in
+            currentAccentPreference = newValue
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :

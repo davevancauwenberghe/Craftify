@@ -21,9 +21,10 @@ struct RecipeDetailView: View {
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
     @State private var ingredientSets: [[String]] = []
     @State private var outputs: [Int] = []
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     private var craftingHeight: CGFloat { horizontalSizeClass == .regular ? 240 : 222 }
-    private let primaryColor = Color(hex: "00AA00")
     
     enum SelectedItem: Equatable {
         case grid(index: Int)
@@ -105,7 +106,7 @@ struct RecipeDetailView: View {
                                             .fontWeight(.bold)
                                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                             .padding(.vertical, 8)
-                                            .background(selectedCraftingOption == index ? primaryColor : Color.gray.opacity(0.2))
+                                            .background(selectedCraftingOption == index ? Color.userAccentColor : Color.gray.opacity(0.2))
                                             .foregroundColor(.white)
                                             .cornerRadius(10)
                                     }
@@ -185,7 +186,7 @@ struct RecipeDetailView: View {
                                 ZStack {
                                     Color(.systemGray5)
                                     RoundedRectangle(cornerRadius: 16)
-                                        .stroke(primaryColor, lineWidth: 2)
+                                        .stroke(Color.userAccentColor, lineWidth: 2)
                                 }
                                 .clipShape(RoundedRectangle(cornerRadius: 16))
                                 .shadow(
@@ -202,7 +203,7 @@ struct RecipeDetailView: View {
                                 }
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(primaryColor)
+                                    .foregroundColor(Color.userAccentColor)
                                     .background(
                                         Circle()
                                             .fill(Color(.systemGray5))
@@ -240,7 +241,7 @@ struct RecipeDetailView: View {
                                         .overlay(
                                             selectedItem == .imageremark
                                             ? RoundedRectangle(cornerRadius: 8)
-                                                .stroke(primaryColor, lineWidth: 2)
+                                                .stroke(Color.userAccentColor, lineWidth: 2)
                                                 .shadow(radius: 4)
                                             : nil
                                         )
@@ -301,6 +302,9 @@ struct RecipeDetailView: View {
             .onChange(of: ingredientSets.count) {
                 print("Ingredient sets count: \(ingredientSets.count)")
             }
+            .onChange(of: accentColorPreference) { _, newValue in
+                currentAccentPreference = newValue
+            }
         }
         .navigationTitle(recipe.name)
         .navigationBarTitleDisplayMode(.large)
@@ -318,7 +322,7 @@ struct RecipeDetailView: View {
                     }
                 } label: {
                     Image(systemName: dataManager.isFavorite(recipe: recipe) ? "heart.fill" : "heart")
-                        .foregroundColor(primaryColor)
+                        .foregroundColor(Color.userAccentColor)
                         .font(.title2)
                         .scaleEffect(animateHeart ? 1.3 : 1.0)
                 }
@@ -417,7 +421,7 @@ struct GridView: View {
                             .overlay(
                                 selectedItem == .output
                                 ? RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color(hex: "00AA00"), lineWidth: 2)
+                                    .stroke(Color.userAccentColor, lineWidth: 2)
                                     .shadow(radius: 4)
                                 : nil
                             )
@@ -480,7 +484,7 @@ struct GridCell: View {
                 .overlay(
                     isSelected
                     ? RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(hex: "00AA00"), lineWidth: 2)
+                        .stroke(Color.userAccentColor, lineWidth: 2)
                         .shadow(radius: 4)
                     : nil
                 )

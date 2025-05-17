@@ -33,13 +33,13 @@ struct EmptyFavoritesView: View {
 struct FavoritesView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var navigationPath = NavigationPath()
     @State private var recommendedRecipes: [Recipe] = []
     @State private var selectedCategory: String? = nil
     @State private var isCraftifyPicksExpanded = true
     @State private var filteredFavorites: [String: [Recipe]] = [:]
-    
-    private let primaryColor = Color(hex: "00AA00")
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     private var favoriteCategories: [String] {
         Array(Set(dataManager.favorites.compactMap { $0.category.isEmpty ? nil : $0.category })).sorted()
@@ -69,7 +69,7 @@ struct FavoritesView: View {
                                         .fontWeight(.bold)
                                         .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                         .padding(.vertical, 8)
-                                        .background(selectedCategory == nil ? primaryColor : Color.gray.opacity(0.2))
+                                        .background(selectedCategory == nil ? Color.userAccentColor : Color.gray.opacity(0.2))
                                         .foregroundColor(.white)
                                         .cornerRadius(10)
                                 }
@@ -85,7 +85,7 @@ struct FavoritesView: View {
                                             .fontWeight(.bold)
                                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                             .padding(.vertical, 8)
-                                            .background(selectedCategory == category ? primaryColor : Color.gray.opacity(0.2))
+                                            .background(selectedCategory == category ? Color.userAccentColor : Color.gray.opacity(0.2))
                                             .foregroundColor(.white)
                                             .cornerRadius(10)
                                     }
@@ -165,6 +165,9 @@ struct FavoritesView: View {
             }
             .task(id: selectedCategory) {
                 updateFilteredFavorites()
+            }
+            .onChange(of: accentColorPreference) { _, newValue in
+                currentAccentPreference = newValue
             }
             .alert(isPresented: Binding(
                 get: { dataManager.errorMessage != nil },

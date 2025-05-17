@@ -8,23 +8,39 @@
 import SwiftUI
 
 extension Color {
+    init(hex: String) {
+        let scanner = Scanner(string: hex)
+        var rgbValue: UInt64 = 0
+        scanner.scanHexInt64(&rgbValue)
+        let red = Double((rgbValue >> 16) & 0xFF) / 255.0
+        let green = Double((rgbValue >> 8) & 0xFF) / 255.0
+        let blue = Double(rgbValue & 0xFF) / 255.0
+        self.init(red: red, green: green, blue: blue)
+    }
+    
     static var userAccentColor: Color {
         let defaults = UserDefaults.standard
         let preference = defaults.string(forKey: "accentColorPreference") ?? "default"
         
         switch preference {
-        case "green":
-            return Color(hex: "00AA00")
         case "blue":
             return .blue
         case "orange":
             return .orange
         case "purple":
             return .purple
+        case "red":
+            return .red
+        case "teal":
+            return .teal
+        case "pink":
+            return .pink
+        case "yellow":
+            return .yellow
         case "default":
             fallthrough
         default:
-            return .accentColor
+            return Color(hex: "00AA00")
         }
     }
 }

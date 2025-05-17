@@ -12,8 +12,10 @@ import CloudKit
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
@@ -46,6 +48,7 @@ struct ContentView: View {
                     }
                     .tag(3)
             }
+            .accentColor(Color.userAccentColor)
             .preferredColorScheme(
                 colorSchemePreference == "system" ? nil :
                 (colorSchemePreference == "light" ? .light : .dark)
@@ -53,6 +56,9 @@ struct ContentView: View {
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .onChange(of: selectedTab) { _, _ in
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+            .onChange(of: accentColorPreference) { _, newValue in
+                currentAccentPreference = newValue
             }
             
             // Show onboarding if first launch or manual sync
@@ -123,8 +129,6 @@ struct CategoryView: View {
     @State private var isCraftifyPicksExpanded = true
     @State private var filteredRecipes: [String: [Recipe]] = [:]
     
-    private let primaryColor = Color(hex: "00AA00")
-    
     private func updateFilteredRecipes() {
         let categoryFiltered = selectedCategory == nil
             ? dataManager.recipes
@@ -146,7 +150,6 @@ struct CategoryView: View {
             CategoryFilterBar(
                 selectedCategory: $selectedCategory,
                 categories: dataManager.categories,
-                primaryColor: primaryColor,
                 horizontalSizeClass: horizontalSizeClass
             )
             
@@ -155,7 +158,6 @@ struct CategoryView: View {
                 isCraftifyPicksExpanded: $isCraftifyPicksExpanded,
                 filteredRecipes: filteredRecipes,
                 navigationPath: $navigationPath,
-                primaryColor: primaryColor,
                 horizontalSizeClass: horizontalSizeClass
             )
         }
@@ -179,8 +181,9 @@ struct CategoryView: View {
 struct CategoryFilterBar: View {
     @Binding var selectedCategory: String?
     let categories: [String]
-    let primaryColor: Color
     let horizontalSizeClass: UserInterfaceSizeClass?
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -193,7 +196,7 @@ struct CategoryFilterBar: View {
                         .fontWeight(.bold)
                         .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                         .padding(.vertical, 8)
-                        .background(selectedCategory == nil ? primaryColor : Color.gray.opacity(0.2))
+                        .background(selectedCategory == nil ? Color.userAccentColor : Color.gray.opacity(0.2))
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
@@ -209,7 +212,7 @@ struct CategoryFilterBar: View {
                             .fontWeight(.bold)
                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                             .padding(.vertical, 8)
-                            .background(selectedCategory == category ? primaryColor : Color.gray.opacity(0.2))
+                            .background(selectedCategory == category ? Color.userAccentColor : Color.gray.opacity(0.2))
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
@@ -221,6 +224,9 @@ struct CategoryFilterBar: View {
             .padding(.vertical, 8)
         }
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
+        .onChange(of: accentColorPreference) { _, newValue in
+            currentAccentPreference = newValue
+        }
     }
 }
 
@@ -230,7 +236,6 @@ struct RecipeListView: View {
     @Binding var isCraftifyPicksExpanded: Bool
     let filteredRecipes: [String: [Recipe]]
     @Binding var navigationPath: NavigationPath
-    let primaryColor: Color
     let horizontalSizeClass: UserInterfaceSizeClass?
     
     var body: some View {
@@ -296,8 +301,6 @@ struct RecipeCell: View {
     let isCraftifyPick: Bool
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
-    private let primaryColor = Color(hex: "00AA00")
-    
     var body: some View {
         HStack(spacing: 12) {
             Image(recipe.image)
@@ -337,7 +340,7 @@ struct RecipeCell: View {
         .padding(.vertical, 10)
         .background(
             LinearGradient(
-                colors: [primaryColor.opacity(0.05), Color.gray.opacity(0.025)],
+                colors: [Color.userAccentColor.opacity(0.05), Color.gray.opacity(0.025)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -346,7 +349,7 @@ struct RecipeCell: View {
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(
-                    primaryColor.opacity(0.3),
+                    Color.userAccentColor.opacity(0.3),
                     style: isCraftifyPick ? StrokeStyle(lineWidth: 1) : StrokeStyle(lineWidth: 1, dash: [4, 4])
                 )
         )
@@ -390,17 +393,5 @@ struct CraftifyPicksHeader: View {
         .padding(.vertical, 8)
         .background(Color(.systemBackground))
         .frame(height: horizontalSizeClass == .regular ? 44 : 36)
-    }
-}
-
-extension Color {
-    init(hex: String) {
-        let scanner = Scanner(string: hex)
-        var rgbValue: UInt64 = 0
-        scanner.scanHexInt64(&rgbValue)
-        let red = Double((rgbValue >> 16) & 0xFF) / 255.0
-        let green = Double((rgbValue >> 8) & 0xFF) / 255.0
-        let blue = Double(rgbValue & 0xFF) / 255.0
-        self.init(red: red, green: green, blue: blue)
     }
 }

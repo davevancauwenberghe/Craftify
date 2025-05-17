@@ -12,6 +12,7 @@ import CloudKit
 struct MoreView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
@@ -168,6 +169,8 @@ struct MoreView: View {
 
 struct AboutView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -298,6 +301,9 @@ struct AboutView: View {
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
         .onAppear {
             UIImpactFeedbackGenerator(style: .medium).prepare()
+        }
+        .onChange(of: accentColorPreference) { _, newValue in
+            currentAccentPreference = newValue
         }
     }
 
