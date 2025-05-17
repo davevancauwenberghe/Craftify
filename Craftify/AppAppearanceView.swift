@@ -9,9 +9,9 @@ import SwiftUI
 import UIKit
 
 private struct AppIcon: Identifiable {
-    let id: String?        // nil = primary, otherwise CFBundleAlternateIcons key
-    let name: String       // user-facing label
-    let previewName: String// your normal Image set name
+    let id: String?
+    let name: String
+    let previewName: String
 }
 
 private struct AccentColorOption: Identifiable {
@@ -21,10 +21,12 @@ private struct AccentColorOption: Identifiable {
 }
 
 struct AppAppearanceView: View {
+    @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass: UserInterfaceSizeClass?
     @AppStorage("selectedAppIcon") private var selectedAppIcon: String?
     @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
-    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @AppStorage("accentColorPreference") private var localAccentColorPreference: String = "default"
+    @AppStorage("syncAccentColor") private var syncAccentColor: Bool = true
     @State private var errorMessage: String?
     @State private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons
     @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
@@ -60,7 +62,18 @@ struct AppAppearanceView: View {
             }
             
             Section(header: Text("Accent Color")) {
-                Picker("Accent Color", selection: $accentColorPreference) {
+                Picker("Accent Color", selection: Binding(
+                    get: { syncAccentColor ? dataManager.accentColorPreference : localAccentColorPreference },
+                    set: { newValue in
+                        if syncAccentColor {
+                            dataManager.saveAccentColor(newValue)
+                            localAccentColorPreference = newValue
+                        } else {
+                            localAccentColorPreference = newValue
+                        }
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                )) {
                     ForEach(accentColors) { option in
                         HStack {
                             Circle()
@@ -73,6 +86,33 @@ struct AppAppearanceView: View {
                 }
                 .accessibilityLabel("Accent Color")
                 .accessibilityHint("Choose the accent color for the app")
+                
+                Button(action: {
+                    syncAccentColor.toggle()
+                    if syncAccentColor {
+                        dataManager.saveAccentColor(localAccentColorPreference)
+                    } else {
+                        localAccentColorPreference = dataManager.accentColorPreference
+                    }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }) {
+                    HStack(spacing: 8) {
+                        Text("Sync Across Devices")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .minimumScaleFactor(0.8)
+                        
+                        Spacer()
+                        
+                        Image(systemName: syncAccentColor ? "checkmark.circle.fill" : "circle")
+                            .imageScale(.medium)
+                            .foregroundColor(Color.userAccentColor)
+                    }
+                    .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
+                }
+                .accessibilityLabel("Sync Accent Color Across Devices")
+                .accessibilityHint(syncAccentColor ? "Currently enabled. Tap to disable syncing the accent color across devices." : "Currently disabled. Tap to enable syncing the accent color across devices.")
+                .accessibilityAddTraits(.isButton)
             }
             
             Section(header: Text("App Icons")) {
@@ -139,7 +179,12 @@ struct AppAppearanceView: View {
         .onAppear {
             selectedAppIcon = UIApplication.shared.alternateIconName
         }
-        .onChange(of: accentColorPreference) { _, newValue in
+        .onChange(of: dataManager.accentColorPreference) { _, newValue in
+            if syncAccentColor {
+                localAccentColorPreference = newValue
+            }
+        }
+        .onChange(of: localAccentColorPreference) { _, newValue in
             currentAccentPreference = newValue
         }
         .preferredColorScheme(

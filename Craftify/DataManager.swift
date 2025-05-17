@@ -22,9 +22,11 @@ class DataManager: ObservableObject {
     @Published var isManualSyncing: Bool = false
     @Published var accessibilityAnnouncement: String? = nil
     @Published var searchText: String = ""
+    @Published var accentColorPreference: String = "default"
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudRecentSearchesKey = "recentSearches"
+    private let iCloudAccentColorKey = "accentColorPreference"
     private var cancellables = Set<AnyCancellable>()
 
     enum ErrorType: String {
@@ -35,10 +37,8 @@ class DataManager: ObservableObject {
     }
 
     init() {
-        // Pull any existing iCloud data on launch
         NSUbiquitousKeyValueStore.default.synchronize()
 
-        // Listen for changes in iCloud key-value store
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(icloudDidChange),
@@ -46,7 +46,6 @@ class DataManager: ObservableObject {
             object: NSUbiquitousKeyValueStore.default
         )
 
-        // Sync when app returns to foreground
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(appWillEnterForeground),
@@ -81,6 +80,7 @@ class DataManager: ObservableObject {
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncFavorites()
             self.syncRecentSearches()
+            self.syncAccentColor()
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
         }
@@ -91,11 +91,8 @@ class DataManager: ObservableObject {
     }
 
     @objc private func appWillEnterForeground() {
-        // Pull any updates made while backgrounded
         NSUbiquitousKeyValueStore.default.synchronize()
     }
-
-    // MARK: - Sync Status
 
     var syncStatus: String {
         if let lastUpdated = lastUpdated {
@@ -111,8 +108,6 @@ class DataManager: ObservableObject {
             return "Not synced"
         }
     }
-
-    // MARK: - Favorite Handling
 
     func isFavorite(recipe: Recipe) -> Bool {
         return favorites.contains { $0.id == recipe.id }
@@ -144,8 +139,6 @@ class DataManager: ObservableObject {
         }
     }
 
-    // MARK: - Recent Searches Handling
-
     func saveRecentSearch(_ recipe: Recipe) {
         recentSearchNames.removeAll { $0 == recipe.name }
         recentSearchNames.insert(recipe.name, at: 0)
@@ -174,12 +167,29 @@ class DataManager: ObservableObject {
         }
     }
 
+    func saveAccentColor(_ color: String) {
+        accentColorPreference = color
+        NSUbiquitousKeyValueStore.default.set(color, forKey: iCloudAccentColorKey)
+        NSUbiquitousKeyValueStore.default.synchronize()
+        print("Saved accent color: \(color)")
+    }
+
+    func syncAccentColor() {
+        if let savedColor = NSUbiquitousKeyValueStore.default.string(forKey: iCloudAccentColorKey) {
+            accentColorPreference = savedColor
+            print("Synced accent color: \(savedColor)")
+        } else {
+            accentColorPreference = "default"
+            NSUbiquitousKeyValueStore.default.set("default", forKey: iCloudAccentColorKey)
+            NSUbiquitousKeyValueStore.default.synchronize()
+        }
+    }
+
     @objc private func icloudDidChange() {
         syncFavorites()
         syncRecentSearches()
+        syncAccentColor()
     }
-
-    // MARK: - CloudKit & Local File Caching
 
     func loadData(isManual: Bool, completion: @escaping () -> Void) {
         DispatchQueue.main.async {
@@ -224,6 +234,7 @@ class DataManager: ObservableObject {
                             self.recipes = fetchedRecipes.sorted(by: { $0.name < $1.name })
                             self.syncFavorites()
                             self.syncRecentSearches()
+                            self.syncAccentColor()
                             self.saveRecipesToLocalCache(fetchedRecipes)
                             self.lastUpdated = Date()
                             self.isLoading = false
@@ -242,7 +253,7 @@ class DataManager: ObservableObject {
 
                     if let ckError = error as? CKError, ckError.isRetryable, retryCount < 3 {
                         DispatchQueue.main.async {
-                            self.isLoading = true // Ensure isLoading is true during retry
+                            self.isLoading = true
                         }
                         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
                             let retryOperation = CKQueryOperation(query: query)
@@ -271,8 +282,6 @@ class DataManager: ObservableObject {
         }
     }
 
-    // MARK: - Local File Cache Methods
-
     private func localCacheFileName() -> String {
         return "recipes.json"
     }
@@ -300,8 +309,6 @@ class DataManager: ObservableObject {
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
-    // MARK: - Clear Cache
-
     func clearCache(completion: @escaping (Bool) -> Void) {
         let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
         do {
@@ -320,8 +327,6 @@ class DataManager: ObservableObject {
             completion(false)
         }
     }
-
-    // MARK: - Record Conversion
 
     private func convertRecordToRecipe(_ record: CKRecord) -> Recipe? {
         guard let name = record["name"] as? String,
@@ -365,8 +370,6 @@ class DataManager: ObservableObject {
         )
     }
 
-    // MARK: - Error Handling
-
     private func errorType(for err: Swift.Error) -> ErrorType {
         if let ckError = err as? CKError {
             switch ckError.code {
@@ -382,8 +385,6 @@ class DataManager: ObservableObject {
         }
         return .unknown
     }
-
-    // MARK: - Helper Properties
 
     var categories: [String] {
         let uniqueCategories = Set(recipes.map { $0.category })

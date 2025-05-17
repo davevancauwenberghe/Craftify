@@ -17,12 +17,14 @@ struct OnboardingView: View {
     let onRetry: () -> Void
     let horizontalSizeClass: UserInterfaceSizeClass?
     
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     @State private var isButtonEnabled: Bool
     @State private var buttonScale: CGFloat = 1.0
     @State private var onboardingStep: OnboardingStep = .loading
-    
-    private let primaryColor = Color(hex: "00AA00")
-    private let faintGreen = Color(hex: "66CC66")
+    @State private var overlayOpacity: CGFloat = 0.0
+    @State private var cardOpacity: CGFloat = 0.0
+    @State private var cardScale: CGFloat = 0.9
     
     // List of Minecraft crafting tips
     private let craftingTips: [String] = [
@@ -71,15 +73,15 @@ struct OnboardingView: View {
         self.onDismiss = onDismiss
         self.onRetry = onRetry
         self.horizontalSizeClass = horizontalSizeClass
-        // Initialize isButtonEnabled based on the initial isLoading state
         self._isButtonEnabled = State(initialValue: !isLoading)
     }
     
     var body: some View {
         ZStack {
-            // Gray overlay to dim the background
-            Color.black.opacity(0.4)
+            // Background overlay with animated opacity
+            Color.black.opacity(overlayOpacity)
                 .ignoresSafeArea()
+                .animation(.easeInOut(duration: 0.5), value: overlayOpacity)
             
             switch onboardingStep {
             case .loading:
@@ -90,25 +92,44 @@ struct OnboardingView: View {
                 tipsView
             }
         }
+        .onAppear {
+            // Animate the overlay and card when the view appears
+            withAnimation(.easeInOut(duration: 0.5)) {
+                overlayOpacity = 0.6
+            }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                cardOpacity = 1.0
+                cardScale = 1.0
+            }
+        }
         .onChange(of: isLoading) { _, newValue in
             if !newValue && errorMessage == nil {
-                // Transition directly to options step after loading completes
                 if isFirstLaunch {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0.2)) {
                             isButtonEnabled = true
-                            buttonScale = 1.1
+                            buttonScale = 1.2
                         }
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2)) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0.2).delay(0.2)) {
                             buttonScale = 1.0
-                            onboardingStep = .options
+                            cardOpacity = 0.0
+                            cardScale = 0.9
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                onboardingStep = .options
+                                cardOpacity = 1.0
+                                cardScale = 1.0
+                            }
                         }
                     }
                 } else {
-                    // For manual syncs, dismiss immediately
-                    onDismiss()
+                    dismissWithAnimation()
                 }
             }
+        }
+        .onChange(of: accentColorPreference) { _, newValue in
+            currentAccentPreference = newValue
         }
     }
     
@@ -128,7 +149,7 @@ struct OnboardingView: View {
             if isLoading && errorMessage == nil {
                 ProgressView()
                     .progressViewStyle(.circular)
-                    .tint(primaryColor)
+                    .tint(Color.userAccentColor)
             } else if let error = errorMessage {
                 Text(error)
                     .font(messageFont)
@@ -137,9 +158,18 @@ struct OnboardingView: View {
                     .padding(.horizontal, cardHorizontalPadding)
                 
                 Button(action: {
-                    // Reset state before retrying
                     isButtonEnabled = false
-                    onboardingStep = .loading
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        cardOpacity = 0.0
+                        cardScale = 0.9
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                            onboardingStep = .loading
+                            cardOpacity = 1.0
+                            cardScale = 1.0
+                        }
+                    }
                     onRetry()
                 }) {
                     Text("Retry")
@@ -147,9 +177,11 @@ struct OnboardingView: View {
                         .foregroundColor(.white)
                         .padding()
                         .frame(maxWidth: .infinity)
-                        .background(primaryColor)
+                        .background(Color.userAccentColor)
                         .cornerRadius(10)
                         .padding(.horizontal, cardHorizontalPadding)
+                        .scaleEffect(buttonScale)
+                        .opacity(isButtonEnabled ? 1.0 : 0.5)
                 }
                 .accessibilityLabel("Retry Sync")
                 .accessibilityHint("Retries fetching recipes from the cloud")
@@ -160,7 +192,7 @@ struct OnboardingView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(
                     LinearGradient(
-                        colors: [Color(.systemBackground), faintGreen],
+                        colors: [Color.userAccentColor.opacity(0.4), Color(.systemBackground)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -169,6 +201,8 @@ struct OnboardingView: View {
         )
         .padding(.horizontal, cardHorizontalPadding)
         .frame(maxWidth: cardMaxWidth, alignment: .center)
+        .opacity(cardOpacity)
+        .scaleEffect(cardScale)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title), \(message)\(errorMessage != nil ? ", Error: \(errorMessage!)" : isLoading ? ", Loading" : ", Complete")")
         .accessibilityHint("\(errorMessage != nil ? "An error occurred. Tap to retry." : "Please wait while the app fetches your recipes.")")
@@ -188,8 +222,16 @@ struct OnboardingView: View {
                 .padding(.horizontal, cardHorizontalPadding)
             
             Button(action: {
-                withAnimation {
-                    onboardingStep = .tips
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    cardOpacity = 0.0
+                    cardScale = 0.9
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        onboardingStep = .tips
+                        cardOpacity = 1.0
+                        cardScale = 1.0
+                    }
                 }
             }) {
                 Text("Show Tips")
@@ -197,26 +239,28 @@ struct OnboardingView: View {
                     .foregroundColor(.white)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(primaryColor)
+                    .background(Color.userAccentColor)
                     .cornerRadius(10)
                     .padding(.horizontal, cardHorizontalPadding)
                     .scaleEffect(buttonScale)
+                    .opacity(isButtonEnabled ? 1.0 : 0.5)
             }
             .accessibilityLabel("Show Crafting Tips")
             .accessibilityHint("View some helpful Minecraft crafting tips")
             
             Button(action: {
-                onDismiss()
+                dismissWithAnimation()
             }) {
                 Text("Start Crafting")
                     .font(buttonFont)
                     .foregroundColor(.white)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(primaryColor)
+                    .background(Color.userAccentColor)
                     .cornerRadius(10)
                     .padding(.horizontal, cardHorizontalPadding)
                     .scaleEffect(buttonScale)
+                    .opacity(isButtonEnabled ? 1.0 : 0.5)
             }
             .accessibilityLabel("Start Crafting")
             .accessibilityHint("Dismiss the onboarding and start using the app")
@@ -226,7 +270,7 @@ struct OnboardingView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(
                     LinearGradient(
-                        colors: [Color(.systemBackground), faintGreen],
+                        colors: [Color.userAccentColor.opacity(0.4), Color(.systemBackground)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -235,6 +279,8 @@ struct OnboardingView: View {
         )
         .padding(.horizontal, cardHorizontalPadding)
         .frame(maxWidth: cardMaxWidth, alignment: .center)
+        .opacity(cardOpacity)
+        .scaleEffect(cardScale)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Ready to Craft!, Your recipes are loaded. Would you like to see some crafting tips before you start?")
         .accessibilityHint("Tap Show Tips to view crafting tips, or Start Crafting to begin using the app.")
@@ -264,17 +310,18 @@ struct OnboardingView: View {
             .ignoresSafeArea(edges: .vertical)
             
             Button(action: {
-                onDismiss()
+                dismissWithAnimation()
             }) {
                 Text("Start Crafting")
                     .font(buttonFont)
                     .foregroundColor(.white)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(primaryColor)
+                    .background(Color.userAccentColor)
                     .cornerRadius(10)
                     .padding(.horizontal, cardHorizontalPadding)
                     .scaleEffect(buttonScale)
+                    .opacity(isButtonEnabled ? 1.0 : 0.5)
             }
             .accessibilityLabel("Start Crafting")
             .accessibilityHint("Dismiss the onboarding and start using the app")
@@ -284,7 +331,7 @@ struct OnboardingView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(
                     LinearGradient(
-                        colors: [Color(.systemBackground), faintGreen],
+                        colors: [Color.userAccentColor.opacity(0.4), Color(.systemBackground)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -293,8 +340,23 @@ struct OnboardingView: View {
         )
         .padding(.horizontal, cardHorizontalPadding)
         .frame(maxWidth: cardMaxWidth, alignment: .center)
+        .opacity(cardOpacity)
+        .scaleEffect(cardScale)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Crafting Tips, Swipe to read tips, Tap Start Crafting to continue")
         .accessibilityHint("Swipe left or right to read Minecraft crafting tips, then tap to start using the app.")
+    }
+    
+    private func dismissWithAnimation() {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            cardOpacity = 0.0
+            cardScale = 0.9
+        }
+        withAnimation(.easeInOut(duration: 0.5).delay(0.3)) {
+            overlayOpacity = 0.0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            onDismiss()
+        }
     }
 }
