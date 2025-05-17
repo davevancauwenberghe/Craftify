@@ -21,15 +21,13 @@ private struct AccentColorOption: Identifiable {
 }
 
 struct AppAppearanceView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var dataManager: DataManager // Added for manual syncing consistency
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass: UserInterfaceSizeClass?
     @AppStorage("selectedAppIcon") private var selectedAppIcon: String?
     @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
-    @AppStorage("accentColorPreference") private var localAccentColorPreference: String = "default"
-    @AppStorage("syncAccentColor") private var syncAccentColor: Bool = true
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var errorMessage: String?
     @State private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
 
     private let appIcons: [AppIcon] = [
         .init(id: nil,              name: "Craftify",     previewName: "AppIconPreview"),
@@ -62,18 +60,7 @@ struct AppAppearanceView: View {
             }
             
             Section(header: Text("Accent Color")) {
-                Picker("Accent Color", selection: Binding(
-                    get: { syncAccentColor ? dataManager.accentColorPreference : localAccentColorPreference },
-                    set: { newValue in
-                        if syncAccentColor {
-                            dataManager.saveAccentColor(newValue)
-                            localAccentColorPreference = newValue
-                        } else {
-                            localAccentColorPreference = newValue
-                        }
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    }
-                )) {
+                Picker("Accent Color", selection: $accentColorPreference) {
                     ForEach(accentColors) { option in
                         HStack {
                             Circle()
@@ -84,35 +71,11 @@ struct AppAppearanceView: View {
                         .tag(option.id)
                     }
                 }
+                .onChange(of: accentColorPreference) { _, _ in
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
                 .accessibilityLabel("Accent Color")
                 .accessibilityHint("Choose the accent color for the app")
-                
-                Button(action: {
-                    syncAccentColor.toggle()
-                    if syncAccentColor {
-                        dataManager.saveAccentColor(localAccentColorPreference)
-                    } else {
-                        localAccentColorPreference = dataManager.accentColorPreference
-                    }
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                }) {
-                    HStack(spacing: 8) {
-                        Text("Sync Across Devices")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .minimumScaleFactor(0.8)
-                        
-                        Spacer()
-                        
-                        Image(systemName: syncAccentColor ? "checkmark.circle.fill" : "circle")
-                            .imageScale(.medium)
-                            .foregroundColor(Color.userAccentColor)
-                    }
-                    .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
-                }
-                .accessibilityLabel("Sync Accent Color Across Devices")
-                .accessibilityHint(syncAccentColor ? "Currently enabled. Tap to disable syncing the accent color across devices." : "Currently disabled. Tap to enable syncing the accent color across devices.")
-                .accessibilityAddTraits(.isButton)
             }
             
             Section(header: Text("App Icons")) {
@@ -162,6 +125,7 @@ struct AppAppearanceView: View {
                 }
             }
         }
+        .id(accentColorPreference) // Force redraw when accent color changes
         .listStyle(.insetGrouped)
         .navigationTitle("App Appearance")
         .navigationBarTitleDisplayMode(.large)
@@ -179,13 +143,10 @@ struct AppAppearanceView: View {
         .onAppear {
             selectedAppIcon = UIApplication.shared.alternateIconName
         }
-        .onChange(of: dataManager.accentColorPreference) { _, newValue in
-            if syncAccentColor {
-                localAccentColorPreference = newValue
+        .onChange(of: dataManager.isLoading) { _, newValue in
+            if !newValue && dataManager.isManualSyncing {
+                // Placeholder for future DataManager dependencies
             }
-        }
-        .onChange(of: localAccentColorPreference) { _, newValue in
-            currentAccentPreference = newValue
         }
         .preferredColorScheme(
             colorSchemePreference == "system" ? nil :

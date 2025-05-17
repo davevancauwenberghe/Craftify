@@ -35,7 +35,7 @@ struct MoreView: View {
                 }
                 
                 Section(header: Text("About")) {
-                    NavigationLink(destination: AboutView()) {
+                    NavigationLink(destination: AboutView(accentColorPreference: accentColorPreference)) {
                         buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
                     }
                     .accessibilityLabel("About Craftify")
@@ -53,21 +53,20 @@ struct MoreView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 0) {
                             Text("\(dataManager.recipes.count) recipes available")
-                                .accessibilityLabel("Recipe Count")
-                                .accessibilityHint("\(dataManager.recipes.count) Minecraft recipes are available")
                             Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
-                                .accessibilityLabel("Sync Status")
-                                .accessibilityHint(dataManager.syncStatus)
                         }
                         .font(horizontalSizeClass == .regular ? .callout : .footnote)
                         .foregroundColor(.secondary)
                         .allowsHitTesting(false)
                         .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(dataManager.recipes.count) recipes available, \(dataManager.syncStatus)")
+                        .accessibilityHint("Information about the number of recipes and sync status")
                         
                         Button(action: {
                             print("Sync Recipes tapped")
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            dataManager.loadData(isManual: true) {
+                            dataManager.fetchRecipes(isManual: true) {
                                 dataManager.syncFavorites()
                                 print("Sync Recipes completed")
                             }
@@ -76,9 +75,12 @@ struct MoreView: View {
                                 if dataManager.isLoading {
                                     ProgressView()
                                         .progressViewStyle(.circular)
+                                        .tint(Color.userAccentColor)
                                         .padding(.trailing, 8)
                                         .accessibilityLabel("Syncing")
                                         .accessibilityHint("Recipes are currently syncing")
+                                        .opacity(dataManager.isLoading ? 1 : 0)
+                                        .animation(.easeInOut(duration: 0.3), value: dataManager.isLoading)
                                 } else {
                                     Image(systemName: "arrow.clockwise")
                                         .font(.title2)
@@ -131,6 +133,7 @@ struct MoreView: View {
                     }
                 }
             }
+            .id(accentColorPreference)
             .listStyle(InsetGroupedListStyle())
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.large)
@@ -149,6 +152,11 @@ struct MoreView: View {
             }
             .onAppear {
                 dataManager.syncFavorites()
+            }
+            .onChange(of: dataManager.isLoading) { _, newValue in
+                if !newValue && dataManager.isManualSyncing {
+                    dataManager.accessibilityAnnouncement = "Sync completed"
+                }
             }
         }
     }
@@ -169,8 +177,7 @@ struct MoreView: View {
 
 struct AboutView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
+    let accentColorPreference: String
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -181,7 +188,7 @@ struct AboutView: View {
     var body: some View {
         VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
             VStack(spacing: 8) {
-                Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage())
+                Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage(systemName: "app.fill")!) // Fallback to system image
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
@@ -218,11 +225,9 @@ struct AboutView: View {
                     NavigationLink(destination: AppAppearanceView()) {
                         buttonStyle(title: "App Appearance", systemImage: "app.badge.fill")
                     }
-                    .highPriorityGesture(
-                        TapGesture().onEnded {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        }
-                    )
+                    .simultaneousGesture(TapGesture().onEnded {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
                         top:    horizontalSizeClass == .regular ? 12 : 8,
@@ -236,11 +241,9 @@ struct AboutView: View {
                     NavigationLink(destination: ReleaseNotesView()) {
                         buttonStyle(title: "Release notes", systemImage: "doc.text.fill")
                     }
-                    .highPriorityGesture(
-                        TapGesture().onEnded {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        }
-                    )
+                    .simultaneousGesture(TapGesture().onEnded {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
                         top:    horizontalSizeClass == .regular ? 12 : 8,
@@ -291,6 +294,7 @@ struct AboutView: View {
 
             Spacer()
         }
+        .id(accentColorPreference)
         .padding(horizontalSizeClass == .regular ? 12 : 8)
         .frame(maxWidth: .infinity)
         .background(Color(UIColor.systemGroupedBackground))
@@ -299,12 +303,6 @@ struct AboutView: View {
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .safeAreaInset(edge: .top)    { Color.clear.frame(height: 0) }
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
-        .onAppear {
-            UIImpactFeedbackGenerator(style: .medium).prepare()
-        }
-        .onChange(of: accentColorPreference) { _, newValue in
-            currentAccentPreference = newValue
-        }
     }
 
     private func buttonStyle(title: String, systemImage: String) -> some View {

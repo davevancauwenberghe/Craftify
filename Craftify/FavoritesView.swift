@@ -27,6 +27,8 @@ struct EmptyFavoritesView: View {
                 .padding(.horizontal)
         }
         .padding()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("No favorite recipes, You haven't added any favorite recipes yet. Explore recipes and tap the heart to mark them as favorites.")
     }
 }
 
@@ -39,7 +41,6 @@ struct FavoritesView: View {
     @State private var selectedCategory: String? = nil
     @State private var isCraftifyPicksExpanded = true
     @State private var filteredFavorites: [String: [Recipe]] = [:]
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     private var favoriteCategories: [String] {
         Array(Set(dataManager.favorites.compactMap { $0.category.isEmpty ? nil : $0.category })).sorted()
@@ -54,105 +55,134 @@ struct FavoritesView: View {
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            VStack(spacing: 0) {
-                if filteredFavorites.isEmpty {
-                    EmptyFavoritesView()
-                } else {
-                    if !favoriteCategories.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                Button {
-                                    selectedCategory = nil
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                } label: {
-                                    Text("All")
-                                        .fontWeight(.bold)
-                                        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                        .padding(.vertical, 8)
-                                        .background(selectedCategory == nil ? Color.userAccentColor : Color.gray.opacity(0.2))
-                                        .foregroundColor(.white)
-                                        .cornerRadius(10)
-                                }
-                                .accessibilityLabel("Show all favorite recipes")
-                                .accessibilityHint("Displays all favorite recipes across all categories")
-                                
-                                ForEach(favoriteCategories, id: \.self) { category in
+            ZStack {
+                VStack(spacing: 0) {
+                    if filteredFavorites.isEmpty {
+                        EmptyFavoritesView()
+                    } else {
+                        if !favoriteCategories.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
                                     Button {
-                                        selectedCategory = category
+                                        selectedCategory = nil
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     } label: {
-                                        Text(category)
+                                        Text("All")
                                             .fontWeight(.bold)
                                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                             .padding(.vertical, 8)
-                                            .background(selectedCategory == category ? Color.userAccentColor : Color.gray.opacity(0.2))
+                                            .background(selectedCategory == nil ? Color.userAccentColor : Color.gray.opacity(0.2))
                                             .foregroundColor(.white)
                                             .cornerRadius(10)
                                     }
-                                    .accessibilityLabel("Show \(category) favorite recipes")
-                                    .accessibilityHint("Filters favorite recipes to show only \(category) category")
+                                    .accessibilityLabel("Show all favorite recipes")
+                                    .accessibilityHint("Displays all favorite recipes across all categories")
+                                    
+                                    ForEach(favoriteCategories, id: \.self) { category in
+                                        Button {
+                                            selectedCategory = category
+                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        } label: {
+                                            Text(category)
+                                                .fontWeight(.bold)
+                                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                                                .padding(.vertical, 8)
+                                                .background(selectedCategory == category ? Color.userAccentColor : Color.gray.opacity(0.2))
+                                                .foregroundColor(.white)
+                                                .cornerRadius(10)
+                                        }
+                                        .accessibilityLabel("Show \(category) favorite recipes")
+                                        .accessibilityHint("Filters favorite recipes to show only \(category) category")
+                                    }
                                 }
+                                .id(accentColorPreference) // Force redraw when accent color changes
+                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                                .padding(.vertical, 8)
                             }
-                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                            .padding(.vertical, 8)
+                            .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
                         }
-                        .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
-                    }
-                    
-                    ScrollView {
-                        LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                            if !recommendedRecipes.isEmpty {
-                                Section {
-                                    if isCraftifyPicksExpanded {
-                                        ScrollView(.horizontal, showsIndicators: false) {
-                                            LazyHStack(spacing: 8) {
-                                                ForEach(recommendedRecipes, id: \.name) { recipe in
-                                                    NavigationLink {
-                                                        RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                                    } label: {
-                                                        RecipeCell(recipe: recipe, isCraftifyPick: true)
+                        
+                        ScrollView {
+                            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                                if !recommendedRecipes.isEmpty {
+                                    Section {
+                                        if isCraftifyPicksExpanded {
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                LazyHStack(spacing: 8) {
+                                                    ForEach(recommendedRecipes, id: \.name) { recipe in
+                                                        NavigationLink {
+                                                            RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                                        } label: {
+                                                            RecipeCell(recipe: recipe, isCraftifyPick: true)
+                                                        }
+                                                        .buttonStyle(.plain)
+                                                        .contentShape(Rectangle())
                                                     }
-                                                    .buttonStyle(.plain)
-                                                    .contentShape(Rectangle())
                                                 }
+                                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                                                .padding(.vertical, 8)
                                             }
+                                        }
+                                    } header: {
+                                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded, accentColorPreference: accentColorPreference) {
+                                            withAnimation { isCraftifyPicksExpanded.toggle() }
+                                        }
+                                        .background(Color(.systemBackground))
+                                    }
+                                }
+                                
+                                ForEach(filteredFavorites.keys.sorted(), id: \.self) { letter in
+                                    Section {
+                                        ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
+                                            NavigationLink {
+                                                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                            } label: {
+                                                RecipeCell(recipe: recipe, isCraftifyPick: false)
+                                            }
+                                            .buttonStyle(.plain)
+                                            .contentShape(Rectangle())
+                                        }
+                                    } header: {
+                                        Text(letter)
+                                            .font(.headline)
+                                            .fontWeight(.bold)
                                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                             .padding(.vertical, 8)
-                                        }
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(Color(.systemBackground))
                                     }
-                                } header: {
-                                    CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
-                                        withAnimation { isCraftifyPicksExpanded.toggle() }
-                                    }
-                                    .background(Color(.systemBackground))
                                 }
                             }
-                            
-                            ForEach(filteredFavorites.keys.sorted(), id: \.self) { letter in
-                                Section {
-                                    ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
-                                        NavigationLink {
-                                            RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                        } label: {
-                                            RecipeCell(recipe: recipe, isCraftifyPick: false)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .contentShape(Rectangle())
-                                    }
-                                } header: {
-                                    Text(letter)
-                                        .font(.headline)
-                                        .fontWeight(.bold)
-                                        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                        .padding(.vertical, 8)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .background(Color(.systemBackground))
-                                }
-                            }
+                            .scrollContentBackground(.hidden)
                         }
-                        .scrollContentBackground(.hidden)
+                        .id(accentColorPreference)
+                        .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
                     }
-                    .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
+                }
+                
+                // Show loading indicator during manual syncing
+                if dataManager.isManualSyncing {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(Color.userAccentColor)
+                            Text("Syncing Favorites…")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color(.systemBackground))
+                                .shadow(radius: 10)
+                        )
+                    }
+                    .id(accentColorPreference) // Force redraw when accent color changes
+                    .opacity(dataManager.isManualSyncing ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.3), value: dataManager.isManualSyncing)
                 }
             }
             .navigationTitle("Favorite Recipes")
@@ -163,11 +193,17 @@ struct FavoritesView: View {
                 recommendedRecipes = Array(dataManager.favorites.shuffled().prefix(5))
                 updateFilteredFavorites()
             }
-            .task(id: selectedCategory) {
+            .onChange(of: dataManager.favorites) { _, _ in
+                recommendedRecipes = Array(dataManager.favorites.shuffled().prefix(5))
                 updateFilteredFavorites()
             }
-            .onChange(of: accentColorPreference) { _, newValue in
-                currentAccentPreference = newValue
+            .onChange(of: dataManager.isLoading) { _, newValue in
+                if !newValue && dataManager.isManualSyncing {
+                    // View updates are handled reactively via onChange(of: dataManager.favorites)
+                }
+            }
+            .task(id: selectedCategory) {
+                updateFilteredFavorites()
             }
             .alert(isPresented: Binding(
                 get: { dataManager.errorMessage != nil },

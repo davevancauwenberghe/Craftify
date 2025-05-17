@@ -9,6 +9,7 @@ import SwiftUI
 import MessageUI
 
 struct ReportMissingRecipeView: View {
+    @EnvironmentObject var dataManager: DataManager
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var recipeName: String = ""
@@ -18,7 +19,6 @@ struct ReportMissingRecipeView: View {
     @State private var isShowingConfirmation = false
     @State private var showValidationErrors = false
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     private let categories: [String] = [
         "Beds", "Crafting", "Food", "Lighting", "Planks",
@@ -30,6 +30,24 @@ struct ReportMissingRecipeView: View {
     }
     private let maxRecipeNameLength = 100
     private let maxAdditionalInfoLength = 1000
+    
+    // Compute specific validation errors for display
+    private var validationErrorMessage: String {
+        var missingFields: [String] = []
+        if selectedCategory.isEmpty {
+            missingFields.append("Category")
+        }
+        if recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            missingFields.append("Recipe Name")
+        }
+        if additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            missingFields.append("Additional Information")
+        }
+        if missingFields.isEmpty {
+            return ""
+        }
+        return "Please fill in the following: \(missingFields.joined(separator: ", "))."
+    }
     
     var body: some View {
         NavigationStack {
@@ -72,9 +90,12 @@ struct ReportMissingRecipeView: View {
                                 .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                                 .frame(maxWidth: .infinity, minHeight: fieldHeight)
                                 .background(Color(.secondarySystemGroupedBackground))
-                                .onChange(of: recipeName) {
-                                    if recipeName.count > maxRecipeNameLength {
-                                        recipeName = String(recipeName.prefix(maxRecipeNameLength))
+                                .onChange(of: recipeName) { _, newValue in
+                                    if newValue.count > maxRecipeNameLength {
+                                        recipeName = String(newValue.prefix(maxRecipeNameLength))
+                                    }
+                                    if showValidationErrors && !isFormIncomplete {
+                                        showValidationErrors = false
                                     }
                                 }
                                 .accessibilityLabel("Recipe name")
@@ -89,9 +110,12 @@ struct ReportMissingRecipeView: View {
                                     .foregroundColor(.secondary.opacity(additionalInfo.isEmpty ? 0.7 : 0))
                                     .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
                                     .padding(.vertical, horizontalSizeClass == .regular ? 18 : 14)
-                                    .onChange(of: additionalInfo) {
+                                    .onChange(of: additionalInfo) { _, _ in
                                         withAnimation(.easeInOut(duration: 0.2)) {
                                             // Opacity updated via binding
+                                        }
+                                        if showValidationErrors && !isFormIncomplete {
+                                            showValidationErrors = false
                                         }
                                     }
                                 TextEditorRepresentable(text: $additionalInfo)
@@ -99,9 +123,9 @@ struct ReportMissingRecipeView: View {
                                     .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                                     .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                                     .frame(maxWidth: .infinity, minHeight: fieldHeight * 2)
-                                    .onChange(of: additionalInfo) {
-                                        if additionalInfo.count > maxAdditionalInfoLength {
-                                            additionalInfo = String(additionalInfo.prefix(maxAdditionalInfoLength))
+                                    .onChange(of: additionalInfo) { _, newValue in
+                                        if newValue.count > maxAdditionalInfoLength {
+                                            additionalInfo = String(newValue.prefix(maxAdditionalInfoLength))
                                         }
                                     }
                             }
@@ -118,6 +142,20 @@ struct ReportMissingRecipeView: View {
                                     lineWidth: 2
                                 )
                         )
+                        
+                        // Validation Error Message
+                        if showValidationErrors && !validationErrorMessage.isEmpty {
+                            Text(validationErrorMessage)
+                                .font(horizontalSizeClass == .regular ? .subheadline : .footnote)
+                                .foregroundColor(.red)
+                                .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(.systemGray5))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .accessibilityLabel("Validation error: \(validationErrorMessage)")
+                                .accessibilityHint("Fill in the required fields to proceed")
+                        }
                         
                         Button {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -144,6 +182,7 @@ struct ReportMissingRecipeView: View {
                     .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                     .padding(.vertical, horizontalSizeClass == .regular ? 32 : 24)
                 }
+                .id(accentColorPreference)
                 .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
                 .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             }
@@ -166,11 +205,15 @@ struct ReportMissingRecipeView: View {
                     dismissButton: .cancel(Text("OK"))
                 )
             }
-            .onAppear {
-                UIImpactFeedbackGenerator(style: .medium).prepare()
+            .onChange(of: dataManager.isLoading) { _, newValue in
+                if !newValue && dataManager.isManualSyncing {
+                    // Placeholder for future DataManager dependencies
+                }
             }
-            .onChange(of: accentColorPreference) { _, newValue in
-                currentAccentPreference = newValue
+            .onChange(of: selectedCategory) { _, _ in
+                if showValidationErrors && !isFormIncomplete {
+                    showValidationErrors = false
+                }
             }
         }
     }

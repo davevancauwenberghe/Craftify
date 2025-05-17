@@ -13,88 +13,62 @@ struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
-    @State private var showOnboarding = false
     
     var body: some View {
-        ZStack {
-            TabView(selection: $selectedTab) {
-                RecipesTabView(navigationPath: $navigationPath)
-                    .tabItem {
-                        Label("Recipes", systemImage: "square.grid.2x2")
-                    }
-                    .tag(0)
-                
-                FavoritesView()
-                    .tabItem {
-                        Label("Favorites", systemImage: "heart.fill")
-                    }
-                    .tag(1)
-                
-                MoreView()
-                    .tabItem {
-                        Label("More", systemImage: "ellipsis.circle")
-                    }
-                    .tag(2)
-                
-                RecipeSearchView()
-                    .tabItem {
-                        Label("Search", systemImage: "magnifyingglass")
-                    }
-                    .tag(3)
-            }
-            .accentColor(Color.userAccentColor)
-            .preferredColorScheme(
-                colorSchemePreference == "system" ? nil :
-                (colorSchemePreference == "light" ? .light : .dark)
-            )
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .onChange(of: selectedTab) { _, _ in
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            }
-            .onChange(of: accentColorPreference) { _, newValue in
-                currentAccentPreference = newValue
-            }
+        TabView(selection: $selectedTab) {
+            RecipesTabView(navigationPath: $navigationPath, accentColorPreference: accentColorPreference)
+                .tabItem {
+                    Label("Recipes", systemImage: "square.grid.2x2")
+                }
+                .tag(0)
             
-            // Show onboarding if first launch or manual sync
-            if showOnboarding || dataManager.isManualSyncing {
-                OnboardingView(
-                    title: showOnboarding ? "Welcome to Craftify!" : "Syncing Your Recipes…",
-                    message: "Fetching your recipes from the cloud…",
-                    isLoading: dataManager.isLoading,
-                    errorMessage: dataManager.errorMessage,
-                    isFirstLaunch: showOnboarding,
-                    onDismiss: {
-                        hasCompletedOnboarding = true
-                        showOnboarding = false
-                    },
-                    onRetry: {
-                        dataManager.loadData(isManual: !showOnboarding) {
-                            dataManager.syncFavorites()
-                        }
-                    },
-                    horizontalSizeClass: horizontalSizeClass
-                )
-                .opacity(showOnboarding || dataManager.isManualSyncing ? 1 : 0)
-                .animation(.easeInOut(duration: 0.3), value: showOnboarding || dataManager.isManualSyncing)
-            }
+            FavoritesView()
+                .tabItem {
+                    Label("Favorites", systemImage: "heart.fill")
+                }
+                .tag(1)
+            
+            MoreView()
+                .tabItem {
+                    Label("More", systemImage: "ellipsis.circle")
+                }
+                .tag(2)
+            
+            RecipeSearchView()
+                .tabItem {
+                    Label("Search", systemImage: "magnifyingglass")
+                }
+                .tag(3)
         }
-        .onAppear {
-            // Check if this is the first launch
-            if !hasCompletedOnboarding {
-                showOnboarding = true
-            }
+        .id(accentColorPreference)
+        .accentColor(Color.userAccentColor)
+        .preferredColorScheme(
+            colorSchemePreference == "system" ? nil :
+            (colorSchemePreference == "light" ? .light : .dark)
+        )
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .onChange(of: selectedTab) { _, newValue in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            UIAccessibility.post(notification: .announcement, argument: "Selected tab: \(tabName(for: newValue))")
         }
         .onChange(of: dataManager.isLoading) { _, newValue in
-            // For manual syncs, dismiss automatically when loading completes
             if !newValue && dataManager.isManualSyncing {
-                // View updates are handled reactively
+                // View updates are handled reactively in child views
             }
+        }
+    }
+    
+    private func tabName(for tag: Int) -> String {
+        switch tag {
+        case 0: return "Recipes"
+        case 1: return "Favorites"
+        case 2: return "More"
+        case 3: return "Search"
+        default: return "Unknown"
         }
     }
 }
@@ -103,18 +77,38 @@ struct RecipesTabView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Binding var navigationPath: NavigationPath
+    let accentColorPreference: String
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            CategoryView(navigationPath: $navigationPath)
-                .navigationTitle("Craftify")
-                .navigationBarTitleDisplayMode(.large)
-                .toolbar(.visible, for: .navigationBar)
-                .task {
-                    // Always load data to ensure we have the latest recipes
-                    await dataManager.loadDataAsync(isManual: false)
-                    dataManager.syncFavorites()
+            ZStack {
+                if dataManager.isLoading && dataManager.recipes.isEmpty {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(Color.userAccentColor)
+                        Text("Loading Recipes…")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Loading Recipes")
+                    .accessibilityHint("Please wait while the recipes are being loaded")
+                } else {
+                    CategoryView(navigationPath: $navigationPath, accentColorPreference: accentColorPreference)
+                        .navigationTitle("Craftify")
+                        .navigationBarTitleDisplayMode(.large)
+                        .toolbar(.visible, for: .navigationBar)
+                        .onAppear {
+                            // Sync favorites when the tab appears
+                            dataManager.syncFavorites()
+                            // If recipes haven't been fetched yet, trigger a fetch
+                            if dataManager.recipes.isEmpty && !dataManager.isLoading {
+                                dataManager.fetchRecipes(isManual: false)
+                            }
+                        }
                 }
+            }
         }
     }
 }
@@ -123,6 +117,7 @@ struct CategoryView: View {
     @EnvironmentObject var dataManager: DataManager
     @Binding var navigationPath: NavigationPath
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    let accentColorPreference: String
     
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
@@ -158,7 +153,8 @@ struct CategoryView: View {
                 isCraftifyPicksExpanded: $isCraftifyPicksExpanded,
                 filteredRecipes: filteredRecipes,
                 navigationPath: $navigationPath,
-                horizontalSizeClass: horizontalSizeClass
+                horizontalSizeClass: horizontalSizeClass,
+                accentColorPreference: accentColorPreference
             )
         }
         .navigationTitle("Craftify")
@@ -183,7 +179,6 @@ struct CategoryFilterBar: View {
     let categories: [String]
     let horizontalSizeClass: UserInterfaceSizeClass?
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -220,13 +215,11 @@ struct CategoryFilterBar: View {
                     .accessibilityHint("Filters recipes to show only \(category) category")
                 }
             }
+            .id(accentColorPreference)
             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
             .padding(.vertical, 8)
         }
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
-        .onChange(of: accentColorPreference) { _, newValue in
-            currentAccentPreference = newValue
-        }
     }
 }
 
@@ -237,6 +230,7 @@ struct RecipeListView: View {
     let filteredRecipes: [String: [Recipe]]
     @Binding var navigationPath: NavigationPath
     let horizontalSizeClass: UserInterfaceSizeClass?
+    let accentColorPreference: String
     
     var body: some View {
         ScrollView {
@@ -261,7 +255,7 @@ struct RecipeListView: View {
                             }
                         }
                     } header: {
-                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
+                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded, accentColorPreference: accentColorPreference) {
                             withAnimation { isCraftifyPicksExpanded.toggle() }
                         }
                         .background(Color(.systemBackground))
@@ -291,6 +285,7 @@ struct RecipeListView: View {
                 }
             }
         }
+        .id(accentColorPreference)
         .scrollContentBackground(.hidden)
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
     }
@@ -363,6 +358,7 @@ struct RecipeCell: View {
 
 struct CraftifyPicksHeader: View {
     var isExpanded: Bool
+    var accentColorPreference: String
     var toggle: () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     

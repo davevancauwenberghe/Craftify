@@ -22,11 +22,9 @@ class DataManager: ObservableObject {
     @Published var isManualSyncing: Bool = false
     @Published var accessibilityAnnouncement: String? = nil
     @Published var searchText: String = ""
-    @Published var accentColorPreference: String = "default"
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudRecentSearchesKey = "recentSearches"
-    private let iCloudAccentColorKey = "accentColorPreference"
     private var cancellables = Set<AnyCancellable>()
 
     enum ErrorType: String {
@@ -80,7 +78,6 @@ class DataManager: ObservableObject {
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncFavorites()
             self.syncRecentSearches()
-            self.syncAccentColor()
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
         }
@@ -167,28 +164,14 @@ class DataManager: ObservableObject {
         }
     }
 
-    func saveAccentColor(_ color: String) {
-        accentColorPreference = color
-        NSUbiquitousKeyValueStore.default.set(color, forKey: iCloudAccentColorKey)
-        NSUbiquitousKeyValueStore.default.synchronize()
-        print("Saved accent color: \(color)")
-    }
-
-    func syncAccentColor() {
-        if let savedColor = NSUbiquitousKeyValueStore.default.string(forKey: iCloudAccentColorKey) {
-            accentColorPreference = savedColor
-            print("Synced accent color: \(savedColor)")
-        } else {
-            accentColorPreference = "default"
-            NSUbiquitousKeyValueStore.default.set("default", forKey: iCloudAccentColorKey)
-            NSUbiquitousKeyValueStore.default.synchronize()
-        }
-    }
-
     @objc private func icloudDidChange() {
         syncFavorites()
         syncRecentSearches()
-        syncAccentColor()
+    }
+
+    // Added method to retry fetching recipes, wrapping loadData
+    func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
+        loadData(isManual: isManual, completion: completion)
     }
 
     func loadData(isManual: Bool, completion: @escaping () -> Void) {
@@ -234,7 +217,6 @@ class DataManager: ObservableObject {
                             self.recipes = fetchedRecipes.sorted(by: { $0.name < $1.name })
                             self.syncFavorites()
                             self.syncRecentSearches()
-                            self.syncAccentColor()
                             self.saveRecipesToLocalCache(fetchedRecipes)
                             self.lastUpdated = Date()
                             self.isLoading = false

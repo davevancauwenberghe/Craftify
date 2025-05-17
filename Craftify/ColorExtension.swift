@@ -19,9 +19,6 @@ extension Color {
     }
     
     static var userAccentColor: Color {
-        // Note: This reads from UserDefaults, which is kept in sync with DataManager.accentColorPreference
-        // by AppAppearanceView when syncAccentColor is enabled. When syncAccentColor is disabled,
-        // UserDefaults reflects the local device preference.
         let defaults = UserDefaults.standard
         let preference = defaults.string(forKey: "accentColorPreference") ?? "default"
         

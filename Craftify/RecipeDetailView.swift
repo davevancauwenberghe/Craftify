@@ -22,7 +22,6 @@ struct RecipeDetailView: View {
     @State private var ingredientSets: [[String]] = []
     @State private var outputs: [Int] = []
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     private var craftingHeight: CGFloat { horizontalSizeClass == .regular ? 240 : 222 }
     
@@ -131,7 +130,8 @@ struct RecipeDetailView: View {
                         craftingHeight: craftingHeight,
                         ingredients: ingredientSets.isEmpty ? [] : ingredientSets[selectedCraftingOption],
                         output: outputs.isEmpty ? recipe.output : outputs[selectedCraftingOption],
-                        selectedCraftingOption: selectedCraftingOption // Added to fix animation error
+                        selectedCraftingOption: selectedCraftingOption,
+                        accentColorPreference: accentColorPreference
                     )
                     .padding(.bottom, horizontalSizeClass == .regular ? 24 : 16)
                     
@@ -289,6 +289,7 @@ struct RecipeDetailView: View {
                 .padding(.vertical, 16)
                 .padding(.bottom, 50)
             }
+            .id(accentColorPreference) // Force redraw when accent color changes
             .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
             .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             .accessibilityElement(children: .contain)
@@ -299,11 +300,13 @@ struct RecipeDetailView: View {
                 print("RecipeDetailView: \(recipe.name), category: \(recipe.category), alternateIngredients: \(String(describing: recipe.alternateIngredients)), alternateOutput: \(String(describing: recipe.alternateOutput)), alternateIngredients1: \(String(describing: recipe.alternateIngredients1)), alternateOutput1: \(String(describing: recipe.alternateOutput1)), alternateIngredients2: \(String(describing: recipe.alternateIngredients2)), alternateOutput2: \(String(describing: recipe.alternateOutput2)), alternateIngredients3: \(String(describing: recipe.alternateIngredients3)), alternateOutput3: \(String(describing: recipe.alternateOutput3))")
                 print("RecipeDetailView bounds: \(UIScreen.main.bounds)")
             }
-            .onChange(of: ingredientSets.count) {
+            .onChange(of: ingredientSets.count) { _, _ in
                 print("Ingredient sets count: \(ingredientSets.count)")
             }
-            .onChange(of: accentColorPreference) { _, newValue in
-                currentAccentPreference = newValue
+            .onChange(of: dataManager.isLoading) { _, newValue in
+                if !newValue && dataManager.isManualSyncing {
+                    dataManager.syncFavorites()
+                }
             }
         }
         .navigationTitle(recipe.name)
@@ -340,7 +343,8 @@ struct GridView: View {
     let craftingHeight: CGFloat
     let ingredients: [String]
     let output: Int
-    let selectedCraftingOption: Int // Added to fix animation error
+    let selectedCraftingOption: Int
+    let accentColorPreference: String
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
@@ -357,7 +361,8 @@ struct GridView: View {
                                 ingredient: ingredients.count > 0 ? ingredients[0] : "",
                                 isSelected: selectedItem == .grid(index: 0),
                                 feedbackGenerator: feedbackGenerator,
-                                cellSize: horizontalSizeClass == .regular ? 80 : 70
+                                cellSize: horizontalSizeClass == .regular ? 80 : 70,
+                                accentColorPreference: accentColorPreference
                             ) { selectedDetail = ingredients.count > 0 ? ingredients[0] : ""; selectedItem = .grid(index: 0) }
                             Spacer()
                         }
@@ -379,7 +384,8 @@ struct GridView: View {
                                 ingredient: ingredients.count > 1 ? ingredients[1] : "",
                                 isSelected: selectedItem == .grid(index: 1),
                                 feedbackGenerator: feedbackGenerator,
-                                cellSize: horizontalSizeClass == .regular ? 80 : 70
+                                cellSize: horizontalSizeClass == .regular ? 80 : 70,
+                                accentColorPreference: accentColorPreference
                             ) { selectedDetail = ingredients.count > 1 ? ingredients[1] : ""; selectedItem = .grid(index: 1) }
                             Spacer()
                         }
@@ -397,7 +403,8 @@ struct GridView: View {
                                         ingredient: index < ingredients.count ? ingredients[index] : "",
                                         isSelected: selectedItem == .grid(index: index),
                                         feedbackGenerator: feedbackGenerator,
-                                        cellSize: horizontalSizeClass == .regular ? 80 : 70
+                                        cellSize: horizontalSizeClass == .regular ? 80 : 70,
+                                        accentColorPreference: accentColorPreference
                                     ) { selectedDetail = index < ingredients.count ? ingredients[index] : ""; selectedItem = .grid(index: index) }
                                 }
                             }
@@ -460,7 +467,7 @@ struct GridView: View {
             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
         }
         .frame(height: craftingHeight)
-        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedCraftingOption) // Fixed by adding parameter
+        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedCraftingOption)
         .onAppear {
             feedbackGenerator.prepare()
         }
@@ -473,6 +480,7 @@ struct GridCell: View {
     let isSelected: Bool
     let feedbackGenerator: UIImpactFeedbackGenerator
     let cellSize: CGFloat
+    let accentColorPreference: String
     let onTap: () -> Void
     
     var body: some View {

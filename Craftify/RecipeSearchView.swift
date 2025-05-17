@@ -18,7 +18,6 @@ struct RecipeSearchView: View {
     @State private var filteredRecipes: [String: [Recipe]] = [:]
     @State private var navigationPath = NavigationPath()
     @State private var searchFilter: SearchFilter = .all
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     enum SearchFilter: String, CaseIterable {
         case all = "All recipes"
@@ -139,7 +138,8 @@ struct RecipeSearchView: View {
                                 
                                 RecentSearchesList(
                                     recipes: recentSearchRecipes,
-                                    navigationPath: $navigationPath
+                                    navigationPath: $navigationPath,
+                                    accentColorPreference: accentColorPreference
                                 )
                             }
                             .padding(.vertical, 16)
@@ -165,66 +165,25 @@ struct RecipeSearchView: View {
                         }
                         
                         if searchText.isEmpty {
-                            // Show recent searches when search bar is tapped but no text is entered
-                            if recentSearchRecipes.isEmpty {
-                                // No recent searches
-                                VStack(spacing: 16) {
-                                    Image(systemName: "magnifyingglass")
-                                        .font(.system(size: 48))
-                                        .foregroundColor(Color.userAccentColor.opacity(0.8))
-                                    Text("No Recent Searches")
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.primary)
-                                    Text("Your recent searches will appear here.\nStart searching to populate this list.")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
-                                }
-                                .padding(.vertical, 16)
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel("No Recent Searches")
-                                .accessibilityHint("Your recent searches will appear here. Start searching to populate this list.")
-                            } else {
-                                // Show filtered recent searches
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack {
-                                        Text("Recent Searches")
-                                            .font(.title3)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.primary)
-                                        
-                                        Spacer()
-                                        
-                                        Button(action: {
-                                            clearRecentSearches()
-                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                        }) {
-                                            Text("Clear All")
-                                                .font(.subheadline)
-                                                .foregroundColor(Color.userAccentColor)
-                                        }
-                                        .disabled(recentSearchRecipes.isEmpty)
-                                        .contentShape(Rectangle())
-                                        .accessibilityLabel("Clear All Recent Searches")
-                                        .accessibilityHint("Removes all recent search history")
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.top, 8)
-                                    .padding(.bottom, 4)
-                                    .background(Color(.systemBackground))
-                                    
-                                    RecentSearchesList(
-                                        recipes: recentSearchRecipes,
-                                        navigationPath: $navigationPath
-                                    )
-                                }
-                                .padding(.vertical, 16)
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Recent Searches, filtered by \(searchFilter == .all ? "All recipes" : "Favorite recipes")")
-                                .accessibilityHint("Shows the last 10 recipes you searched for, filtered by \(searchFilter == .all ? "all recipes" : "favorite recipes")")
+                            // Show placeholder when search bar is tapped but no text is entered
+                            VStack(spacing: 16) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(Color.userAccentColor.opacity(0.8))
+                                Text("Start Searching")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.primary)
+                                Text("Enter a name, category, or ingredient to find recipes.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
                             }
+                            .padding(.vertical, 16)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Start Searching")
+                            .accessibilityHint("Enter a name, category, or ingredient to find recipes")
                         } else if searchFilter == .favorites && dataManager.favorites.isEmpty {
                             // Empty state when no favorite recipes exist and filter is set to favorites
                             VStack(spacing: 16) {
@@ -298,6 +257,7 @@ struct RecipeSearchView: View {
                     }
                 }
             }
+            .id(accentColorPreference) // Force redraw when accent color changes
             .scrollContentBackground(.hidden)
             .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             .navigationTitle("Search")
@@ -314,8 +274,10 @@ struct RecipeSearchView: View {
                     searchText = ""
                 }
             }
-            .onChange(of: accentColorPreference) { _, newValue in
-                currentAccentPreference = newValue
+            .onChange(of: dataManager.isLoading) { _, newValue in
+                if !newValue && dataManager.isManualSyncing {
+                    updateFilteredRecipes()
+                }
             }
             .task(id: searchText) {
                 updateFilteredRecipes()
@@ -327,6 +289,7 @@ struct RecipeSearchView: View {
 // A compact view for displaying recent search items
 struct RecentSearchItem: View {
     let recipe: Recipe
+    let accentColorPreference: String
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     var body: some View {
@@ -363,6 +326,7 @@ struct RecentSearchItem: View {
 struct RecentSearchesList: View {
     let recipes: [Recipe]
     @Binding var navigationPath: NavigationPath
+    let accentColorPreference: String
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     var body: some View {
@@ -371,7 +335,7 @@ struct RecentSearchesList: View {
                 NavigationLink {
                     RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
                 } label: {
-                    RecentSearchItem(recipe: recipe)
+                    RecentSearchItem(recipe: recipe, accentColorPreference: accentColorPreference)
                 }
                 .buttonStyle(.plain)
                 

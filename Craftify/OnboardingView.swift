@@ -10,15 +10,14 @@ import SwiftUI
 struct OnboardingView: View {
     let title: String
     let message: String
-    let isLoading: Bool
-    let errorMessage: String?
+    @Binding var isLoading: Bool
+    @Binding var errorMessage: String?
     let isFirstLaunch: Bool
     let onDismiss: () -> Void
     let onRetry: () -> Void
     let horizontalSizeClass: UserInterfaceSizeClass?
     
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     @State private var isButtonEnabled: Bool
     @State private var buttonScale: CGFloat = 1.0
     @State private var onboardingStep: OnboardingStep = .loading
@@ -64,16 +63,16 @@ struct OnboardingView: View {
         case tips
     }
     
-    init(title: String, message: String, isLoading: Bool, errorMessage: String?, isFirstLaunch: Bool, onDismiss: @escaping () -> Void, onRetry: @escaping () -> Void, horizontalSizeClass: UserInterfaceSizeClass?) {
+    init(title: String, message: String, isLoading: Binding<Bool>, errorMessage: Binding<String?>, isFirstLaunch: Bool, onDismiss: @escaping () -> Void, onRetry: @escaping () -> Void, horizontalSizeClass: UserInterfaceSizeClass?) {
         self.title = title
         self.message = message
-        self.isLoading = isLoading
-        self.errorMessage = errorMessage
+        self._isLoading = isLoading
+        self._errorMessage = errorMessage
         self.isFirstLaunch = isFirstLaunch
         self.onDismiss = onDismiss
         self.onRetry = onRetry
         self.horizontalSizeClass = horizontalSizeClass
-        self._isButtonEnabled = State(initialValue: !isLoading)
+        self._isButtonEnabled = State(initialValue: !isLoading.wrappedValue)
     }
     
     var body: some View {
@@ -92,6 +91,7 @@ struct OnboardingView: View {
                 tipsView
             }
         }
+        .id(accentColorPreference)
         .onAppear {
             // Animate the overlay and card when the view appears
             withAnimation(.easeInOut(duration: 0.5)) {
@@ -128,9 +128,6 @@ struct OnboardingView: View {
                 }
             }
         }
-        .onChange(of: accentColorPreference) { _, newValue in
-            currentAccentPreference = newValue
-        }
     }
     
     private var loadingView: some View {
@@ -158,6 +155,7 @@ struct OnboardingView: View {
                     .padding(.horizontal, cardHorizontalPadding)
                 
                 Button(action: {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     isButtonEnabled = false
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                         cardOpacity = 0.0
@@ -222,6 +220,7 @@ struct OnboardingView: View {
                 .padding(.horizontal, cardHorizontalPadding)
             
             Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                     cardOpacity = 0.0
                     cardScale = 0.9
@@ -249,6 +248,7 @@ struct OnboardingView: View {
             .accessibilityHint("View some helpful Minecraft crafting tips")
             
             Button(action: {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 dismissWithAnimation()
             }) {
                 Text("Start Crafting")
@@ -294,14 +294,16 @@ struct OnboardingView: View {
                 .foregroundColor(.primary)
             
             TabView {
-                ForEach(craftingTips, id: \.self) { tip in
-                    Text(tip)
+                ForEach(craftingTips.indices, id: \.self) { index in
+                    Text(craftingTips[index])
                         .font(messageFont)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, cardHorizontalPadding)
                         .padding(.vertical, 16)
                         .padding(.bottom, 30)
+                        .accessibilityLabel("Crafting Tip \(index + 1) of \(craftingTips.count), \(craftingTips[index])")
+                        .accessibilityHint("Swipe left or right to read more tips")
                 }
             }
             .tabViewStyle(.page)
@@ -310,6 +312,7 @@ struct OnboardingView: View {
             .ignoresSafeArea(edges: .vertical)
             
             Button(action: {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 dismissWithAnimation()
             }) {
                 Text("Start Crafting")
@@ -348,15 +351,6 @@ struct OnboardingView: View {
     }
     
     private func dismissWithAnimation() {
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-            cardOpacity = 0.0
-            cardScale = 0.9
-        }
-        withAnimation(.easeInOut(duration: 0.5).delay(0.3)) {
-            overlayOpacity = 0.0
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            onDismiss()
-        }
+        onDismiss()
     }
 }

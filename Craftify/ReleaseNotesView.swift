@@ -8,9 +8,9 @@
 import SwiftUI
 
 struct ReleaseNotesView: View {
+    @EnvironmentObject var dataManager: DataManager // Added for manual syncing consistency
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @State private var currentAccentPreference: String = UserDefaults.standard.string(forKey: "accentColorPreference") ?? "default"
     
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -56,14 +56,17 @@ struct ReleaseNotesView: View {
                 }
             }
         }
+        .id(accentColorPreference) // Force redraw when accent color changes
         .listStyle(InsetGroupedListStyle())
         .navigationTitle("Release Notes")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
-        .onChange(of: accentColorPreference) { _, newValue in
-            currentAccentPreference = newValue
+        .onChange(of: dataManager.isLoading) { _, newValue in
+            if !newValue && dataManager.isManualSyncing {
+                // Placeholder for future DataManager dependencies
+            }
         }
     }
 }
@@ -74,8 +77,11 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 58-59", changes: [
-        "Accent themes added"
+    ReleaseNote(version: "Version 1.0 - Build 58-60", changes: [
+        "Accent themes added",
+        "Onboarding moved to the main app entry",
+        "Code sequence updates",
+        "Image assets added"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 54-57", changes: [
         "Improved search",
