@@ -1,5 +1,5 @@
 //
-//  AppIconsView.swift
+//  AppAppearanceView.swift
 //  Craftify
 //
 //  Created by Dave Van Cauwenberghe on 14/05/2025.
@@ -10,13 +10,21 @@ import UIKit
 
 private struct AppIcon: Identifiable {
     let id: String?        // nil = primary, otherwise CFBundleAlternateIcons key
-    let name: String       // user‐facing label
+    let name: String       // user-facing label
     let previewName: String// your normal Image set name
 }
 
-struct AppIconsView: View {
+private struct AccentColorOption: Identifiable {
+    let id: String
+    let name: String
+    let color: Color
+}
+
+struct AppAppearanceView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass: UserInterfaceSizeClass?
     @AppStorage("selectedAppIcon") private var selectedAppIcon: String?
+    @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
+    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var errorMessage: String?
     @State private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons
 
@@ -26,16 +34,50 @@ struct AppIconsView: View {
         .init(id: "AlternateIcon2", name: "Craftify Grid", previewName: "AlternateIcon2Preview")
     ]
 
+    private let accentColors: [AccentColorOption] = [
+        .init(id: "default", name: "Default", color: .accentColor),
+        .init(id: "green", name: "Green", color: Color(hex: "00AA00")),
+        .init(id: "blue", name: "Blue", color: .blue),
+        .init(id: "orange", name: "Orange", color: .orange),
+        .init(id: "purple", name: "Purple", color: .purple)
+    ]
+
     var body: some View {
         List {
-            Section {
+            Section(header: Text("Appearance")) {
+                Picker("Appearance", selection: $colorSchemePreference) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("Appearance")
+                .accessibilityHint("Choose between System, Light, or Dark mode")
+            }
+            
+            Section(header: Text("Accent Color")) {
+                Picker("Accent Color", selection: $accentColorPreference) {
+                    ForEach(accentColors) { option in
+                        HStack {
+                            Circle()
+                                .fill(option.color)
+                                .frame(width: 20, height: 20)
+                            Text(option.name)
+                        }
+                        .tag(option.id)
+                    }
+                }
+                .accessibilityLabel("Accent Color")
+                .accessibilityHint("Choose the accent color for the app")
+            }
+            
+            Section(header: Text("App Icons")) {
                 if supportsAlternateIcons {
                     ForEach(appIcons) { icon in
                         Button {
                             changeIcon(to: icon.id)
                         } label: {
                             HStack(spacing: 12) {
-                                // Use your real preview image set:
                                 if let uiImage = UIImage(named: icon.previewName) {
                                     Image(uiImage: uiImage)
                                         .resizable()
@@ -43,7 +85,6 @@ struct AppIconsView: View {
                                         .frame(width: 44, height: 44)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                 } else {
-                                    // Should never happen if your preview sets exist
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(Color.secondary.opacity(0.2))
                                         .frame(width: 44, height: 44)
@@ -51,7 +92,7 @@ struct AppIconsView: View {
 
                                 Text(icon.name)
                                     .font(.headline)
-                                    .minimumScaleFactor(0.8) // Support Dynamic Type scaling
+                                    .minimumScaleFactor(0.8)
                                 Spacer()
                                 if selectedAppIcon == icon.id {
                                     Image(systemName: "checkmark.circle.fill")
@@ -69,19 +110,19 @@ struct AppIconsView: View {
                     Text("Alternate icons aren’t available yet.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                        .minimumScaleFactor(0.8) // Support Dynamic Type scaling
+                        .minimumScaleFactor(0.8)
                         .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
                         .accessibilityLabel("Alternate icons not available")
                         .accessibilityHint("Check back later for new icon options")
                 }
-            } header: {
-                Text("App Icons")
-                    .accessibilityAddTraits(.isHeader)
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("App Icons")
+        .navigationTitle("App Appearance")
         .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
+        .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
         .alert("Error",
                isPresented: Binding(
                    get: { errorMessage != nil },
@@ -91,9 +132,12 @@ struct AppIconsView: View {
                message: { Text(errorMessage ?? "An unknown error occurred") }
         )
         .onAppear {
-            // Keep in sync if the user changed the icon elsewhere
             selectedAppIcon = UIApplication.shared.alternateIconName
         }
+        .preferredColorScheme(
+            colorSchemePreference == "system" ? nil :
+            (colorSchemePreference == "light" ? .light : .dark)
+        )
     }
 
     private func changeIcon(to iconName: String?) {
@@ -104,7 +148,6 @@ struct AppIconsView: View {
                     errorMessage = "Failed to change icon: \(err.localizedDescription)"
                 } else {
                     selectedAppIcon = iconName
-                    // Announce success to VoiceOver users
                     UIAccessibility.post(notification: .announcement, argument: "App icon changed to \(appIcons.first(where: { $0.id == iconName })?.name ?? "Default")")
                 }
             }
