@@ -3,17 +3,27 @@
     "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleSupportedPlatforms</key>
-    <array>
-        <string>iPhoneOS</string>
-    </array>
+    <!-- Bundle Identifier -->
+    <key>CFBundleIdentifier</key>
+    <string>be.ghentphotography.www.Craftify</string>
 
+    <!-- App Name -->
+    <key>CFBundleName</key>
+    <string>Craftify</string>
+    <key>CFBundleDisplayName</key>
+    <string>Craftify</string>
+
+    <!-- Minimum OS Version -->
     <key>MinimumOSVersion</key>
     <string>17.0</string>
 
-    <key>NSMailComposeUsageDescription</key>
-    <string>Craftify uses email to let you report missing recipes and contact support.</string>
+    <!-- Supported Device Capabilities -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string>
+    </array>
 
+    <!-- iCloud Documents Configuration -->
     <key>NSUbiquitousContainers</key>
     <dict>
         <key>iCloud.be.ghentphotography.www.Craftify</key>
@@ -26,7 +36,18 @@
             <string>All</string>
         </dict>
     </dict>
-    <!-- App Icon configuration -->
+
+    <!-- CloudKit Container -->
+    <key>com.apple.developer.icloud-container-identifiers</key>
+    <array>
+        <string>iCloud.craftifydb</string>
+    </array>
+    <key>com.apple.developer.icloud-services</key>
+    <array>
+        <string>CloudKit</string>
+    </array>
+
+    <!-- App Icon Configuration -->
     <key>CFBundleIcons</key>
     <dict>
         <!-- Primary (default) icon set -->

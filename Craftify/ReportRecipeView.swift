@@ -24,6 +24,7 @@ struct ReportRecipeView: View {
     @State private var showDeleteConfirmation: Bool = false
     @State private var submissionState: SubmissionState = .idle
     @State private var showSubmissionPopup: Bool = false
+    @State private var cooldownMessage: String? = nil
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
 
     private let categories: [String] = [
@@ -49,7 +50,7 @@ struct ReportRecipeView: View {
     enum SubmissionState: Equatable {
         case idle
         case submitting
-        case success
+        case success(reportType: String, recipeName: String, category: String)
         case failure(String)
 
         static func == (lhs: SubmissionState, rhs: SubmissionState) -> Bool {
@@ -58,8 +59,8 @@ struct ReportRecipeView: View {
                 return true
             case (.submitting, .submitting):
                 return true
-            case (.success, .success):
-                return true
+            case (.success(let lhsType, let lhsName, let lhsCategory), .success(let rhsType, let rhsName, let rhsCategory)):
+                return lhsType == rhsType && lhsName == rhsName && lhsCategory == rhsCategory
             case (.failure(let lhsError), .failure(let rhsError)):
                 return lhsError == rhsError
             default:
@@ -96,7 +97,7 @@ struct ReportRecipeView: View {
         .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
         .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
         .frame(maxWidth: .infinity, minHeight: fieldHeight)
-        .background(Color(.systemGray5))
+        .background(Color(.systemGray6))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -115,7 +116,7 @@ struct ReportRecipeView: View {
         .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
         .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
         .frame(maxWidth: .infinity, minHeight: fieldHeight)
-        .background(Color(.systemGray5))
+        .background(Color(.systemGray6))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -303,6 +304,16 @@ struct ReportRecipeView: View {
                                 .accessibilityLabel("Refresh Status")
                                 .accessibilityHint("Refreshes the status of your submitted reports")
 
+                                // Cooldown Message
+                                if let message = cooldownMessage {
+                                    Text(message)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .padding(.vertical, 8)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .accessibilityLabel(message)
+                                }
+
                                 if isLoadingReports {
                                     ProgressView()
                                         .progressViewStyle(.circular)
@@ -362,7 +373,7 @@ struct ReportRecipeView: View {
                                                     .font(.body)
                                             }
 
-                                            // Delete Button (Accessibility Fallback)
+                                            // Delete Button
                                             Button(action: {
                                                 reportToDelete = report
                                                 showDeleteConfirmation = true
@@ -379,19 +390,17 @@ struct ReportRecipeView: View {
                                         .padding(.vertical, 12)
                                         .padding(.horizontal, 16)
                                         .background(Color(.systemGray6))
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                reportToDelete = report
-                                                showDeleteConfirmation = true
-                                            } label: {
-                                                Label("Delete", systemImage: "trash")
-                                            }
-                                            .tint(.red)
-                                        }
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(
+                                                    Color.userAccentColor.opacity(0.3),
+                                                    style: StrokeStyle(lineWidth: 1)
+                                                )
+                                        )
                                         .accessibilityElement(children: .combine)
                                         .accessibilityLabel("Report: \(report.reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error") for \(report.recipeName), Category: \(report.category), Status: \(report.status), Details: \(report.description), Submitted: \(formattedDate(report.timestamp))")
-                                        .accessibilityHint("Swipe to delete this report or tap the delete button")
+                                        .accessibilityHint("Tap the delete button to remove this report")
                                     }
                                 }
                             }
@@ -477,12 +486,12 @@ struct ReportRecipeView: View {
                             .font(.headline)
                             .foregroundColor(.primary)
 
-                    case .success:
+                    case .success(let reportType, let recipeName, let category):
                         Image(systemName: "checkmark.circle.fill")
                             .resizable()
                             .frame(width: 60, height: 60)
                             .foregroundColor(.green)
-                        Text("Thanks for sending the report!")
+                        Text("Thanks for submitting your \(reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error") report for '\(recipeName)' in the \(category) category!")
                             .font(.headline)
                             .foregroundColor(.primary)
                             .multilineTextAlignment(.center)
@@ -551,17 +560,25 @@ struct ReportRecipeView: View {
         submissionState = .submitting
         showSubmissionPopup = true
 
+        let reportTypeString = reportType.rawValue
+        let recipeNameValue = reportType == .missingRecipe ? recipeName : recipeErrorName
+        let categoryValue = reportType == .missingRecipe ? selectedCategory : recipeErrorCategory
+
         dataManager.submitRecipeReport(
-            reportType: reportType.rawValue,
-            recipeName: reportType == .missingRecipe ? recipeName : recipeErrorName,
-            category: reportType == .missingRecipe ? selectedCategory : recipeErrorCategory,
+            reportType: reportTypeString,
+            recipeName: recipeNameValue,
+            category: categoryValue,
             recipeID: nil,
             description: additionalInfo
         ) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    self.submissionState = .success
+                    self.submissionState = .success(
+                        reportType: reportTypeString,
+                        recipeName: recipeNameValue,
+                        category: categoryValue
+                    )
                 case .failure(let error):
                     self.submissionState = .failure("Failed to submit report: \(error.localizedDescription)")
                 }
@@ -571,9 +588,18 @@ struct ReportRecipeView: View {
 
     private func fetchReportStatuses() {
         isLoadingReports = true
+        cooldownMessage = nil // Clear any existing message
+
         dataManager.fetchRecipeReportStatuses {
             DispatchQueue.main.async {
                 self.isLoadingReports = false
+                // Check if the fetch was skipped due to the 30-second cooldown
+                if self.dataManager.isReportStatusFetchOnCooldown() {
+                    self.cooldownMessage = "Please wait 30 seconds before refreshing again."
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        self.cooldownMessage = nil
+                    }
+                }
             }
         }
     }

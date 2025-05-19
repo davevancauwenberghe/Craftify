@@ -30,6 +30,8 @@ class DataManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var lastReportStatusFetch: Date?
     private let reportStatusFetchInterval: TimeInterval = 30 // Fetch statuses no more than once every 30 seconds
+    private var lastRecipeFetch: Date? // New property for recipe fetch throttling
+    private let recipeFetchInterval: TimeInterval = 30 // New constant for recipe fetch cooldown
 
     enum ErrorType: String {
         case network = "Network issue, please check your connection and try again."
@@ -176,6 +178,14 @@ class DataManager: ObservableObject {
     }
 
     func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
+        // Throttle recipe fetches to avoid overloading CloudKit
+        if let lastFetch = lastRecipeFetch,
+           Date().timeIntervalSince(lastFetch) < recipeFetchInterval {
+            print("Skipping recipe fetch; last fetch was less than \(recipeFetchInterval) seconds ago.")
+            completion()
+            return
+        }
+
         loadData(isManual: isManual, completion: completion)
     }
 
@@ -224,6 +234,7 @@ class DataManager: ObservableObject {
                             self.syncRecentSearches()
                             self.saveRecipesToLocalCache(fetchedRecipes)
                             self.lastUpdated = Date()
+                            self.lastRecipeFetch = Date() // Update the last fetch time
                             self.isLoading = false
                             self.isManualSyncing = false
                             completion()
@@ -267,6 +278,22 @@ class DataManager: ObservableObject {
                 continuation.resume()
             }
         }
+    }
+
+    // MARK: - Throttling Helpers
+
+    func isRecipeFetchOnCooldown() -> Bool {
+        if let lastFetch = lastRecipeFetch {
+            return Date().timeIntervalSince(lastFetch) < recipeFetchInterval
+        }
+        return false
+    }
+
+    func isReportStatusFetchOnCooldown() -> Bool {
+        if let lastFetch = lastReportStatusFetch {
+            return Date().timeIntervalSince(lastFetch) < reportStatusFetchInterval
+        }
+        return false
     }
 
     // MARK: - Recipe Report Management

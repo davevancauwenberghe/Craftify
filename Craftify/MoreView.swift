@@ -13,7 +13,8 @@ struct MoreView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    
+    @State private var cooldownMessage: String? = nil // New state for cooldown message
+
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
         let formatter = DateFormatter()
@@ -68,6 +69,13 @@ struct MoreView: View {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             dataManager.fetchRecipes(isManual: true) {
                                 print("Sync Recipes completed")
+                                // Check if the fetch was skipped due to the 30-second cooldown
+                                if dataManager.isRecipeFetchOnCooldown() {
+                                    cooldownMessage = "Please wait 30 seconds before syncing again."
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                                        cooldownMessage = nil
+                                    }
+                                }
                             }
                         }) {
                             HStack {
@@ -101,6 +109,16 @@ struct MoreView: View {
                         .disabled(dataManager.isLoading)
                         .accessibilityLabel("Sync Recipes")
                         .accessibilityHint("Syncs Minecraft recipes from CloudKit")
+
+                        // Cooldown Message
+                        if let message = cooldownMessage {
+                            Text(message)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityLabel(message)
+                        }
                         
                         Button(action: {
                             print("Clear Cache tapped")
