@@ -73,193 +73,210 @@ struct RecipeSearchView: View {
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    if searchText.isEmpty && !isSearchActive {
-                        // Initial state when not searching
-                        if recentSearchRecipes.isEmpty {
-                            // No recent searches
-                            VStack(spacing: 16) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(Color.userAccentColor.opacity(0.8))
-                                Text("Search for Recipes")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.primary)
-                                Text("Find recipes by name, category, or ingredients.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
-                            }
-                            .padding(.vertical, 16)
-                            .accessibilityElement(children: .combine)
-                            .accessibilityLabel("Search for Recipes")
-                            .accessibilityHint("Enter a search term to find recipes by name, category, or ingredients")
-                        } else {
-                            // Show recent searches
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Text("Recent Searches")
-                                        .font(.title3)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.primary)
-                                    
-                                    // Add filter indicator
-                                    Text(searchFilter == .all ? "All" : "Favorites")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.gray.opacity(0.2))
-                                        .clipShape(Capsule())
-                                    
-                                    Spacer()
-                                    
-                                    Button(action: {
-                                        clearRecentSearches()
-                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                    }) {
-                                        Text("Clear All")
-                                            .font(.subheadline)
-                                            .foregroundColor(Color.userAccentColor)
-                                    }
-                                    .disabled(recentSearchRecipes.isEmpty)
-                                    .contentShape(Rectangle())
-                                    .accessibilityLabel("Clear All Recent Searches")
-                                    .accessibilityHint("Removes all recent search history")
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.top, 8)
-                                .padding(.bottom, 4)
-                                .background(Color(.systemBackground))
-                                
-                                RecentSearchesList(
-                                    recipes: recentSearchRecipes,
-                                    navigationPath: $navigationPath,
-                                    accentColorPreference: accentColorPreference
-                                )
-                            }
-                            .padding(.vertical, 16)
-                            .accessibilityElement(children: .combine)
-                            .accessibilityLabel("Recent Searches, filtered by \(searchFilter == .all ? "All recipes" : "Favorite recipes")")
-                            .accessibilityHint("Shows the last 10 recipes you searched for, filtered by \(searchFilter == .all ? "all recipes" : "favorite recipes")")
-                        }
-                    } else {
-                        // Search filter picker (always visible when search is active)
-                        Picker("Search Filter", selection: $searchFilter) {
-                            ForEach(SearchFilter.allCases, id: \.self) { filter in
-                                Text(filter.rawValue).tag(filter)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                        .padding(.vertical, 8)
-                        .accessibilityLabel("Search Filter")
-                        .accessibilityHint("Choose to search all recipes or only favorite recipes")
-                        .onChange(of: searchFilter) { _, _ in
-                            updateFilteredRecipes()
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        }
-                        
-                        if searchText.isEmpty {
-                            // Show placeholder when search bar is tapped but no text is entered
-                            VStack(spacing: 16) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(Color.userAccentColor.opacity(0.8))
-                                Text("Start Searching")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.primary)
-                                Text("Enter a name, category, or ingredient to find recipes.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
-                            }
-                            .padding(.vertical, 16)
-                            .accessibilityElement(children: .combine)
-                            .accessibilityLabel("Start Searching")
-                            .accessibilityHint("Enter a name, category, or ingredient to find recipes")
-                        } else if searchFilter == .favorites && dataManager.favorites.isEmpty {
-                            // Empty state when no favorite recipes exist and filter is set to favorites
-                            VStack(spacing: 16) {
-                                Image(systemName: "heart.fill")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(Color.userAccentColor.opacity(0.8))
-                                Text("No Favorite Recipes")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.primary)
-                                Text("You haven't favorited any recipes yet.\nAdd some favorites or switch to All recipes.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
-                            }
-                            .padding(.vertical, 32)
-                            .accessibilityElement(children: .combine)
-                            .accessibilityLabel("No Favorite Recipes")
-                            .accessibilityHint("You haven't favorited any recipes yet. Add some favorites or switch to All recipes.")
-                        } else if !searchText.isEmpty && filteredRecipes.isEmpty {
-                            // Empty state when no recipes are found after searching
-                            VStack(spacing: 16) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(.gray.opacity(0.8))
-                                Text("No recipes found")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.primary)
-                                Text("Try adjusting your search term\(searchFilter == .favorites ? " or switch to All recipes" : "").")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
-                            }
-                            .padding(.vertical, 32)
-                            .accessibilityElement(children: .combine)
-                            .accessibilityLabel("No recipes found")
-                            .accessibilityHint("No recipes match your search term. Try adjusting your search\(searchFilter == .favorites ? " or switch to All recipes" : "").")
-                        } else {
-                            // Search results
-                            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                                ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
-                                    Section {
-                                        ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
-                                            NavigationLink {
-                                                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                                    .onAppear {
-                                                        saveRecentSearch(recipe)
-                                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                                    }
-                                            } label: {
-                                                RecipeCell(recipe: recipe, isCraftifyPick: false)
-                                            }
-                                            .buttonStyle(.plain)
-                                            .contentShape(Rectangle())
-                                        }
-                                    } header: {
-                                        Text(letter)
-                                            .font(.headline)
-                                            .fontWeight(.bold)
-                                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                            .padding(.vertical, 8)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .background(Color(.systemBackground))
-                                    }
-                                }
-                            }
-                        }
+            Group {
+                if dataManager.isLoading && dataManager.recipes.isEmpty {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(Color.userAccentColor)
+                        Text("Loading Recipes…")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Loading Recipes")
+                    .accessibilityHint("Please wait while the recipes are being loaded")
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            if searchText.isEmpty && !isSearchActive {
+                                // Initial state when not searching
+                                if recentSearchRecipes.isEmpty {
+                                    // No recent searches
+                                    VStack(spacing: 16) {
+                                        Image(systemName: "magnifyingglass")
+                                            .font(.system(size: 48))
+                                            .foregroundColor(Color.userAccentColor.opacity(0.8))
+                                        Text("Search for Recipes")
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.primary)
+                                        Text("Find recipes by name, category, or ingredients.")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
+                                    }
+                                    .padding(.vertical, 16)
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel("Search for Recipes")
+                                    .accessibilityHint("Enter a search term to find recipes by name, category, or ingredients")
+                                } else {
+                                    // Show recent searches
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        HStack {
+                                            Text("Recent Searches")
+                                                .font(.title3)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.primary)
+                                            
+                                            // Add filter indicator
+                                            Text(searchFilter == .all ? "All" : "Favorites")
+                                                .font(.caption)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.secondary)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(Color.gray.opacity(0.2))
+                                                .clipShape(Capsule())
+                                            
+                                            Spacer()
+                                            
+                                            Button(action: {
+                                                clearRecentSearches()
+                                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                            }) {
+                                                Text("Clear All")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(Color.userAccentColor)
+                                            }
+                                            .disabled(recentSearchRecipes.isEmpty)
+                                            .contentShape(Rectangle())
+                                            .accessibilityLabel("Clear All Recent Searches")
+                                            .accessibilityHint("Removes all recent search history")
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.top, 8)
+                                        .padding(.bottom, 4)
+                                        .background(Color(.systemBackground))
+                                        .id(accentColorPreference)
+                                        
+                                        RecentSearchesList(
+                                            recipes: recentSearchRecipes,
+                                            navigationPath: $navigationPath,
+                                            accentColorPreference: accentColorPreference
+                                        )
+                                    }
+                                    .padding(.vertical, 16)
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel("Recent Searches, filtered by \(searchFilter == .all ? "All recipes" : "Favorite recipes")")
+                                    .accessibilityHint("Shows the last 10 recipes you searched for, filtered by \(searchFilter == .all ? "all recipes" : "favorite recipes")")
+                                }
+                            } else {
+                                // Search filter picker (always visible when search is active)
+                                Picker("Search Filter", selection: $searchFilter) {
+                                    ForEach(SearchFilter.allCases, id: \.self) { filter in
+                                        Text(filter.rawValue).tag(filter)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                                .padding(.vertical, 8)
+                                .accessibilityLabel("Search Filter")
+                                .accessibilityHint("Choose to search all recipes or only favorite recipes")
+                                .onChange(of: searchFilter) { _, _ in
+                                    updateFilteredRecipes()
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                }
+                                
+                                if searchText.isEmpty {
+                                    // Show placeholder when search bar is tapped but no text is entered
+                                    VStack(spacing: 16) {
+                                        Image(systemName: "magnifyingglass")
+                                            .font(.system(size: 48))
+                                            .foregroundColor(Color.userAccentColor.opacity(0.8))
+                                        Text("Start Searching")
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.primary)
+                                        Text("Enter a name, category, or ingredient to find recipes.")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
+                                    }
+                                    .padding(.vertical, 16)
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel("Start Searching")
+                                    .accessibilityHint("Enter a name, category, or ingredient to find recipes")
+                                } else if searchFilter == .favorites && dataManager.favorites.isEmpty {
+                                    // Empty state when no favorite recipes exist and filter is set to favorites
+                                    VStack(spacing: 16) {
+                                        Image(systemName: "heart.fill")
+                                            .font(.system(size: 48))
+                                            .foregroundColor(Color.userAccentColor.opacity(0.8))
+                                        Text("No Favorite Recipes")
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.primary)
+                                        Text("You haven't favorited any recipes yet.\nAdd some favorites or switch to All recipes.")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
+                                    }
+                                    .padding(.vertical, 32)
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel("No Favorite Recipes")
+                                    .accessibilityHint("You haven't favorited any recipes yet. Add some favorites or switch to All recipes.")
+                                } else if !searchText.isEmpty && filteredRecipes.isEmpty {
+                                    // Empty state when no recipes are found after searching
+                                    VStack(spacing: 16) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .font(.system(size: 48))
+                                            .foregroundColor(.gray.opacity(0.8))
+                                        Text("No recipes found")
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.primary)
+                                        Text("Try adjusting your search term\(searchFilter == .favorites ? " or switch to All recipes" : "").")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
+                                    }
+                                    .padding(.vertical, 32)
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel("No recipes found")
+                                    .accessibilityHint("No recipes match your search term. Try adjusting your search\(searchFilter == .favorites ? " or switch to All recipes" : "").")
+                                } else {
+                                    // Search results
+                                    LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                                        ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
+                                            Section {
+                                                ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
+                                                    NavigationLink {
+                                                        RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                                            .onAppear {
+                                                                saveRecentSearch(recipe)
+                                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                            }
+                                                    } label: {
+                                                        RecipeCell(recipe: recipe, isCraftifyPick: false)
+                                                    }
+                                                    .buttonStyle(.plain)
+                                                    .contentShape(Rectangle())
+                                                }
+                                            } header: {
+                                                Text(letter)
+                                                    .font(.headline)
+                                                    .fontWeight(.bold)
+                                                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                                                    .padding(.vertical, 8)
+                                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                                    .background(Color(.systemBackground))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .scrollContentBackground(.hidden)
+                        .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
+                    }
+                    .id(accentColorPreference)
                 }
             }
-            .id(accentColorPreference) // Force redraw when accent color changes
-            .scrollContentBackground(.hidden)
-            .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
@@ -280,6 +297,15 @@ struct RecipeSearchView: View {
                 }
             }
             .task(id: searchText) {
+                await MainActor.run {
+                    updateFilteredRecipes()
+                }
+            }
+            .onAppear {
+                // Sync favorites, recent searches, and fetch recipes
+                dataManager.syncFavorites()
+                dataManager.syncRecentSearches()
+                dataManager.fetchRecipes(isManual: false)
                 updateFilteredRecipes()
             }
         }

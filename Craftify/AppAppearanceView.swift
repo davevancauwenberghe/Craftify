@@ -21,7 +21,7 @@ private struct AccentColorOption: Identifiable {
 }
 
 struct AppAppearanceView: View {
-    @EnvironmentObject var dataManager: DataManager // Added for manual syncing consistency
+    @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass: UserInterfaceSizeClass?
     @AppStorage("selectedAppIcon") private var selectedAppIcon: String?
     @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
@@ -70,9 +70,6 @@ struct AppAppearanceView: View {
                         }
                         .tag(option.id)
                     }
-                }
-                .onChange(of: accentColorPreference) { _, _ in
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }
                 .accessibilityLabel("Accent Color")
                 .accessibilityHint("Choose the accent color for the app")
@@ -125,7 +122,6 @@ struct AppAppearanceView: View {
                 }
             }
         }
-        .id(accentColorPreference) // Force redraw when accent color changes
         .listStyle(.insetGrouped)
         .navigationTitle("App Appearance")
         .navigationBarTitleDisplayMode(.large)

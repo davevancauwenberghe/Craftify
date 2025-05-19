@@ -27,9 +27,9 @@ struct OnboardingView: View {
     
     // List of Minecraft crafting tips
     private let craftingTips: [String] = [
-        "Did you know? You can craft a pickaxe with just 3 ingots and 2 sticks!",
-        "Crafting a furnace requires 8 cobblestones—perfect for smelting ores!",
-        "Combine 4 wooden planks to create a crafting table and unlock more recipes!"
+        "This is a test!",
+        "Thanks for downloading the Craftify app!",
+        "Tips will be added soon."
     ]
     
     // Adaptive styling based on device size
@@ -167,8 +167,8 @@ struct OnboardingView: View {
                             cardOpacity = 1.0
                             cardScale = 1.0
                         }
+                        onRetry()
                     }
-                    onRetry()
                 }) {
                     Text("Retry")
                         .font(buttonFont)
@@ -181,6 +181,7 @@ struct OnboardingView: View {
                         .scaleEffect(buttonScale)
                         .opacity(isButtonEnabled ? 1.0 : 0.5)
                 }
+                .disabled(!isButtonEnabled)
                 .accessibilityLabel("Retry Sync")
                 .accessibilityHint("Retries fetching recipes from the cloud")
             }
@@ -303,7 +304,7 @@ struct OnboardingView: View {
                         .padding(.vertical, 16)
                         .padding(.bottom, 30)
                         .accessibilityLabel("Crafting Tip \(index + 1) of \(craftingTips.count), \(craftingTips[index])")
-                        .accessibilityHint("Swipe left or right to read more tips")
+                        .accessibilityHint("Swipe left or right to read more tips. \(index + 1) of \(craftingTips.count) tips.")
                 }
             }
             .tabViewStyle(.page)
@@ -351,6 +352,13 @@ struct OnboardingView: View {
     }
     
     private func dismissWithAnimation() {
-        onDismiss()
+        withAnimation(.easeInOut(duration: 0.5)) {
+            overlayOpacity = 0.0
+            cardOpacity = 0.0
+            cardScale = 0.9
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            onDismiss()
+        }
     }
 }

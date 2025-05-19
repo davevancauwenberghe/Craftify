@@ -18,13 +18,11 @@ struct CraftifyApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                // Always render ContentView, but it will be obscured by OnboardingView when active
                 ContentView()
                     .environmentObject(dataManager)
                     .opacity(showOnboarding ? 0.0 : 1.0)
                     .animation(.easeInOut(duration: 0.3), value: showOnboarding)
                 
-                // Present OnboardingView on top with animation
                 if showOnboarding {
                     OnboardingView(
                         title: "Welcome to Craftify!",
@@ -33,7 +31,6 @@ struct CraftifyApp: App {
                         errorMessage: $dataManager.errorMessage,
                         isFirstLaunch: !hasLaunchedBefore,
                         onDismiss: {
-                            // Animate OnboardingView out before setting showOnboarding to false
                             withAnimation(.easeInOut(duration: 0.5)) {
                                 onboardingOpacity = 0.0
                                 onboardingOffset = -UIScreen.main.bounds.height
@@ -41,7 +38,6 @@ struct CraftifyApp: App {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                                 hasLaunchedBefore = true
                                 showOnboarding = false
-                                // Reset animation properties for future onboarding presentations
                                 onboardingOpacity = 1.0
                                 onboardingOffset = 0.0
                             }
@@ -59,9 +55,10 @@ struct CraftifyApp: App {
                 }
             }
             .onAppear {
+                // Fetch recipes on every app launch
+                dataManager.fetchRecipes(isManual: false)
                 if !hasLaunchedBefore {
                     showOnboarding = true
-                    dataManager.fetchRecipes(isManual: false)
                 }
                 print("CraftifyApp: DataManager initialized, isLoading: \(dataManager.isLoading)")
             }

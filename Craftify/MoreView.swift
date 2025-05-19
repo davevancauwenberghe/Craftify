@@ -67,7 +67,6 @@ struct MoreView: View {
                             print("Sync Recipes tapped")
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             dataManager.fetchRecipes(isManual: true) {
-                                dataManager.syncFavorites()
                                 print("Sync Recipes completed")
                             }
                         }) {
@@ -91,6 +90,7 @@ struct MoreView: View {
                                     .foregroundColor(.primary)
                                 Spacer()
                             }
+                            .id(accentColorPreference)
                             .padding(horizontalSizeClass == .regular ? 16 : 12)
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .background(Color(UIColor.systemGray5))
@@ -121,6 +121,7 @@ struct MoreView: View {
                                     .foregroundColor(.primary)
                                 Spacer()
                             }
+                            .id(accentColorPreference)
                             .padding(horizontalSizeClass == .regular ? 16 : 12)
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .background(Color(UIColor.systemGray5))
@@ -133,7 +134,6 @@ struct MoreView: View {
                     }
                 }
             }
-            .id(accentColorPreference)
             .listStyle(InsetGroupedListStyle())
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.large)
@@ -151,7 +151,10 @@ struct MoreView: View {
                 )
             }
             .onAppear {
+                // Sync favorites, recent searches, and fetch recipes
                 dataManager.syncFavorites()
+                dataManager.syncRecentSearches()
+                dataManager.fetchRecipes(isManual: false)
             }
             .onChange(of: dataManager.isLoading) { _, newValue in
                 if !newValue && dataManager.isManualSyncing {
@@ -188,7 +191,7 @@ struct AboutView: View {
     var body: some View {
         VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
             VStack(spacing: 8) {
-                Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage(systemName: "app.fill")!) // Fallback to system image
+                Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage(systemName: "app.fill")!)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
@@ -272,6 +275,7 @@ struct AboutView: View {
                         .font(horizontalSizeClass == .regular ? .title3 : .headline)
                         .bold()
                 }
+                .id(accentColorPreference)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                 .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
@@ -294,7 +298,6 @@ struct AboutView: View {
 
             Spacer()
         }
-        .id(accentColorPreference)
         .padding(horizontalSizeClass == .regular ? 12 : 8)
         .frame(maxWidth: .infinity)
         .background(Color(UIColor.systemGroupedBackground))

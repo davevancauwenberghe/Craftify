@@ -19,38 +19,46 @@ struct ContentView: View {
     @State private var navigationPath = NavigationPath()
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            RecipesTabView(navigationPath: $navigationPath, accentColorPreference: accentColorPreference)
-                .tabItem {
-                    Label("Recipes", systemImage: "square.grid.2x2")
-                }
-                .tag(0)
+        ZStack {
+            TabView(selection: $selectedTab) {
+                RecipesTabView(navigationPath: $navigationPath, accentColorPreference: accentColorPreference)
+                    .tabItem {
+                        Label("Recipes", systemImage: "square.grid.2x2")
+                    }
+                    .tag(0)
+                
+                FavoritesView()
+                    .tabItem {
+                        Label("Favorites", systemImage: "heart.fill")
+                    }
+                    .tag(1)
+                
+                MoreView()
+                    .tabItem {
+                        Label("More", systemImage: "ellipsis.circle")
+                    }
+                    .tag(2)
+                
+                RecipeSearchView()
+                    .tabItem {
+                        Label("Search", systemImage: "magnifyingglass")
+                    }
+                    .tag(3)
+            }
+            .accentColor(Color.userAccentColor)
+            .preferredColorScheme(
+                colorSchemePreference == "system" ? nil :
+                (colorSchemePreference == "light" ? .light : .dark)
+            )
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             
-            FavoritesView()
-                .tabItem {
-                    Label("Favorites", systemImage: "heart.fill")
-                }
-                .tag(1)
-            
-            MoreView()
-                .tabItem {
-                    Label("More", systemImage: "ellipsis.circle")
-                }
-                .tag(2)
-            
-            RecipeSearchView()
-                .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
-                }
-                .tag(3)
+            // Show loading indicator during manual syncing
+            if dataManager.isManualSyncing {
+                SyncOverlayView(horizontalSizeClass: horizontalSizeClass, message: "Syncing Recipes…")
+                    .opacity(dataManager.isManualSyncing ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.3), value: dataManager.isManualSyncing)
+            }
         }
-        .id(accentColorPreference)
-        .accentColor(Color.userAccentColor)
-        .preferredColorScheme(
-            colorSchemePreference == "system" ? nil :
-            (colorSchemePreference == "light" ? .light : .dark)
-        )
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .onChange(of: selectedTab) { _, newValue in
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             UIAccessibility.post(notification: .announcement, argument: "Selected tab: \(tabName(for: newValue))")
@@ -100,12 +108,10 @@ struct RecipesTabView: View {
                         .navigationBarTitleDisplayMode(.large)
                         .toolbar(.visible, for: .navigationBar)
                         .onAppear {
-                            // Sync favorites when the tab appears
+                            // Sync favorites and recent searches, and fetch recipes
                             dataManager.syncFavorites()
-                            // If recipes haven't been fetched yet, trigger a fetch
-                            if dataManager.recipes.isEmpty && !dataManager.isLoading {
-                                dataManager.fetchRecipes(isManual: false)
-                            }
+                            dataManager.syncRecentSearches()
+                            dataManager.fetchRecipes(isManual: false)
                         }
                 }
             }

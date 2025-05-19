@@ -89,6 +89,8 @@ class DataManager: ObservableObject {
 
     @objc private func appWillEnterForeground() {
         NSUbiquitousKeyValueStore.default.synchronize()
+        syncFavorites()
+        syncRecentSearches()
     }
 
     var syncStatus: String {
@@ -127,12 +129,8 @@ class DataManager: ObservableObject {
 
     func syncFavorites() {
         if let savedIDs = NSUbiquitousKeyValueStore.default.array(forKey: iCloudFavoritesKey) as? [Int] {
-            let validIDs = savedIDs.filter { id in recipes.contains { $0.id == id } }
-            favorites = recipes.filter { validIDs.contains($0.id) }
-            if validIDs.count < savedIDs.count {
-                NSUbiquitousKeyValueStore.default.set(validIDs, forKey: iCloudFavoritesKey)
-                NSUbiquitousKeyValueStore.default.synchronize()
-            }
+            // Only update in-memory favorites; do not modify iCloud unless explicitly saving
+            favorites = recipes.filter { savedIDs.contains($0.id) }
         }
     }
 
@@ -155,12 +153,8 @@ class DataManager: ObservableObject {
 
     func syncRecentSearches() {
         if let savedNames = NSUbiquitousKeyValueStore.default.array(forKey: iCloudRecentSearchesKey) as? [String] {
-            let validNames = savedNames.filter { name in recipes.contains { $0.name == name } }
-            recentSearchNames = Array(validNames.prefix(10))
-            if validNames.count < savedNames.count {
-                NSUbiquitousKeyValueStore.default.set(validNames, forKey: iCloudRecentSearchesKey)
-                NSUbiquitousKeyValueStore.default.synchronize()
-            }
+            // Only update in-memory recentSearchNames; do not modify iCloud unless explicitly saving or clearing
+            recentSearchNames = Array(savedNames.prefix(10)).filter { name in recipes.contains { $0.name == name } }
         }
     }
 
@@ -169,7 +163,6 @@ class DataManager: ObservableObject {
         syncRecentSearches()
     }
 
-    // Added method to retry fetching recipes, wrapping loadData
     func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
         loadData(isManual: isManual, completion: completion)
     }
@@ -299,14 +292,14 @@ class DataManager: ObservableObject {
                 self.recipes = []
                 self.cacheClearedMessage = "Cache cleared successfully."
                 self.accessibilityAnnouncement = "Cache cleared successfully."
+                completion(true)
             }
-            completion(true)
         } catch {
             DispatchQueue.main.async {
                 self.cacheClearedMessage = "Failed to clear cache."
                 self.accessibilityAnnouncement = "Failed to clear cache."
+                completion(false)
             }
-            completion(false)
         }
     }
 
