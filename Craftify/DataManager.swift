@@ -103,6 +103,8 @@ class DataManager: ObservableObject {
             let formatter = DateFormatter()
             formatter.dateStyle = .short
             formatter.timeStyle = .short
+            formatter.locale = Locale.current
+            formatter.timeZone = TimeZone.current
             return "Last synced: \(formatter.string(from: lastUpdated))"
         } else if isLoading {
             return "Syncing recipes..."
@@ -313,10 +315,10 @@ class DataManager: ObservableObject {
                     self.errorMessage = "Failed to submit report: \(errorType.rawValue)"
                     self.accessibilityAnnouncement = self.errorMessage
                     completion(.failure(error))
-                } else if let recordID = record?.recordID {
+                } else if let savedRecord = record {
                     let report = RecipeReport(
                         id: localID,
-                        recordID: recordID,
+                        recordID: savedRecord.recordID.recordName,
                         localID: localID,
                         reportType: reportType,
                         recipeName: recipeName,
@@ -356,6 +358,7 @@ class DataManager: ObservableObject {
         let query = CKQuery(recordType: "RecipeReport", predicate: predicate)
 
         var updatedReports = submittedReports
+        var foundLocalIDs: Set<String> = []
 
         func fetch(with queryOperation: CKQueryOperation) {
             queryOperation.resultsLimit = CKQueryOperation.maximumResults
@@ -367,6 +370,7 @@ class DataManager: ObservableObject {
                        let status = record["status"] as? String,
                        let index = updatedReports.firstIndex(where: { $0.localID == localID }) {
                         updatedReports[index].status = status
+                        foundLocalIDs.insert(localID)
                     }
                 case .failure(let error):
                     DispatchQueue.main.async {
@@ -385,6 +389,11 @@ class DataManager: ObservableObject {
                             let nextOperation = CKQueryOperation(cursor: cursor)
                             fetch(with: nextOperation)
                         } else {
+                            // Remove reports that no longer exist in CloudKit
+                            let missingLocalIDs = Set(localIDs).subtracting(foundLocalIDs)
+                            updatedReports.removeAll { report in
+                                missingLocalIDs.contains(report.localID)
+                            }
                             self.submittedReports = updatedReports
                             self.saveSubmittedReports()
                             self.lastReportStatusFetch = Date()
@@ -408,6 +417,7 @@ class DataManager: ObservableObject {
 
     func deleteRecipeReport(_ report: RecipeReport, completion: @escaping (Bool) -> Void) {
         guard let recordIDString = report.recordID else {
+            // If there's no recordID, remove locally and consider it a success
             self.submittedReports.removeAll { $0.id == report.id }
             self.saveSubmittedReports()
             self.accessibilityAnnouncement = "Report deleted successfully"
@@ -421,7 +431,13 @@ class DataManager: ObservableObject {
 
         publicDatabase.delete(withRecordID: recordID) { _, error in
             DispatchQueue.main.async {
-                if let error = error {
+                if let error = error as? CKError, error.code == .unknownItem {
+                    // If the record doesn't exist in CloudKit, remove it locally and consider it a success
+                    self.submittedReports.removeAll { $0.id == report.id }
+                    self.saveSubmittedReports()
+                    self.accessibilityAnnouncement = "Report deleted successfully"
+                    completion(true)
+                } else if let error = error {
                     let errorType = self.errorType(for: error)
                     self.errorMessage = "Failed to delete report: \(errorType.rawValue)"
                     self.accessibilityAnnouncement = self.errorMessage

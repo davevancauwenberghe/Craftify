@@ -76,9 +76,9 @@ struct RecipeReport: Identifiable, Codable {
         case id, recordID, localID, reportType, recipeName, category, recipeID, description, timestamp, status
     }
 
-    init(id: String, recordID: CKRecord.ID?, localID: String, reportType: String, recipeName: String, category: String, recipeID: Int?, description: String, timestamp: Date, status: String) {
+    init(id: String, recordID: String?, localID: String, reportType: String, recipeName: String, category: String, recipeID: Int?, description: String, timestamp: Date, status: String) {
         self.id = id
-        self.recordID = recordID?.recordName
+        self.recordID = recordID // Already a String?, no conversion needed
         self.localID = localID
         self.reportType = reportType
         self.recipeName = recipeName
