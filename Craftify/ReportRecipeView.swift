@@ -19,12 +19,11 @@ struct ReportRecipeView: View {
     @State private var recipeErrorName: String = ""
     @State private var recipeErrorCategory: String = ""
     @State private var additionalInfo: String = ""
-    @State private var isSubmitting: Bool = false
-    @State private var showConfirmation: Bool = false
-    @State private var showValidationErrors: Bool = false
     @State private var isLoadingReports: Bool = false
     @State private var reportToDelete: RecipeReport?
     @State private var showDeleteConfirmation: Bool = false
+    @State private var submissionState: SubmissionState = .idle
+    @State private var showSubmissionPopup: Bool = false
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
 
     private let categories: [String] = [
@@ -47,27 +46,26 @@ struct ReportRecipeView: View {
         case recipeError = "Report Recipe Error"
     }
 
-    private var validationErrorMessage: String {
-        var missingFields: [String] = []
-        if reportType == .missingRecipe {
-            if selectedCategory.isEmpty {
-                missingFields.append("Category")
-            }
-            if recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                missingFields.append("Recipe Name")
-            }
-        } else {
-            if recipeErrorCategory.isEmpty {
-                missingFields.append("Category")
-            }
-            if recipeErrorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                missingFields.append("Recipe Name")
+    enum SubmissionState: Equatable {
+        case idle
+        case submitting
+        case success
+        case failure(String)
+
+        static func == (lhs: SubmissionState, rhs: SubmissionState) -> Bool {
+            switch (lhs, rhs) {
+            case (.idle, .idle):
+                return true
+            case (.submitting, .submitting):
+                return true
+            case (.success, .success):
+                return true
+            case (.failure(let lhsError), .failure(let rhsError)):
+                return lhsError == rhsError
+            default:
+                return false
             }
         }
-        if additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            missingFields.append("Additional Information")
-        }
-        return missingFields.isEmpty ? "" : "Please fill in the following: \(missingFields.joined(separator: ", "))."
     }
 
     private var isFormIncomplete: Bool {
@@ -80,28 +78,6 @@ struct ReportRecipeView: View {
                    recipeErrorCategory.isEmpty ||
                    additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
-    }
-
-    // MARK: - Computed Properties for Views
-
-    private var categoryBorderColor: Color {
-        showValidationErrors && selectedCategory.isEmpty ? Color.red : Color.userAccentColor
-    }
-
-    private var recipeNameBorderColor: Color {
-        showValidationErrors && recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.red : Color.userAccentColor
-    }
-
-    private var recipeErrorNameBorderColor: Color {
-        showValidationErrors && recipeErrorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.red : Color.userAccentColor
-    }
-
-    private var recipeErrorCategoryBorderColor: Color {
-        showValidationErrors && recipeErrorCategory.isEmpty ? Color.red : Color.userAccentColor
-    }
-
-    private var additionalInfoBorderColor: Color {
-        showValidationErrors && additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.red : Color.userAccentColor
     }
 
     @ViewBuilder
@@ -124,7 +100,7 @@ struct ReportRecipeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(categoryBorderColor, lineWidth: 2)
+                .stroke(Color.userAccentColor, lineWidth: 2)
         )
         .pickerStyle(.menu)
         .accessibilityLabel("Category")
@@ -143,7 +119,7 @@ struct ReportRecipeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(recipeErrorCategoryBorderColor, lineWidth: 2)
+                .stroke(Color.userAccentColor, lineWidth: 2)
         )
         .pickerStyle(.menu)
         .accessibilityLabel("Category")
@@ -160,14 +136,11 @@ struct ReportRecipeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(recipeNameBorderColor, lineWidth: 2)
+                    .stroke(Color.userAccentColor, lineWidth: 2)
             )
             .onChange(of: recipeName) { _, newValue in
                 if newValue.count > maxRecipeNameLength {
                     recipeName = String(newValue.prefix(maxRecipeNameLength))
-                }
-                if showValidationErrors && !isFormIncomplete {
-                    showValidationErrors = false
                 }
             }
             .accessibilityLabel("Recipe name")
@@ -184,14 +157,11 @@ struct ReportRecipeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(recipeErrorNameBorderColor, lineWidth: 2)
+                    .stroke(Color.userAccentColor, lineWidth: 2)
             )
             .onChange(of: recipeErrorName) { _, newValue in
                 if newValue.count > maxRecipeNameLength {
                     recipeErrorName = String(newValue.prefix(maxRecipeNameLength))
-                }
-                if showValidationErrors && !isFormIncomplete {
-                    showValidationErrors = false
                 }
             }
             .accessibilityLabel("Recipe name")
@@ -210,9 +180,6 @@ struct ReportRecipeView: View {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             // Opacity updated via binding
                         }
-                        if showValidationErrors && !isFormIncomplete {
-                            showValidationErrors = false
-                        }
                     }
                 TextEditorRepresentable(text: $additionalInfo)
                     .font(.body)
@@ -229,7 +196,7 @@ struct ReportRecipeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(additionalInfoBorderColor, lineWidth: 2)
+                    .stroke(Color.userAccentColor, lineWidth: 2)
             )
             .accessibilityLabel("Additional Information")
             .accessibilityHint("Enter details about the missing recipe or error")
@@ -284,46 +251,24 @@ struct ReportRecipeView: View {
                             // Additional Information
                             additionalInfoView
 
-                            // Validation Error Message
-                            if showValidationErrors && !validationErrorMessage.isEmpty {
-                                Text(validationErrorMessage)
-                                    .font(horizontalSizeClass == .regular ? .subheadline : .footnote)
-                                    .foregroundColor(.red)
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
-                                    .padding(.vertical, 8)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color(.systemGray5))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                    .accessibilityLabel("Validation error: \(validationErrorMessage)")
-                                    .accessibilityHint("Fill in the required fields to proceed")
-                            }
-
                             // Submit Button
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 submitReport()
                             }) {
-                                HStack {
-                                    if isSubmitting {
-                                        ProgressView()
-                                            .progressViewStyle(.circular)
-                                            .tint(Color.userAccentColor)
-                                            .padding(.trailing, 8)
-                                    }
-                                    Text("Submit Report")
-                                        .font(horizontalSizeClass == .regular ? .title3 : .headline)
-                                        .bold()
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
-                                .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
-                                .background(isFormIncomplete ? Color.userAccentColor.opacity(0.5) : Color.userAccentColor)
-                                .foregroundColor(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                Text("Submit Report")
+                                    .font(horizontalSizeClass == .regular ? .title3 : .headline)
+                                    .bold()
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
+                                    .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
+                                    .background(isFormIncomplete ? Color.userAccentColor.opacity(0.5) : Color.userAccentColor)
+                                    .foregroundColor(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
                             }
-                            .disabled(isFormIncomplete || isSubmitting)
+                            .disabled(isFormIncomplete)
                             .accessibilityLabel("Submit Report")
-                            .accessibilityHint("Submits the report")
+                            .accessibilityHint(isFormIncomplete ? "Submit Report button is disabled. Please fill in all required fields: recipe name, category, and additional information." : "Submits the report")
                         } else {
                             // My Reports Section
                             if dataManager.submittedReports.isEmpty {
@@ -340,13 +285,13 @@ struct ReportRecipeView: View {
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel("No reports found. You haven’t submitted any reports yet.")
                             } else {
-                                // Refresh Button
+                                // Refresh Status Button
                                 Button(action: {
                                     fetchReportStatuses()
                                 }) {
                                     HStack {
                                         Image(systemName: "arrow.clockwise")
-                                        Text("Refresh Reports")
+                                        Text("Refresh Status")
                                     }
                                     .font(.headline)
                                     .foregroundColor(Color.userAccentColor)
@@ -355,8 +300,8 @@ struct ReportRecipeView: View {
                                     .background(Color(.systemGray5))
                                     .clipShape(RoundedRectangle(cornerRadius: 16))
                                 }
-                                .accessibilityLabel("Refresh Reports")
-                                .accessibilityHint("Refreshes the list of your submitted reports")
+                                .accessibilityLabel("Refresh Status")
+                                .accessibilityHint("Refreshes the status of your submitted reports")
 
                                 if isLoadingReports {
                                     ProgressView()
@@ -364,7 +309,7 @@ struct ReportRecipeView: View {
                                         .tint(Color.userAccentColor)
                                         .accessibilityLabel("Loading reports")
                                 } else {
-                                    ForEach(dataManager.submittedReports) { report in
+                                    ForEach(dataManager.submittedReports.sorted(by: { $0.timestamp > $1.timestamp })) { report in
                                         VStack(alignment: .leading, spacing: 8) {
                                             // Report Type and Status
                                             HStack {
@@ -416,6 +361,20 @@ struct ReportRecipeView: View {
                                                 Text(formattedDate(report.timestamp))
                                                     .font(.body)
                                             }
+
+                                            // Delete Button (Accessibility Fallback)
+                                            Button(action: {
+                                                reportToDelete = report
+                                                showDeleteConfirmation = true
+                                            }) {
+                                                Text("Delete Report")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.red)
+                                                    .padding(.vertical, 8)
+                                                    .frame(maxWidth: .infinity, alignment: .center)
+                                            }
+                                            .accessibilityLabel("Delete this report")
+                                            .accessibilityHint("Deletes the selected report")
                                         }
                                         .padding(.vertical, 12)
                                         .padding(.horizontal, 16)
@@ -432,7 +391,7 @@ struct ReportRecipeView: View {
                                         }
                                         .accessibilityElement(children: .combine)
                                         .accessibilityLabel("Report: \(report.reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error") for \(report.recipeName), Category: \(report.category), Status: \(report.status), Details: \(report.description), Submitted: \(formattedDate(report.timestamp))")
-                                        .accessibilityHint("Swipe to delete this report")
+                                        .accessibilityHint("Swipe to delete this report or tap the delete button")
                                     }
                                 }
                             }
@@ -445,17 +404,25 @@ struct ReportRecipeView: View {
                 .id(accentColorPreference)
                 .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
                 .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
+
+                // Submission Popup
+                if showSubmissionPopup {
+                    SubmissionPopup(
+                        state: submissionState,
+                        onDismiss: {
+                            showSubmissionPopup = false
+                            if case .success = submissionState {
+                                resetForm()
+                            }
+                            submissionState = .idle
+                        }
+                    )
+                    .animation(.easeInOut, value: showSubmissionPopup)
+                }
             }
             .navigationTitle("Report Issue")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .alert("Report Submitted", isPresented: $showConfirmation) {
-                Button("OK", role: .cancel) {
-                    resetForm()
-                }
-            } message: {
-                Text("Thank you for your report! We’ll review your submission.")
-            }
             .alert("Delete Report", isPresented: $showDeleteConfirmation) {
                 Button("Delete", role: .destructive) {
                     if let report = reportToDelete {
@@ -467,30 +434,94 @@ struct ReportRecipeView: View {
                 Text("Are you sure you want to delete this report? This action cannot be undone.")
             }
             .onAppear {
-                fetchReportStatuses()
-            }
-            .onChange(of: viewMode) { _, _ in
                 if viewMode == .myReports {
+                    fetchReportStatuses()
+                }
+            }
+            .onChange(of: viewMode) { _, newValue in
+                if newValue == .myReports {
                     fetchReportStatuses()
                 }
             }
             .onChange(of: reportType) { _, _ in
                 resetForm()
             }
-            .onChange(of: selectedCategory) { _, _ in
-                if showValidationErrors && !isFormIncomplete {
-                    showValidationErrors = false
+        }
+    }
+
+    // MARK: - Submission Popup View
+    struct SubmissionPopup: View {
+        let state: SubmissionState
+        let onDismiss: () -> Void
+
+        var body: some View {
+            ZStack {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        if state == .submitting {
+                            // Don't dismiss while submitting
+                        } else {
+                            onDismiss()
+                        }
+                    }
+
+                VStack(spacing: 20) {
+                    switch state {
+                    case .submitting:
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(Color.userAccentColor)
+                            .scaleEffect(1.5)
+                        Text("Sending report...")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+
+                    case .success:
+                        Image(systemName: "checkmark.circle.fill")
+                            .resizable()
+                            .frame(width: 60, height: 60)
+                            .foregroundColor(.green)
+                        Text("Thanks for sending the report!")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+
+                    case .failure(let errorMessage):
+                        Image(systemName: "xmark.circle.fill")
+                            .resizable()
+                            .frame(width: 60, height: 60)
+                            .foregroundColor(.red)
+                        Text("Failed to submit report")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Text(errorMessage)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    case .idle:
+                        EmptyView()
+                    }
+
+                    if state != .submitting {
+                        Button(action: onDismiss) {
+                            Text("OK")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.userAccentColor)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                        .padding(.horizontal, 40)
+                    }
                 }
-            }
-            .onChange(of: recipeErrorCategory) { _, _ in
-                if showValidationErrors && !isFormIncomplete {
-                    showValidationErrors = false
-                }
-            }
-            .onChange(of: recipeErrorName) { _, _ in
-                if showValidationErrors && !isFormIncomplete {
-                    showValidationErrors = false
-                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(radius: 10)
+                .frame(maxWidth: 300)
+                .padding()
             }
         }
     }
@@ -510,17 +541,15 @@ struct ReportRecipeView: View {
         recipeErrorName = ""
         recipeErrorCategory = ""
         additionalInfo = ""
-        showValidationErrors = false
-        isSubmitting = false
     }
 
     private func submitReport() {
         if isFormIncomplete {
-            showValidationErrors = true
             return
         }
 
-        isSubmitting = true
+        submissionState = .submitting
+        showSubmissionPopup = true
 
         dataManager.submitRecipeReport(
             reportType: reportType.rawValue,
@@ -530,12 +559,11 @@ struct ReportRecipeView: View {
             description: additionalInfo
         ) { result in
             DispatchQueue.main.async {
-                self.isSubmitting = false
                 switch result {
                 case .success:
-                    self.showConfirmation = true
+                    self.submissionState = .success
                 case .failure(let error):
-                    self.dataManager.errorMessage = "Failed to submit report: \(error.localizedDescription)"
+                    self.submissionState = .failure("Failed to submit report: \(error.localizedDescription)")
                 }
             }
         }
