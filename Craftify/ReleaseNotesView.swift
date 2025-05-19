@@ -78,6 +78,10 @@ struct ReleaseNote {
 
 let releaseNotes: [ReleaseNote] = [
     ReleaseNote(version: "Version 1.0 - Build 58-61", changes: [
+        "Major report recipes issues improvements",
+        "Privacy policy & data control added",
+    ]),
+    ReleaseNote(version: "Version 1.0 - Build 58-61", changes: [
         "Accent themes added",
         "Onboarding moved to the main app entry",
         "Code sequence updates",
