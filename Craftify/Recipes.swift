@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CloudKit
 
 struct Recipe: Codable, Identifiable, Equatable {
     let id: Int
@@ -56,5 +57,86 @@ struct Recipe: Codable, Identifiable, Equatable {
                lhs.category == rhs.category &&
                lhs.imageremark == rhs.imageremark &&
                lhs.remarks == rhs.remarks
+    }
+}
+
+struct RecipeReport: Identifiable, Codable {
+    let id: String
+    let recordID: String?
+    let localID: String
+    let reportType: String
+    let recipeName: String
+    let category: String
+    let recipeID: Int?
+    let description: String
+    let timestamp: Date
+    var status: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, recordID, localID, reportType, recipeName, category, recipeID, description, timestamp, status
+    }
+
+    init(id: String, recordID: CKRecord.ID?, localID: String, reportType: String, recipeName: String, category: String, recipeID: Int?, description: String, timestamp: Date, status: String) {
+        self.id = id
+        self.recordID = recordID?.recordName
+        self.localID = localID
+        self.reportType = reportType
+        self.recipeName = recipeName
+        self.category = category
+        self.recipeID = recipeID
+        self.description = description
+        self.timestamp = timestamp
+        self.status = status
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.recordID = try container.decodeIfPresent(String.self, forKey: .recordID)
+        self.localID = try container.decode(String.self, forKey: .localID)
+        self.reportType = try container.decode(String.self, forKey: .reportType)
+        self.recipeName = try container.decode(String.self, forKey: .recipeName)
+        self.category = try container.decode(String.self, forKey: .category)
+        self.recipeID = try container.decodeIfPresent(Int.self, forKey: .recipeID)
+        self.description = try container.decode(String.self, forKey: .description)
+        self.timestamp = try container.decode(Date.self, forKey: .timestamp)
+        self.status = try container.decode(String.self, forKey: .status)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(recordID, forKey: .recordID)
+        try container.encode(localID, forKey: .localID)
+        try container.encode(reportType, forKey: .reportType)
+        try container.encode(recipeName, forKey: .recipeName)
+        try container.encode(category, forKey: .category)
+        try container.encodeIfPresent(recipeID, forKey: .recipeID)
+        try container.encode(description, forKey: .description)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(status, forKey: .status)
+    }
+
+    init?(from record: CKRecord) {
+        guard let localID = record["localID"] as? String,
+              let reportType = record["reportType"] as? String,
+              let recipeName = record["recipeName"] as? String,
+              let category = record["category"] as? String,
+              let description = record["description"] as? String,
+              let timestamp = record["timestamp"] as? Date,
+              let status = record["status"] as? String else {
+            return nil
+        }
+
+        self.id = localID
+        self.recordID = record.recordID.recordName
+        self.localID = localID
+        self.reportType = reportType
+        self.recipeName = recipeName
+        self.category = category
+        self.recipeID = record["recipeID"] as? Int
+        self.description = description
+        self.timestamp = timestamp
+        self.status = status
     }
 }

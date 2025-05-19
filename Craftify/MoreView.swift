@@ -27,11 +27,11 @@ struct MoreView: View {
         NavigationStack {
             List {
                 Section(header: Text("Need Help?")) {
-                    NavigationLink(destination: ReportMissingRecipeView()) {
-                        buttonStyle(title: "Report missing recipe", systemImage: "envelope.fill")
+                    NavigationLink(destination: ReportRecipeView()) {
+                        buttonStyle(title: "Report Issue", systemImage: "envelope.fill")
                     }
-                    .accessibilityLabel("Report missing recipe")
-                    .accessibilityHint("Navigate to report a missing recipe")
+                    .accessibilityLabel("Report Issue")
+                    .accessibilityHint("Navigate to report a missing recipe or an error in an existing recipe")
                 }
                 
                 Section(header: Text("About")) {
@@ -93,7 +93,7 @@ struct MoreView: View {
                             .id(accentColorPreference)
                             .padding(horizontalSizeClass == .regular ? 16 : 12)
                             .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(Color(UIColor.systemGray5))
+                            .background(Color.gray.opacity(0.1))
                             .cornerRadius(10)
                         }
                         .buttonStyle(.plain)
@@ -124,7 +124,7 @@ struct MoreView: View {
                             .id(accentColorPreference)
                             .padding(horizontalSizeClass == .regular ? 16 : 12)
                             .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(Color(UIColor.systemGray5))
+                            .background(Color.gray.opacity(0.1))
                             .cornerRadius(10)
                         }
                         .buttonStyle(.plain)
@@ -262,16 +262,10 @@ struct AboutView: View {
             .scrollDisabled(true)
             .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
 
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                let supportEmail = "hello@davevancauwenberghe.be"
-                if let url = URL(string: "mailto:\(supportEmail)") {
-                    UIApplication.shared.open(url)
-                }
-            }) {
+            NavigationLink(destination: SupportView()) {
                 HStack {
                     Image(systemName: "envelope.fill")
-                    Text("Contact Support")
+                    Text("Support & Privacy")
                         .font(horizontalSizeClass == .regular ? .title3 : .headline)
                         .bold()
                 }
@@ -285,8 +279,8 @@ struct AboutView: View {
             }
             .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
             .padding(.bottom, 8)
-            .accessibilityLabel("Contact Support")
-            .accessibilityHint("Opens the mail app to contact support")
+            .accessibilityLabel("Support and Privacy")
+            .accessibilityHint("Navigate to support and privacy options")
 
             Text("Craftify for Minecraft is not an official Minecraft product; it is not approved or associated with Mojang or Microsoft.")
                 .font(horizontalSizeClass == .regular ? .callout : .footnote)

@@ -14,6 +14,7 @@ class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []
     @Published var favorites: [Recipe] = []
     @Published var recentSearchNames: [String] = []
+    @Published var submittedReports: [RecipeReport] = []
     @Published var selectedCategory: String? = nil
     @Published var lastUpdated: Date? = nil
     @Published var errorMessage: String? = nil
@@ -25,7 +26,10 @@ class DataManager: ObservableObject {
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudRecentSearchesKey = "recentSearches"
+    private let submittedReportsKey = "submittedReports"
     private var cancellables = Set<AnyCancellable>()
+    private var lastReportStatusFetch: Date?
+    private let reportStatusFetchInterval: TimeInterval = 30 // Fetch statuses no more than once every 30 seconds
 
     enum ErrorType: String {
         case network = "Network issue, please check your connection and try again."
@@ -78,6 +82,7 @@ class DataManager: ObservableObject {
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncFavorites()
             self.syncRecentSearches()
+            self.loadSubmittedReports()
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
         }
@@ -129,9 +134,15 @@ class DataManager: ObservableObject {
 
     func syncFavorites() {
         if let savedIDs = NSUbiquitousKeyValueStore.default.array(forKey: iCloudFavoritesKey) as? [Int] {
-            // Only update in-memory favorites; do not modify iCloud unless explicitly saving
             favorites = recipes.filter { savedIDs.contains($0.id) }
         }
+    }
+
+    func clearFavorites() {
+        favorites = []
+        NSUbiquitousKeyValueStore.default.set(favorites.map { $0.id }, forKey: iCloudFavoritesKey)
+        NSUbiquitousKeyValueStore.default.synchronize()
+        print("Cleared favorite recipes: \(favorites)")
     }
 
     func saveRecentSearch(_ recipe: Recipe) {
@@ -153,7 +164,6 @@ class DataManager: ObservableObject {
 
     func syncRecentSearches() {
         if let savedNames = NSUbiquitousKeyValueStore.default.array(forKey: iCloudRecentSearchesKey) as? [String] {
-            // Only update in-memory recentSearchNames; do not modify iCloud unless explicitly saving or clearing
             recentSearchNames = Array(savedNames.prefix(10)).filter { name in recipes.contains { $0.name == name } }
         }
     }
@@ -257,6 +267,260 @@ class DataManager: ObservableObject {
         }
     }
 
+    // MARK: - Recipe Report Management
+
+    func loadSubmittedReports() {
+        if let data = UserDefaults.standard.data(forKey: submittedReportsKey),
+           let reports = try? JSONDecoder().decode([RecipeReport].self, from: data) {
+            self.submittedReports = reports
+        } else {
+            self.submittedReports = []
+        }
+    }
+
+    func saveSubmittedReports() {
+        if let data = try? JSONEncoder().encode(submittedReports) {
+            UserDefaults.standard.set(data, forKey: submittedReportsKey)
+        }
+    }
+
+    func submitRecipeReport(
+        reportType: String,
+        recipeName: String,
+        category: String,
+        recipeID: Int?,
+        description: String,
+        completion: @escaping (Result<RecipeReport, Error>) -> Void
+    ) {
+        let container = CKContainer(identifier: "iCloud.craftifydb")
+        let publicDatabase = container.publicCloudDatabase
+        let record = CKRecord(recordType: "RecipeReport")
+        let localID = UUID().uuidString
+
+        record["localID"] = localID
+        record["reportType"] = reportType
+        record["recipeName"] = recipeName
+        record["category"] = category
+        record["recipeID"] = recipeID
+        record["description"] = description
+        record["timestamp"] = Date()
+        record["status"] = "Pending"
+
+        publicDatabase.save(record) { record, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    let errorType = self.errorType(for: error)
+                    self.errorMessage = "Failed to submit report: \(errorType.rawValue)"
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion(.failure(error))
+                } else if let recordID = record?.recordID {
+                    let report = RecipeReport(
+                        id: localID,
+                        recordID: recordID,
+                        localID: localID,
+                        reportType: reportType,
+                        recipeName: recipeName,
+                        category: category,
+                        recipeID: recipeID,
+                        description: description,
+                        timestamp: Date(),
+                        status: "Pending"
+                    )
+                    self.submittedReports.append(report)
+                    self.saveSubmittedReports()
+                    self.accessibilityAnnouncement = "Report submitted successfully"
+                    completion(.success(report))
+                }
+            }
+        }
+    }
+
+    func fetchRecipeReportStatuses(completion: @escaping () -> Void) {
+        // Throttle status fetches to avoid overloading CloudKit
+        if let lastFetch = lastReportStatusFetch,
+           Date().timeIntervalSince(lastFetch) < reportStatusFetchInterval {
+            print("Skipping report status fetch; last fetch was less than \(reportStatusFetchInterval) seconds ago.")
+            completion()
+            return
+        }
+
+        guard !submittedReports.isEmpty else {
+            completion()
+            return
+        }
+
+        let container = CKContainer(identifier: "iCloud.craftifydb")
+        let publicDatabase = container.publicCloudDatabase
+        let localIDs = submittedReports.map { $0.localID }
+        let predicate = NSPredicate(format: "localID IN %@", localIDs)
+        let query = CKQuery(recordType: "RecipeReport", predicate: predicate)
+
+        var updatedReports = submittedReports
+
+        func fetch(with queryOperation: CKQueryOperation) {
+            queryOperation.resultsLimit = CKQueryOperation.maximumResults
+
+            queryOperation.recordMatchedBlock = { recordID, result in
+                switch result {
+                case .success(let record):
+                    if let localID = record["localID"] as? String,
+                       let status = record["status"] as? String,
+                       let index = updatedReports.firstIndex(where: { $0.localID == localID }) {
+                        updatedReports[index].status = status
+                    }
+                case .failure(let error):
+                    DispatchQueue.main.async {
+                        let errorType = self.errorType(for: error)
+                        self.errorMessage = "Error fetching report status for \(recordID.recordName): \(errorType.rawValue)"
+                        self.accessibilityAnnouncement = self.errorMessage
+                    }
+                }
+            }
+
+            queryOperation.queryResultBlock = { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let cursor):
+                        if let cursor = cursor {
+                            let nextOperation = CKQueryOperation(cursor: cursor)
+                            fetch(with: nextOperation)
+                        } else {
+                            self.submittedReports = updatedReports
+                            self.saveSubmittedReports()
+                            self.lastReportStatusFetch = Date()
+                            completion()
+                        }
+                    case .failure(let error):
+                        let errorType = self.errorType(for: error)
+                        self.errorMessage = "Failed to fetch report statuses: \(errorType.rawValue)"
+                        self.accessibilityAnnouncement = self.errorMessage
+                        completion()
+                    }
+                }
+            }
+
+            publicDatabase.add(queryOperation)
+        }
+
+        let initialOperation = CKQueryOperation(query: query)
+        fetch(with: initialOperation)
+    }
+
+    func deleteRecipeReport(_ report: RecipeReport, completion: @escaping (Bool) -> Void) {
+        guard let recordIDString = report.recordID else {
+            self.submittedReports.removeAll { $0.id == report.id }
+            self.saveSubmittedReports()
+            self.accessibilityAnnouncement = "Report deleted successfully"
+            completion(true)
+            return
+        }
+
+        let container = CKContainer(identifier: "iCloud.craftifydb")
+        let publicDatabase = container.publicCloudDatabase
+        let recordID = CKRecord.ID(recordName: recordIDString)
+
+        publicDatabase.delete(withRecordID: recordID) { _, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    let errorType = self.errorType(for: error)
+                    self.errorMessage = "Failed to delete report: \(errorType.rawValue)"
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion(false)
+                } else {
+                    self.submittedReports.removeAll { $0.id == report.id }
+                    self.saveSubmittedReports()
+                    self.accessibilityAnnouncement = "Report deleted successfully"
+                    completion(true)
+                }
+            }
+        }
+    }
+
+    func deleteAllRecipeReports(completion: @escaping (Bool) -> Void) {
+        let reportsWithRecordID = submittedReports.filter { $0.recordID != nil }
+        guard !reportsWithRecordID.isEmpty else {
+            self.submittedReports = []
+            self.saveSubmittedReports()
+            self.accessibilityAnnouncement = "All reports deleted successfully"
+            completion(true)
+            return
+        }
+
+        let container = CKContainer(identifier: "iCloud.craftifydb")
+        let publicDatabase = container.publicCloudDatabase
+        let recordIDs = reportsWithRecordID.compactMap { $0.recordID }.map { CKRecord.ID(recordName: $0) }
+        let operation = CKModifyRecordsOperation(recordsToSave: nil, recordIDsToDelete: recordIDs)
+
+        operation.modifyRecordsResultBlock = { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self.submittedReports = []
+                    self.saveSubmittedReports()
+                    self.accessibilityAnnouncement = "All reports deleted successfully"
+                    completion(true)
+                case .failure(let error):
+                    let errorType = self.errorType(for: error)
+                    self.errorMessage = "Failed to delete all reports: \(errorType.rawValue)"
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion(false)
+                }
+            }
+        }
+
+        publicDatabase.add(operation)
+    }
+
+    // MARK: - Data Management
+
+    func clearCache(completion: @escaping (Bool) -> Void) {
+        let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
+        do {
+            try FileManager.default.removeItem(at: fileURL)
+            DispatchQueue.main.async {
+                self.recipes = []
+                self.deleteAllRecipeReports { success in
+                    if success {
+                        self.cacheClearedMessage = "Cache and reports cleared successfully."
+                        self.accessibilityAnnouncement = "Cache and reports cleared successfully."
+                        completion(true)
+                    } else {
+                        self.cacheClearedMessage = "Cache cleared, but failed to clear reports."
+                        self.accessibilityAnnouncement = "Cache cleared, but failed to clear reports."
+                        completion(false)
+                    }
+                }
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.cacheClearedMessage = "Failed to clear cache."
+                self.accessibilityAnnouncement = "Failed to clear cache."
+                completion(false)
+            }
+        }
+    }
+
+    func clearAllData(completion: @escaping (Bool) -> Void) {
+        // Step 1: Clear recipe cache and CloudKit reports
+        clearCache { cacheSuccess in
+            // Step 2: Clear favorites and recent searches
+            self.clearFavorites()
+            self.clearRecentSearches()
+            
+            DispatchQueue.main.async {
+                if cacheSuccess {
+                    self.cacheClearedMessage = "All data cleared successfully."
+                    self.accessibilityAnnouncement = "All data cleared successfully."
+                    completion(true)
+                } else {
+                    self.cacheClearedMessage = "Failed to clear all data."
+                    self.accessibilityAnnouncement = "Failed to clear all data."
+                    completion(false)
+                }
+            }
+        }
+    }
+
     private func localCacheFileName() -> String {
         return "recipes.json"
     }
@@ -282,25 +546,6 @@ class DataManager: ObservableObject {
 
     private func getCacheDirectory() -> URL {
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-    }
-
-    func clearCache(completion: @escaping (Bool) -> Void) {
-        let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
-        do {
-            try FileManager.default.removeItem(at: fileURL)
-            DispatchQueue.main.async {
-                self.recipes = []
-                self.cacheClearedMessage = "Cache cleared successfully."
-                self.accessibilityAnnouncement = "Cache cleared successfully."
-                completion(true)
-            }
-        } catch {
-            DispatchQueue.main.async {
-                self.cacheClearedMessage = "Failed to clear cache."
-                self.accessibilityAnnouncement = "Failed to clear cache."
-                completion(false)
-            }
-        }
     }
 
     private func convertRecordToRecipe(_ record: CKRecord) -> Recipe? {
