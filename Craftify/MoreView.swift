@@ -16,6 +16,7 @@ struct MoreView: View {
     @State private var cooldownMessage: String? = nil
     @State private var remainingCooldownTime: Int = 0
     @State private var cooldownTimer: Timer? = nil
+    @State private var attemptedSyncWhileOffline: Bool = false
 
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
@@ -52,21 +53,9 @@ struct MoreView: View {
                         .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
                 }
                 
-                Section(header: Text("Recipe Sync")) {
+                Section(header: Text("Data Sync & Status")) {
                     VStack(alignment: .leading, spacing: 12) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text("\(dataManager.recipes.count) recipes available")
-                            Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
-                        }
-                        .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                        .foregroundColor(.secondary)
-                        .allowsHitTesting(false)
-                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("\(dataManager.recipes.count) recipes available, \(dataManager.syncStatus)")
-                        .accessibilityHint("Information about the number of recipes and sync status")
-                        
-                        // Combined Sync Recipes Button and Cooldown Message
+                        // 1. Sync Recipes Button + Cooldown Message
                         VStack(spacing: 8) {
                             Button(action: {
                                 print("Sync Recipes tapped")
@@ -86,26 +75,26 @@ struct MoreView: View {
                                     } else {
                                         Image(systemName: "arrow.clockwise")
                                             .font(.title2)
-                                            .foregroundColor(Color.userAccentColor)
+                                            .foregroundColor(dataManager.isConnected ? Color.userAccentColor : Color.gray)
                                     }
                                     Text("Sync Recipes")
                                         .font(.headline)
-                                        .foregroundColor(.primary)
+                                        .foregroundColor(dataManager.isConnected ? .primary : .gray)
                                     Spacer()
                                 }
                                 .id(accentColorPreference)
                                 .padding(horizontalSizeClass == .regular ? 16 : 12)
                                 .frame(maxWidth: .infinity, minHeight: 44)
-                                .background(Color.gray.opacity(0.1))
+                                .background(Color.gray.opacity(dataManager.isConnected ? 0.1 : 0.05))
                                 .cornerRadius(10)
                             }
                             .buttonStyle(.plain)
                             .contentShape(Rectangle())
-                            .disabled(dataManager.isLoading)
+                            .disabled(dataManager.isLoading || !dataManager.isConnected)
                             .accessibilityLabel("Sync Recipes")
-                            .accessibilityHint("Syncs Minecraft recipes from CloudKit")
+                            .accessibilityHint(dataManager.isConnected ? "Syncs Minecraft recipes from CloudKit" : "Sync is disabled due to no internet connection")
 
-                            if let message = cooldownMessage {
+                            if let message = cooldownMessage, dataManager.isConnected {
                                 Text(message)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
@@ -113,7 +102,40 @@ struct MoreView: View {
                                     .accessibilityLabel(message)
                             }
                         }
+
+                        // 2. Network Status
+                        HStack {
+                            Image(systemName: dataManager.isConnected ? "wifi" : "wifi.slash")
+                                .foregroundColor(dataManager.isConnected ? .green : .gray)
+                            Text(dataManager.isConnected ? "Connected to the Internet" : "No Internet Connection")
+                                .foregroundColor(dataManager.isConnected ? .green : .gray)
+                        }
+                        .font(horizontalSizeClass == .regular ? .callout : .footnote)
+                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                        .accessibilityElement()
+                        .accessibilityLabel(dataManager.isConnected ? "Connected to the internet" : "No internet connection")
+                        .accessibilityHint(dataManager.isConnected ? "Your device is connected to the internet" : "Please connect to the internet to sync recipes")
+
+                        // 3. Last Synced
+                        Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
+                            .font(horizontalSizeClass == .regular ? .callout : .footnote)
+                            .foregroundColor(.secondary)
+                            .allowsHitTesting(false)
+                            .padding(.vertical, horizontalSizeClass == .regular ? 6 : 4)
+                            .accessibilityLabel(dataManager.syncStatus)
+
+                        // 4. Recipes Available
+                        Text("\(dataManager.recipes.count) recipes available")
+                            .font(horizontalSizeClass == .regular ? .callout : .footnote)
+                            .foregroundColor(.secondary)
+                            .allowsHitTesting(false)
+                            .padding(.vertical, horizontalSizeClass == .regular ? 6 : 4)
+                            .accessibilityLabel("\(dataManager.recipes.count) recipes available")
+                            .accessibilityHint("Number of recipes currently available in the app")
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Data Sync and Status: Sync Recipes button, \(dataManager.isConnected ? "Connected to the internet" : "No internet connection"), \(dataManager.syncStatus), \(dataManager.recipes.count) recipes available")
+                    .accessibilityHint("Manage recipe syncing, view network status, last sync time, and number of recipes available")
                 }
             }
             .listStyle(InsetGroupedListStyle())
@@ -135,11 +157,17 @@ struct MoreView: View {
             .onAppear {
                 dataManager.syncFavorites()
                 dataManager.syncRecentSearches()
-                // Removed automatic fetchRecipes call to reduce CloudKit strain
             }
             .onChange(of: dataManager.isLoading) { _, newValue in
                 if !newValue && dataManager.isManualSyncing {
                     dataManager.accessibilityAnnouncement = "Sync completed"
+                }
+            }
+            .onChange(of: dataManager.isConnected) { _, newValue in
+                if newValue && attemptedSyncWhileOffline {
+                    fetchRecipes(isUserInitiated: false)
+                    attemptedSyncWhileOffline = false
+                    dataManager.accessibilityAnnouncement = "Reconnected to the internet. Retrying sync."
                 }
             }
             .onDisappear {
@@ -154,6 +182,9 @@ struct MoreView: View {
     private func fetchRecipes(isUserInitiated: Bool) {
         dataManager.fetchRecipes(isManual: true) {
             DispatchQueue.main.async {
+                if !dataManager.isConnected {
+                    attemptedSyncWhileOffline = true
+                }
                 if self.dataManager.isRecipeFetchOnCooldown() && isUserInitiated {
                     let cooldownDuration = 30
                     let lastFetchTime = self.dataManager.lastRecipeFetch ?? Date.distantPast

@@ -9,12 +9,12 @@ import Foundation
 import Combine
 import CloudKit
 import UIKit
+import Network // Added for network monitoring
 
 class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []
     @Published var favorites: [Recipe] = []
     @Published var recentSearchNames: [String] = []
-    @Published var submittedReports: [RecipeReport] = []
     @Published var selectedCategory: String? = nil
     @Published var lastUpdated: Date? = nil
     @Published var errorMessage: String? = nil
@@ -25,23 +25,39 @@ class DataManager: ObservableObject {
     @Published var searchText: String = ""
     @Published var lastReportStatusFetchTime: Date?
     @Published var lastRecipeFetch: Date?
+    @Published var isConnected: Bool = true // Added for network status
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudRecentSearchesKey = "recentSearches"
-    private let submittedReportsKey = "submittedReports"
     private var cancellables = Set<AnyCancellable>()
     private let reportStatusFetchInterval: TimeInterval = 30
     private let recipeFetchInterval: TimeInterval = 30
+    private let networkMonitor = NWPathMonitor() // Added for network monitoring
+    private let networkQueue = DispatchQueue(label: "NetworkMonitor") // Queue for network monitoring
 
     enum ErrorType: String {
         case network = "Network issue, please check your connection and try again."
         case permissions = "Permission denied, please enable iCloud access."
         case dataCorruption = "Data error, please try refreshing."
+        case userIdentification = "Unable to identify user. Please ensure iCloud is enabled."
+        case missingFields = "Report data is incomplete or corrupted."
         case unknown = "An unexpected error occurred."
     }
 
     init() {
         NSUbiquitousKeyValueStore.default.synchronize()
+
+        // Set up network monitoring
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                self?.isConnected = path.status == .satisfied
+                if !(self?.isConnected ?? true) {
+                    self?.errorMessage = "No internet connection. Please connect to sync data."
+                    self?.accessibilityAnnouncement = self?.errorMessage
+                }
+            }
+        }
+        networkMonitor.start(queue: networkQueue)
 
         NotificationCenter.default.addObserver(
             self,
@@ -84,28 +100,26 @@ class DataManager: ObservableObject {
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncFavorites()
             self.syncRecentSearches()
-            self.loadSubmittedReports()
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
         }
-
-        // Perform initial sync of submitted reports
-        syncSubmittedReports()
     }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        networkMonitor.cancel() // Stop network monitoring
     }
 
     @objc private func appWillEnterForeground() {
         NSUbiquitousKeyValueStore.default.synchronize()
         syncFavorites()
         syncRecentSearches()
-        syncSubmittedReports()
     }
 
     var syncStatus: String {
-        if let lastUpdated = lastUpdated {
+        if !isConnected {
+            return "No internet connection"
+        } else if let lastUpdated = lastUpdated {
             let formatter = DateFormatter()
             formatter.dateStyle = .short
             formatter.timeStyle = .short
@@ -179,10 +193,18 @@ class DataManager: ObservableObject {
     @objc private func icloudDidChange() {
         syncFavorites()
         syncRecentSearches()
-        syncSubmittedReports()
     }
 
     func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
+        if !isConnected {
+            DispatchQueue.main.async {
+                self.errorMessage = "No internet connection. Please connect to sync recipes."
+                self.accessibilityAnnouncement = self.errorMessage
+                completion()
+            }
+            return
+        }
+
         if let lastFetch = lastRecipeFetch,
            Date().timeIntervalSince(lastFetch) < recipeFetchInterval {
             print("Skipping recipe fetch; last fetch was less than \(recipeFetchInterval) seconds ago.")
@@ -298,21 +320,6 @@ class DataManager: ObservableObject {
         return false
     }
 
-    func loadSubmittedReports() {
-        if let data = UserDefaults.standard.data(forKey: submittedReportsKey),
-           let reports = try? JSONDecoder().decode([RecipeReport].self, from: data) {
-            self.submittedReports = reports
-        } else {
-            self.submittedReports = []
-        }
-    }
-
-    func saveSubmittedReports() {
-        if let data = try? JSONEncoder().encode(submittedReports) {
-            UserDefaults.standard.set(data, forKey: submittedReportsKey)
-        }
-    }
-
     func submitRecipeReport(
         reportType: String,
         recipeName: String,
@@ -321,6 +328,15 @@ class DataManager: ObservableObject {
         description: String,
         completion: @escaping (Result<RecipeReport, Error>) -> Void
     ) {
+        guard isConnected else {
+            DispatchQueue.main.async {
+                self.errorMessage = "No internet connection. Please connect to submit a report."
+                self.accessibilityAnnouncement = self.errorMessage
+                completion(.failure(NSError(domain: "DataManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "No internet connection"])))
+            }
+            return
+        }
+
         let container = CKContainer(identifier: "iCloud.craftifydb")
         let publicDatabase = container.publicCloudDatabase
         let record = CKRecord(recordType: "RecipeReport")
@@ -355,13 +371,6 @@ class DataManager: ObservableObject {
                         timestamp: Date(),
                         status: "Pending"
                     )
-                    // Update local cache with the CloudKit record
-                    if let index = self.submittedReports.firstIndex(where: { $0.localID == localID }) {
-                        self.submittedReports[index] = report
-                    } else {
-                        self.submittedReports.append(report)
-                    }
-                    self.saveSubmittedReports()
                     self.accessibilityAnnouncement = "Report submitted successfully"
                     completion(.success(report))
                 }
@@ -369,53 +378,51 @@ class DataManager: ObservableObject {
         }
     }
 
-    func syncSubmittedReports() {
-        // Fetch all RecipeReport records for the current user and sync with local cache
-        fetchRecipeReportStatuses { [weak self] in
-            guard let self = self else { return }
-            // After initial sync, ensure local cache is up-to-date
-            self.saveSubmittedReports()
+    func fetchRecipeReports(completion: @escaping (Result<[RecipeReport], Error>) -> Void) {
+        if !isConnected {
+            DispatchQueue.main.async {
+                self.errorMessage = "No internet connection. Please connect to fetch reports."
+                self.accessibilityAnnouncement = self.errorMessage
+                completion(.failure(NSError(domain: "DataManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "No internet connection"])))
+            }
+            return
         }
-    }
 
-    func fetchRecipeReportStatuses(completion: @escaping () -> Void) {
         if let lastFetch = lastReportStatusFetchTime,
            Date().timeIntervalSince(lastFetch) < reportStatusFetchInterval {
-            print("Skipping report status fetch; last fetch was less than \(reportStatusFetchInterval) seconds ago.")
-            completion()
+            print("Skipping report fetch; last fetch was less than \(reportStatusFetchInterval) seconds ago.")
+            completion(.success([]))
             return
         }
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
         let publicDatabase = container.publicCloudDatabase
 
-        // Fetch the current user's record ID
         container.fetchUserRecordID { userRecordID, error in
             if let error = error {
                 DispatchQueue.main.async {
                     let errorType = self.errorType(for: error)
                     self.errorMessage = "Failed to fetch user ID: \(errorType.rawValue)"
                     self.accessibilityAnnouncement = self.errorMessage
-                    completion()
+                    completion(.failure(error))
                 }
                 return
             }
 
             guard let userRecordID = userRecordID else {
                 DispatchQueue.main.async {
-                    self.errorMessage = "Unable to identify current user. Please ensure iCloud is enabled."
+                    self.errorMessage = ErrorType.userIdentification.rawValue
                     self.accessibilityAnnouncement = self.errorMessage
-                    completion()
+                    completion(.failure(NSError(domain: "DataManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "User record ID is nil"])))
                 }
                 return
             }
 
-            // Create a predicate to fetch reports where ___createdBy matches the current user
             let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
             let predicate = NSPredicate(format: "___createdBy == %@", userReference)
             let query = CKQuery(recordType: "RecipeReport", predicate: predicate)
 
-            var updatedReports = [RecipeReport]()
+            var fetchedReports = [RecipeReport]()
 
             func fetch(with queryOperation: CKQueryOperation) {
                 queryOperation.resultsLimit = CKQueryOperation.maximumResults
@@ -430,6 +437,10 @@ class DataManager: ObservableObject {
                               let description = record["description"] as? String,
                               let timestamp = record["timestamp"] as? Date,
                               let status = record["status"] as? String else {
+                            DispatchQueue.main.async {
+                                self.errorMessage = ErrorType.missingFields.rawValue
+                                self.accessibilityAnnouncement = self.errorMessage
+                            }
                             return
                         }
                         let recipeID = record["recipeID"] as? Int
@@ -445,11 +456,11 @@ class DataManager: ObservableObject {
                             timestamp: timestamp,
                             status: status
                         )
-                        updatedReports.append(report)
+                        fetchedReports.append(report)
                     case .failure(let error):
                         DispatchQueue.main.async {
                             let errorType = self.errorType(for: error)
-                            self.errorMessage = "Error fetching report status for \(recordID.recordName): \(errorType.rawValue)"
+                            self.errorMessage = "Error fetching report \(recordID.recordName): \(errorType.rawValue)"
                             self.accessibilityAnnouncement = self.errorMessage
                         }
                     }
@@ -463,16 +474,14 @@ class DataManager: ObservableObject {
                                 let nextOperation = CKQueryOperation(cursor: cursor)
                                 fetch(with: nextOperation)
                             } else {
-                                self.submittedReports = updatedReports
-                                self.saveSubmittedReports()
                                 self.lastReportStatusFetchTime = Date()
-                                completion()
+                                completion(.success(fetchedReports))
                             }
                         case .failure(let error):
                             let errorType = self.errorType(for: error)
-                            self.errorMessage = "Failed to fetch report statuses: \(errorType.rawValue)"
+                            self.errorMessage = "Failed to fetch reports: \(errorType.rawValue)"
                             self.accessibilityAnnouncement = self.errorMessage
-                            completion()
+                            completion(.failure(error))
                         }
                     }
                 }
@@ -486,9 +495,16 @@ class DataManager: ObservableObject {
     }
 
     func deleteRecipeReport(_ report: RecipeReport, completion: @escaping (Bool) -> Void) {
+        guard isConnected else {
+            DispatchQueue.main.async {
+                self.errorMessage = "No internet connection. Please connect to delete the report."
+                self.accessibilityAnnouncement = self.errorMessage
+                completion(false)
+            }
+            return
+        }
+
         guard let recordIDString = report.recordID else {
-            self.submittedReports.removeAll { $0.id == report.id }
-            self.saveSubmittedReports()
             self.accessibilityAnnouncement = "Report deleted successfully"
             completion(true)
             return
@@ -501,8 +517,6 @@ class DataManager: ObservableObject {
         publicDatabase.delete(withRecordID: recordID) { _, error in
             DispatchQueue.main.async {
                 if let error = error as? CKError, error.code == .unknownItem {
-                    self.submittedReports.removeAll { $0.id == report.id }
-                    self.saveSubmittedReports()
                     self.accessibilityAnnouncement = "Report deleted successfully"
                     completion(true)
                 } else if let error = error {
@@ -511,8 +525,6 @@ class DataManager: ObservableObject {
                     self.accessibilityAnnouncement = self.errorMessage
                     completion(false)
                 } else {
-                    self.submittedReports.removeAll { $0.id == report.id }
-                    self.saveSubmittedReports()
                     self.accessibilityAnnouncement = "Report deleted successfully"
                     completion(true)
                 }
@@ -520,11 +532,18 @@ class DataManager: ObservableObject {
         }
     }
 
-    func deleteAllRecipeReports(completion: @escaping (Bool) -> Void) {
-        let reportsWithRecordID = submittedReports.filter { $0.recordID != nil }
+    func deleteAllRecipeReports(reports: [RecipeReport], completion: @escaping (Bool) -> Void) {
+        guard isConnected else {
+            DispatchQueue.main.async {
+                self.errorMessage = "No internet connection. Please connect to delete reports."
+                self.accessibilityAnnouncement = self.errorMessage
+                completion(false)
+            }
+            return
+        }
+
+        let reportsWithRecordID = reports.filter { $0.recordID != nil }
         guard !reportsWithRecordID.isEmpty else {
-            self.submittedReports = []
-            self.saveSubmittedReports()
             self.accessibilityAnnouncement = "All reports deleted successfully"
             completion(true)
             return
@@ -539,8 +558,6 @@ class DataManager: ObservableObject {
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    self.submittedReports = []
-                    self.saveSubmittedReports()
                     self.accessibilityAnnouncement = "All reports deleted successfully"
                     completion(true)
                 case .failure(let error):
@@ -561,17 +578,9 @@ class DataManager: ObservableObject {
             try FileManager.default.removeItem(at: fileURL)
             DispatchQueue.main.async {
                 self.recipes = []
-                self.deleteAllRecipeReports { success in
-                    if success {
-                        self.cacheClearedMessage = "Cache and reports cleared successfully."
-                        self.accessibilityAnnouncement = "Cache and reports cleared successfully."
-                        completion(true)
-                    } else {
-                        self.cacheClearedMessage = "Cache cleared, but failed to clear reports."
-                        self.accessibilityAnnouncement = "Cache cleared, but failed to clear reports."
-                        completion(false)
-                    }
-                }
+                self.cacheClearedMessage = "Cache cleared successfully."
+                self.accessibilityAnnouncement = "Cache cleared successfully."
+                completion(true)
             }
         } catch {
             DispatchQueue.main.async {

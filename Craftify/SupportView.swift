@@ -52,7 +52,7 @@ struct SupportView: View {
                 .accessibilityLabel("Clear All Data")
                 .accessibilityHint("Clears all local and iCloud data, including favorites, recent searches, and recipe reports")
 
-                Text("This will permanently delete all your favorites, recent searches (stored in iCloud), recipe reports (stored locally and in iCloud), and the local recipe cache.")
+                Text("This will permanently delete all your favorites, recent searches (stored in iCloud), recipe reports (stored in CloudKit), and the local recipe cache.")
                     .font(horizontalSizeClass == .regular ? .body : .subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.leading)
@@ -81,16 +81,16 @@ struct SupportView: View {
                     trailing: horizontalSizeClass == .regular ? 16 : 12
                 ))
                 .accessibilityLabel("Clear Cache")
-                .accessibilityHint("Clears the cached Minecraft recipes and reports, keeping iCloud data like favorites")
+                .accessibilityHint("Clears the cached Minecraft recipes, keeping iCloud data like favorites")
 
-                Text("This will permanently delete the local recipe cache and reports, keeping iCloud data like favorites and recent searches.")
+                Text("This will permanently delete the local recipe cache, keeping iCloud data like favorites and recent searches.")
                     .font(horizontalSizeClass == .regular ? .body : .subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.leading)
                     .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                     .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
                     .accessibilityLabel("Clear Cache Note")
-                    .accessibilityHint("This will permanently delete the local recipe cache and reports, keeping iCloud data like favorites and recent searches.")
+                    .accessibilityHint("This will permanently delete the local recipe cache, keeping iCloud data like favorites and recent searches.")
             }
 
             Section(header: Text("Privacy")) {
@@ -121,7 +121,7 @@ struct SupportView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("• Favorites: Recipe IDs when you mark a recipe as a favorite, stored in iCloud to sync across your devices.")
                                     Text("• Recent Searches: Recipe names when you search for recipes, stored in iCloud to sync across your devices.")
-                                    Text("• Recipe Reports (Optional): When you report an issue, you may submit a recipe name, category, and description. These are stored in a private CloudKit database (accessible only to you) and locally on your device for the \"My Reports\" feature, allowing you to view and manage your reports across devices.")
+                                    Text("• Recipe Reports (Optional): When you report an issue, you may submit a recipe name, category, and description. These are stored in a private CloudKit database (accessible only to you) for the \"My Reports\" feature, allowing you to view and manage your reports across devices.")
                                     Text("• Local Recipe Cache: Recipes are cached on your device for offline access but contain no personal data.")
                                 }
                                 .font(.body)
@@ -140,7 +140,7 @@ struct SupportView: View {
                                     Text("• Support the Favorites and Recent Searches features by storing data in iCloud.")
                                     Text("• Sync Favorites, Recent Searches, and Recipe Reports across your devices using CloudKit.")
                                     Text("• Store Recipe Reports in CloudKit to improve Craftify’s recipe database.")
-                                    Text("• Let you view and manage your reports in the \"My Reports\" section using local storage and CloudKit sync.")
+                                    Text("• Let you view and manage your reports in the \"My Reports\" section using CloudKit sync.")
                                 }
                                 .font(.body)
                             }
@@ -156,7 +156,7 @@ struct SupportView: View {
 
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("• Favorites and Recent Searches: Stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
-                                    Text("• Recipe Reports: Stored privately in a CloudKit database (accessible only to you via your iCloud account) and locally on your device for the \"My Reports\" feature.")
+                                    Text("• Recipe Reports: Stored privately in a CloudKit database (accessible only to you via your iCloud account) for the \"My Reports\" feature.")
                                     Text("• Local Recipe Cache: Stored on your device with no personal information.")
                                 }
                                 .font(.body)
@@ -168,7 +168,7 @@ struct SupportView: View {
                                     .fontWeight(.bold)
                                     .accessibilityAddTraits(.isHeader)
 
-                                Text("Craftify does not share your data with third parties. The app uses no third-party dependencies, and all data stays in your iCloud account, on your device (for local report storage), or in a private CloudKit database (for Recipe Reports, accessible only to you).")
+                                Text("Craftify does not share your data with third parties. The app uses no third-party dependencies, and all data stays in your iCloud account or in a private CloudKit database (for Recipe Reports, accessible only to you).")
                                     .font(.body)
                             }
 
@@ -179,6 +179,13 @@ struct SupportView: View {
                                     .accessibilityAddTraits(.isHeader)
 
                                 Text("Craftify does not collect personalized usage data. We use Apple’s CloudKit to fetch recipes and manage reports in our CloudKit database. The CloudKit Console provides only anonymized metadata, like device model (e.g., iPhone 15) or iOS version, which is not linked to you or your Apple ID. This is used solely to monitor app performance and compatibility.")
+                                    .font(.body)
+
+                                Text("Network Connectivity Monitoring:")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+
+                                Text("Craftify monitors your device’s network connectivity status (e.g., Wi-Fi, cellular, or offline) to enhance your experience. This allows us to disable syncing when you’re offline, show connection status in the app, and auto-retry syncing when you reconnect. We do not collect or store any network data, and this information is used only locally on your device to manage app features. It is not shared with us or any third parties.")
                                     .font(.body)
                             }
 
@@ -195,7 +202,7 @@ struct SupportView: View {
                                     Text("• Favorites: Untoggle the heart icon to remove a recipe from Favorites.")
                                     Text("• Recent Searches: Tap \"Clear All\" in the Search tab to remove all recent searches.")
                                     Text("• Clear All Data: Tap \"Clear All Data\" in this section to delete everything, including Favorites, Recent Searches, Recipe Reports, and the local cache.")
-                                    Text("• Clear Cache: Use \"Clear Cache\" in the More tab to remove the local cache and reports, keeping iCloud data like Favorites.")
+                                    Text("• Clear Cache: Use \"Clear Cache\" in the More tab to remove the local cache, keeping iCloud data like Favorites.")
                                     Text("• Recipe Reports: In the \"My Reports\" section of \"Report Issue\", you can view and delete your reports, which also removes them from CloudKit.")
                                 }
                                 .font(.body)
@@ -253,7 +260,7 @@ struct SupportView: View {
                     }
                     .frame(maxHeight: 300)
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Privacy Policy for Craftify, last updated 20 May 2025. Craftify does not collect personal information. We collect Favorites, Recent Searches, and Recipe Reports (stored in iCloud and CloudKit) for syncing across devices. Data is used only for app features like syncing and reporting, with no third-party sharing. We use CloudKit for recipes and reports but only see anonymized metadata. You can manage your data, including clearing everything. Craftify is safe for kids under 13 and complies with COPPA, GDPR, and other laws. Contact us via the Contact Support button.")
+                    .accessibilityLabel("Privacy Policy for Craftify, last updated 20 May 2025. Craftify does not collect personal information. We collect Favorites, Recent Searches, and Recipe Reports (stored in iCloud and CloudKit) for syncing across devices. We monitor network connectivity to manage syncing, but this data stays on your device and is not shared. Data is used only for app features like syncing and reporting, with no third-party sharing. We use CloudKit for recipes and reports but only see anonymized metadata. You can manage your data, including clearing everything. Craftify is safe for kids under 13 and complies with COPPA, GDPR, and other laws. Contact us via the Contact Support button.")
                 }
                 .padding(.vertical, 8)
             }

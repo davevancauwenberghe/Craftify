@@ -19,6 +19,7 @@ struct ReportRecipeView: View {
     @State private var recipeErrorName: String = ""
     @State private var recipeErrorCategory: String = ""
     @State private var additionalInfo: String = ""
+    @State private var reports: [RecipeReport] = [] // Local array to store fetched reports
     @State private var isLoadingReports: Bool = false
     @State private var reportToDelete: RecipeReport?
     @State private var showDeleteConfirmation: Bool = false
@@ -258,23 +259,23 @@ struct ReportRecipeView: View {
                                     .foregroundColor(.white)
                                     .clipShape(RoundedRectangle(cornerRadius: 16))
                             }
-                            .disabled(isFormIncomplete)
+                            .disabled(isFormIncomplete || !dataManager.isConnected) // Disable if no internet
                             .accessibilityLabel("Submit Report")
-                            .accessibilityHint(isFormIncomplete ? "Submit Report button is disabled. Please fill in all required fields: recipe name, category, and additional information." : "Submits the report")
+                            .accessibilityHint(isFormIncomplete ? "Submit Report button is disabled. Please fill in all required fields: recipe name, category, and additional information." : dataManager.isConnected ? "Submits the report" : "Submit Report button is disabled due to no internet connection")
                         } else {
-                            if dataManager.submittedReports.isEmpty {
+                            if reports.isEmpty && !isLoadingReports {
                                 VStack(spacing: 16) {
-                                    Text("No Reports Found")
+                                    Text(dataManager.isConnected ? "No Reports Found" : "No Internet Connection")
                                         .font(.title2)
                                         .fontWeight(.bold)
-                                    Text("You haven’t submitted any reports yet.")
+                                    Text(dataManager.isConnected ? "You haven’t submitted any reports yet." : "Please connect to the internet to view your reports.")
                                         .font(horizontalSizeClass == .regular ? .body : .subheadline)
                                         .foregroundColor(.secondary)
                                         .multilineTextAlignment(.center)
                                 }
                                 .padding()
                                 .accessibilityElement(children: .combine)
-                                .accessibilityLabel("No reports found. You haven’t submitted any reports yet.")
+                                .accessibilityLabel(dataManager.isConnected ? "No reports found. You haven’t submitted any reports yet." : "No internet connection. Please connect to the internet to view your reports.")
                             } else {
                                 // Combined Refresh Status and Cooldown Message
                                 VStack(spacing: 8) {
@@ -286,16 +287,17 @@ struct ReportRecipeView: View {
                                             Text("Refresh Status")
                                         }
                                         .font(.headline)
-                                        .foregroundColor(Color.userAccentColor)
+                                        .foregroundColor(dataManager.isConnected ? Color.userAccentColor : Color.gray) // Gray out if no internet
                                         .padding(.vertical, 12)
                                         .frame(maxWidth: .infinity)
-                                        .background(Color(.systemGray5))
+                                        .background(dataManager.isConnected ? Color(.systemGray5) : Color(.systemGray5).opacity(0.5))
                                         .clipShape(RoundedRectangle(cornerRadius: 16))
                                     }
+                                    .disabled(!dataManager.isConnected) // Disable if no internet
                                     .accessibilityLabel("Refresh Status")
-                                    .accessibilityHint("Refreshes the status of your submitted reports")
+                                    .accessibilityHint(dataManager.isConnected ? "Refreshes the status of your submitted reports" : "Refresh is disabled due to no internet connection")
 
-                                    if let message = cooldownMessage {
+                                    if let message = cooldownMessage, dataManager.isConnected {
                                         Text(message)
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
@@ -309,8 +311,8 @@ struct ReportRecipeView: View {
                                         .progressViewStyle(.circular)
                                         .tint(Color.userAccentColor)
                                         .accessibilityLabel("Loading reports")
-                                } else {
-                                    ForEach(dataManager.submittedReports.sorted(by: { $0.timestamp > $1.timestamp })) { report in
+                                } else if dataManager.isConnected {
+                                    ForEach(reports.sorted(by: { $0.timestamp > $1.timestamp })) { report in
                                         VStack(alignment: .leading, spacing: 8) {
                                             HStack {
                                                 Text(report.reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error")
@@ -409,6 +411,10 @@ struct ReportRecipeView: View {
                             showSubmissionPopup = false
                             if case .success = submissionState {
                                 resetForm()
+                                // Refresh reports after a successful submission
+                                if viewMode == .myReports {
+                                    fetchReportStatuses(isUserInitiated: false)
+                                }
                             }
                             submissionState = .idle
                         }
@@ -430,15 +436,14 @@ struct ReportRecipeView: View {
                 Text("Are you sure you want to delete this report? This action cannot be undone.")
             }
             .onAppear {
-                // Always sync reports on appear to handle changes from other devices
-                dataManager.syncSubmittedReports()
+                // Fetch reports on appear to ensure the latest data
                 if viewMode == .myReports {
                     fetchReportStatuses(isUserInitiated: false)
                 }
             }
             .onChange(of: viewMode) { _, newValue in
                 if newValue == .myReports {
-                    // Force a sync when switching to My Reports mode, ignoring cooldown
+                    // Force a fetch when switching to My Reports mode, ignoring cooldown
                     dataManager.lastReportStatusFetchTime = nil // Reset cooldown
                     fetchReportStatuses(isUserInitiated: false)
                 } else {
@@ -588,21 +593,33 @@ struct ReportRecipeView: View {
     }
 
     private func fetchReportStatuses(isUserInitiated: Bool) {
+        guard dataManager.isConnected else {
+            isLoadingReports = false
+            return
+        }
+
         isLoadingReports = true
 
-        dataManager.fetchRecipeReportStatuses {
+        dataManager.fetchRecipeReports { result in
             DispatchQueue.main.async {
                 self.isLoadingReports = false
-                if self.dataManager.isReportStatusFetchOnCooldown() && isUserInitiated {
-                    let cooldownDuration = 30
-                    let lastFetchTime = self.dataManager.lastReportStatusFetchTime ?? Date.distantPast
-                    let elapsed = Int(Date().timeIntervalSince(lastFetchTime))
-                    self.remainingCooldownTime = max(0, cooldownDuration - elapsed)
-                    
-                    if self.remainingCooldownTime > 0 {
-                        self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before refreshing again."
-                        self.startCooldownTimer()
+                switch result {
+                case .success(let fetchedReports):
+                    self.reports = fetchedReports
+                    if self.dataManager.isReportStatusFetchOnCooldown() && isUserInitiated {
+                        let cooldownDuration = 30
+                        let lastFetchTime = self.dataManager.lastReportStatusFetchTime ?? Date.distantPast
+                        let elapsed = Int(Date().timeIntervalSince(lastFetchTime))
+                        self.remainingCooldownTime = max(0, cooldownDuration - elapsed)
+                        
+                        if self.remainingCooldownTime > 0 {
+                            self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before refreshing again."
+                            self.startCooldownTimer()
+                        }
                     }
+                case .failure:
+                    // Error message is already set by DataManager
+                    self.reports = []
                 }
             }
         }
@@ -630,9 +647,11 @@ struct ReportRecipeView: View {
             dataManager.deleteRecipeReport(report) { success in
                 DispatchQueue.main.async {
                     if success {
+                        self.reports.removeAll { $0.id == report.id }
                         self.reportToDelete = nil
                     } else {
-                        self.dataManager.errorMessage = "Failed to delete report. Please try again."
+                        // Error message is already set by DataManager
+                        self.reportToDelete = nil
                     }
                 }
             }
