@@ -1,0 +1,23 @@
+{
+  "images" : [
+    {
+      "filename" : "Dark Oak Hanging Sign.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "Dark Oak Hanging Sign 1.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "Dark Oak Hanging Sign 2.png",
+      "idiom" : "universal",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
