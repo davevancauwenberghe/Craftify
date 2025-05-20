@@ -60,6 +60,37 @@ struct SupportView: View {
                     .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
                     .accessibilityLabel("Clear All Data Note")
                     .accessibilityHint("This will permanently delete all your favorites, recent searches, recipe reports, and the local recipe cache.")
+
+                Button(action: {
+                    print("Clear Cache tapped")
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    dataManager.clearCache { success in
+                        if !success {
+                            dataManager.errorMessage = "Failed to clear cache. Please try again."
+                        }
+                        print("Clear Cache completed, success: \(success)")
+                    }
+                }) {
+                    buttonStyle(title: "Clear Cache", systemImage: "trash.fill", foregroundColor: .red)
+                }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets(
+                    top: horizontalSizeClass == .regular ? 12 : 8,
+                    leading: horizontalSizeClass == .regular ? 16 : 12,
+                    bottom: horizontalSizeClass == .regular ? 12 : 8,
+                    trailing: horizontalSizeClass == .regular ? 16 : 12
+                ))
+                .accessibilityLabel("Clear Cache")
+                .accessibilityHint("Clears the cached Minecraft recipes and reports, keeping iCloud data like favorites")
+
+                Text("This will permanently delete the local recipe cache and reports, keeping iCloud data like favorites and recent searches.")
+                    .font(horizontalSizeClass == .regular ? .body : .subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
+                    .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
+                    .accessibilityLabel("Clear Cache Note")
+                    .accessibilityHint("This will permanently delete the local recipe cache and reports, keeping iCloud data like favorites and recent searches.")
             }
 
             Section(header: Text("Privacy")) {
@@ -88,10 +119,10 @@ struct SupportView: View {
                                     .font(.body)
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("• **Favorites**: Recipe IDs when you mark a recipe as a favorite, stored in iCloud to sync across your devices.")
-                                    Text("• **Recent Searches**: Recipe names when you search for recipes, stored in iCloud to sync across your devices.")
-                                    Text("• **Recipe Reports (Optional)**: When you report an issue, you may submit a recipe name, category, and description. These are stored anonymously in an iCloud database and locally on your device for the \"My Reports\" feature, allowing you to view and manage your reports.")
-                                    Text("• **Local Recipe Cache**: Recipes are cached on your device for offline access but contain no personal data.")
+                                    Text("• Favorites: Recipe IDs when you mark a recipe as a favorite, stored in iCloud to sync across your devices.")
+                                    Text("• Recent Searches: Recipe names when you search for recipes, stored in iCloud to sync across your devices.")
+                                    Text("• Recipe Reports (Optional): When you report an issue, you may submit a recipe name, category, and description. These are stored anonymously in an iCloud database and locally on your device for the \"My Reports\" feature, allowing you to view and manage your reports.")
+                                    Text("• Local Recipe Cache: Recipes are cached on your device for offline access but contain no personal data.")
                                 }
                                 .font(.body)
                             }
@@ -124,9 +155,9 @@ struct SupportView: View {
                                     .font(.body)
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("• **Favorites and Recent Searches**: Stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
-                                    Text("• **Recipe Reports**: Stored anonymously in an iCloud database and locally on your device for the \"My Reports\" feature.")
-                                    Text("• **Local Recipe Cache**: Stored on your device with no personal information.")
+                                    Text("• Favorites and Recent Searches: Stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
+                                    Text("• Recipe Reports: Stored anonymously in an iCloud database and locally on your device for the \"My Reports\" feature.")
+                                    Text("• Local Recipe Cache: Stored on your device with no personal information.")
                                 }
                                 .font(.body)
                             }
@@ -137,7 +168,7 @@ struct SupportView: View {
                                     .fontWeight(.bold)
                                     .accessibilityAddTraits(.isHeader)
 
-                                Text("Craftify does not share your data with anyone. All data stays on your device or in your iCloud account.")
+                                Text("Craftify does not share your data with third parties. The app uses no third-party dependencies, and all data stays in your iCloud account, on your device (for local report storage), or in the public iCloud database (for anonymous recipe reports).")
                                     .font(.body)
                             }
 
@@ -147,7 +178,7 @@ struct SupportView: View {
                                     .fontWeight(.bold)
                                     .accessibilityAddTraits(.isHeader)
 
-                                Text("Craftify does not collect usage data that identifies you. We use iCloud to fetch recipes and see only anonymized information (like device type or iOS version) to ensure the app works well.")
+                                Text("Craftify does not collect personalized usage data. We use Apple’s CloudKit to fetch recipes from our iCloud database. The CloudKit Console provides only anonymized metadata, like device model (e.g., iPhone 15) or iOS version, which is not linked to you or your Apple ID. This is used solely to monitor app performance and compatibility.")
                                     .font(.body)
                             }
 
@@ -161,11 +192,11 @@ struct SupportView: View {
                                     .font(.body)
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("• **Favorites**: Untoggle the heart icon to remove a recipe from Favorites.")
-                                    Text("• **Recent Searches**: Tap \"Clear All\" in the Search tab to remove all recent searches.")
-                                    Text("• **Clear All Data**: Tap \"Clear All Data\" in this section to delete everything, including Favorites, Recent Searches, recipe reports, and the local cache.")
-                                    Text("• **Clear Cache**: Use \"Clear Cache\" in the More tab to remove the local cache and reports, keeping iCloud data like Favorites.")
-                                    Text("• **Recipe Reports**: In the \"My Reports\" section of \"Report Issue\", you can view and delete your reports, which also removes them from iCloud.")
+                                    Text("• Favorites: Untoggle the heart icon to remove a recipe from Favorites.")
+                                    Text("• Recent Searches: Tap \"Clear All\" in the Search tab to remove all recent searches.")
+                                    Text("• Clear All Data: Tap \"Clear All Data\" in this section to delete everything, including Favorites, Recent Searches, recipe reports, and the local cache.")
+                                    Text("• Clear Cache: Use \"Clear Cache\" in the More tab to remove the local cache and reports, keeping iCloud data like Favorites.")
+                                    Text("• Recipe Reports: In the \"My Reports\" section of \"Report Issue\", you can view and delete your reports, which also removes them from iCloud.")
                                 }
                                 .font(.body)
 
@@ -179,8 +210,19 @@ struct SupportView: View {
                                     .fontWeight(.bold)
                                     .accessibilityAddTraits(.isHeader)
 
-                                Text("Craftify is rated 4+ and safe for kids. We do not collect personal information, complying with laws like COPPA in the U.S. and GDPR in the EU. Parents can manage a child’s data by using \"Clear All Data\" in this section or contacting us for help.")
+                                Text("Craftify is rated 4+ and suitable for young children. We do not collect personally identifiable information from children under 13, in compliance with the Children’s Online Privacy Protection Act (COPPA, 16 CFR Part 312) in the U.S., the General Data Protection Regulation (GDPR, Regulation (EU) 2016/679) in the EU, and other applicable laws worldwide.")
                                     .font(.body)
+
+                                Text("Under GDPR Article 8, processing personal data of children under 16 (or lower, depending on the EU country) requires parental consent if based on consent. Craftify does not collect personal data as defined by GDPR, and our data processing is based on legitimate interests for app functionality, not consent, so parental consent is not required.")
+                                    .font(.body)
+
+                                Text("Parents or guardians can manage a child’s data by:")
+                                    .font(.body)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("• Using the \"Clear All Data\" button in the Support & Privacy section to remove all data from local storage and iCloud.")
+                                }
+                                .font(.body)
                             }
 
                             Group {
@@ -199,7 +241,7 @@ struct SupportView: View {
                                     .fontWeight(.bold)
                                     .accessibilityAddTraits(.isHeader)
 
-                                Text("For questions, contact us at hello@davevancauwenberghe.be.")
+                                Text("For questions, contact us through the \"Contact Support\" button.")
                                     .font(.body)
                             }
 
@@ -211,7 +253,7 @@ struct SupportView: View {
                     }
                     .frame(maxHeight: 300)
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Privacy Policy for Craftify, last updated 19 May 2025. Craftify does not collect personal information. We collect Favorites and Recent Searches (stored in iCloud) and anonymous Recipe Reports (stored in an iCloud database). Data is used only for app features like syncing and reporting. You can manage your data, including clearing everything. Craftify is safe for kids and complies with COPPA and GDPR. Contact us at hello@davevancauwenberghe.be.")
+                    .accessibilityLabel("Privacy Policy for Craftify, last updated 19 May 2025. Craftify does not collect personal information. We collect Favorites and Recent Searches (stored in iCloud) and anonymous Recipe Reports (stored in an iCloud database). Data is used only for app features like syncing and reporting, with no third-party sharing. We use CloudKit for recipes but only see anonymized metadata. You can manage your data, including clearing everything. Craftify is safe for kids under 13 and complies with COPPA, GDPR, and other laws. Contact us via the Contact Support button.")
                 }
                 .padding(.vertical, 8)
             }

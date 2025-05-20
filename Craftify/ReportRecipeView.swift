@@ -25,6 +25,8 @@ struct ReportRecipeView: View {
     @State private var submissionState: SubmissionState = .idle
     @State private var showSubmissionPopup: Bool = false
     @State private var cooldownMessage: String? = nil
+    @State private var remainingCooldownTime: Int = 0
+    @State private var cooldownTimer: Timer?
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
 
     private let categories: [String] = [
@@ -213,7 +215,6 @@ struct ReportRecipeView: View {
 
                 ScrollView {
                     VStack(spacing: horizontalSizeClass == .regular ? 24 : 16) {
-                        // View Mode Picker
                         Picker("View Mode", selection: $viewMode) {
                             Text(ViewMode.submitReport.rawValue).tag(ViewMode.submitReport)
                             Text(ViewMode.myReports.rawValue).tag(ViewMode.myReports)
@@ -224,7 +225,6 @@ struct ReportRecipeView: View {
                         .accessibilityHint("Select whether to submit a new report or view your reports")
 
                         if viewMode == .submitReport {
-                            // Report Type Picker
                             Picker("Report Type", selection: $reportType) {
                                 Text(ReportType.missingRecipe.rawValue).tag(ReportType.missingRecipe)
                                 Text(ReportType.recipeError.rawValue).tag(ReportType.recipeError)
@@ -234,25 +234,16 @@ struct ReportRecipeView: View {
                             .accessibilityLabel("Report Type")
                             .accessibilityHint("Select whether to report a missing recipe or an error in an existing recipe")
 
-                            // Conditional Fields Based on Report Type
                             if reportType == .missingRecipe {
-                                // Category Picker for Missing Recipe
                                 categoryPicker
-
-                                // Recipe Name for Missing Recipe
                                 recipeNameTextField
                             } else {
-                                // Category Picker for Recipe Error
                                 recipeErrorCategoryPicker
-
-                                // Recipe Name for Recipe Error
                                 recipeErrorNameTextField
                             }
 
-                            // Additional Information
                             additionalInfoView
 
-                            // Submit Button
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 submitReport()
@@ -271,7 +262,6 @@ struct ReportRecipeView: View {
                             .accessibilityLabel("Submit Report")
                             .accessibilityHint(isFormIncomplete ? "Submit Report button is disabled. Please fill in all required fields: recipe name, category, and additional information." : "Submits the report")
                         } else {
-                            // My Reports Section
                             if dataManager.submittedReports.isEmpty {
                                 VStack(spacing: 16) {
                                     Text("No Reports Found")
@@ -286,32 +276,32 @@ struct ReportRecipeView: View {
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel("No reports found. You haven’t submitted any reports yet.")
                             } else {
-                                // Refresh Status Button
-                                Button(action: {
-                                    fetchReportStatuses()
-                                }) {
-                                    HStack {
-                                        Image(systemName: "arrow.clockwise")
-                                        Text("Refresh Status")
+                                // Combined Refresh Status and Cooldown Message
+                                VStack(spacing: 8) {
+                                    Button(action: {
+                                        fetchReportStatuses(isUserInitiated: true)
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "arrow.clockwise")
+                                            Text("Refresh Status")
+                                        }
+                                        .font(.headline)
+                                        .foregroundColor(Color.userAccentColor)
+                                        .padding(.vertical, 12)
+                                        .frame(maxWidth: .infinity)
+                                        .background(Color(.systemGray5))
+                                        .clipShape(RoundedRectangle(cornerRadius: 16))
                                     }
-                                    .font(.headline)
-                                    .foregroundColor(Color.userAccentColor)
-                                    .padding(.vertical, 12)
-                                    .frame(maxWidth: .infinity)
-                                    .background(Color(.systemGray5))
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                }
-                                .accessibilityLabel("Refresh Status")
-                                .accessibilityHint("Refreshes the status of your submitted reports")
+                                    .accessibilityLabel("Refresh Status")
+                                    .accessibilityHint("Refreshes the status of your submitted reports")
 
-                                // Cooldown Message
-                                if let message = cooldownMessage {
-                                    Text(message)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .padding(.vertical, 8)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                        .accessibilityLabel(message)
+                                    if let message = cooldownMessage {
+                                        Text(message)
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity, alignment: .center)
+                                            .accessibilityLabel(message)
+                                    }
                                 }
 
                                 if isLoadingReports {
@@ -322,7 +312,6 @@ struct ReportRecipeView: View {
                                 } else {
                                     ForEach(dataManager.submittedReports.sorted(by: { $0.timestamp > $1.timestamp })) { report in
                                         VStack(alignment: .leading, spacing: 8) {
-                                            // Report Type and Status
                                             HStack {
                                                 Text(report.reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error")
                                                     .font(.headline)
@@ -337,7 +326,6 @@ struct ReportRecipeView: View {
                                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                                             }
 
-                                            // Recipe Name
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text("Recipe Name")
                                                     .font(.subheadline)
@@ -346,7 +334,6 @@ struct ReportRecipeView: View {
                                                     .font(.body)
                                             }
 
-                                            // Category
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text("Category")
                                                     .font(.subheadline)
@@ -355,7 +342,6 @@ struct ReportRecipeView: View {
                                                     .font(.body)
                                             }
 
-                                            // Description
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text("Details")
                                                     .font(.subheadline)
@@ -364,7 +350,6 @@ struct ReportRecipeView: View {
                                                     .font(.body)
                                             }
 
-                                            // Submission Date
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text("Submitted")
                                                     .font(.subheadline)
@@ -373,7 +358,6 @@ struct ReportRecipeView: View {
                                                     .font(.body)
                                             }
 
-                                            // Delete Button
                                             Button(action: {
                                                 reportToDelete = report
                                                 showDeleteConfirmation = true
@@ -398,6 +382,10 @@ struct ReportRecipeView: View {
                                                     style: StrokeStyle(lineWidth: 1)
                                                 )
                                         )
+                                        .transition(.asymmetric(
+                                            insertion: .opacity,
+                                            removal: .opacity.combined(with: .move(edge: .leading))
+                                        ))
                                         .accessibilityElement(children: .combine)
                                         .accessibilityLabel("Report: \(report.reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error") for \(report.recipeName), Category: \(report.category), Status: \(report.status), Details: \(report.description), Submitted: \(formattedDate(report.timestamp))")
                                         .accessibilityHint("Tap the delete button to remove this report")
@@ -414,7 +402,6 @@ struct ReportRecipeView: View {
                 .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
                 .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
 
-                // Submission Popup
                 if showSubmissionPopup {
                     SubmissionPopup(
                         state: submissionState,
@@ -444,21 +431,31 @@ struct ReportRecipeView: View {
             }
             .onAppear {
                 if viewMode == .myReports {
-                    fetchReportStatuses()
+                    fetchReportStatuses(isUserInitiated: false)
                 }
             }
             .onChange(of: viewMode) { _, newValue in
                 if newValue == .myReports {
-                    fetchReportStatuses()
+                    fetchReportStatuses(isUserInitiated: false)
+                } else {
+                    cooldownTimer?.invalidate()
+                    cooldownTimer = nil
+                    cooldownMessage = nil
+                    remainingCooldownTime = 0
                 }
             }
             .onChange(of: reportType) { _, _ in
                 resetForm()
             }
+            .onDisappear {
+                cooldownTimer?.invalidate()
+                cooldownTimer = nil
+                cooldownMessage = nil
+                remainingCooldownTime = 0
+            }
         }
     }
 
-    // MARK: - Submission Popup View
     struct SubmissionPopup: View {
         let state: SubmissionState
         let onDismiss: () -> Void
@@ -586,31 +583,53 @@ struct ReportRecipeView: View {
         }
     }
 
-    private func fetchReportStatuses() {
+    private func fetchReportStatuses(isUserInitiated: Bool) {
         isLoadingReports = true
-        cooldownMessage = nil // Clear any existing message
 
         dataManager.fetchRecipeReportStatuses {
             DispatchQueue.main.async {
                 self.isLoadingReports = false
-                // Check if the fetch was skipped due to the 30-second cooldown
-                if self.dataManager.isReportStatusFetchOnCooldown() {
-                    self.cooldownMessage = "Please wait 30 seconds before refreshing again."
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                        self.cooldownMessage = nil
+                if self.dataManager.isReportStatusFetchOnCooldown() && isUserInitiated {
+                    let cooldownDuration = 30
+                    let lastFetchTime = self.dataManager.lastReportStatusFetchTime ?? Date.distantPast
+                    let elapsed = Int(Date().timeIntervalSince(lastFetchTime))
+                    self.remainingCooldownTime = max(0, cooldownDuration - elapsed)
+                    
+                    if self.remainingCooldownTime > 0 {
+                        self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before refreshing again."
+                        self.startCooldownTimer()
                     }
                 }
             }
         }
     }
 
-    private func deleteReport(_ report: RecipeReport) {
-        dataManager.deleteRecipeReport(report) { success in
+    private func startCooldownTimer() {
+        cooldownTimer?.invalidate()
+        cooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
             DispatchQueue.main.async {
-                if success {
-                    self.reportToDelete = nil
+                if self.remainingCooldownTime > 0 {
+                    self.remainingCooldownTime -= 1
+                    self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before refreshing again."
                 } else {
-                    self.dataManager.errorMessage = "Failed to delete report. Please try again."
+                    self.cooldownMessage = nil
+                    self.remainingCooldownTime = 0
+                    timer.invalidate()
+                    self.cooldownTimer = nil
+                }
+            }
+        }
+    }
+
+    private func deleteReport(_ report: RecipeReport) {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            dataManager.deleteRecipeReport(report) { success in
+                DispatchQueue.main.async {
+                    if success {
+                        self.reportToDelete = nil
+                    } else {
+                        self.dataManager.errorMessage = "Failed to delete report. Please try again."
+                    }
                 }
             }
         }

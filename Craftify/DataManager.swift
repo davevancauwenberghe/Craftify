@@ -23,15 +23,15 @@ class DataManager: ObservableObject {
     @Published var isManualSyncing: Bool = false
     @Published var accessibilityAnnouncement: String? = nil
     @Published var searchText: String = ""
+    @Published var lastReportStatusFetchTime: Date?
+    @Published var lastRecipeFetch: Date? // Made public with @Published
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudRecentSearchesKey = "recentSearches"
     private let submittedReportsKey = "submittedReports"
     private var cancellables = Set<AnyCancellable>()
-    private var lastReportStatusFetch: Date?
-    private let reportStatusFetchInterval: TimeInterval = 30 // Fetch statuses no more than once every 30 seconds
-    private var lastRecipeFetch: Date? // New property for recipe fetch throttling
-    private let recipeFetchInterval: TimeInterval = 30 // New constant for recipe fetch cooldown
+    private let reportStatusFetchInterval: TimeInterval = 30
+    private let recipeFetchInterval: TimeInterval = 30
 
     enum ErrorType: String {
         case network = "Network issue, please check your connection and try again."
@@ -178,7 +178,6 @@ class DataManager: ObservableObject {
     }
 
     func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
-        // Throttle recipe fetches to avoid overloading CloudKit
         if let lastFetch = lastRecipeFetch,
            Date().timeIntervalSince(lastFetch) < recipeFetchInterval {
             print("Skipping recipe fetch; last fetch was less than \(recipeFetchInterval) seconds ago.")
@@ -234,7 +233,7 @@ class DataManager: ObservableObject {
                             self.syncRecentSearches()
                             self.saveRecipesToLocalCache(fetchedRecipes)
                             self.lastUpdated = Date()
-                            self.lastRecipeFetch = Date() // Update the last fetch time
+                            self.lastRecipeFetch = Date()
                             self.isLoading = false
                             self.isManualSyncing = false
                             completion()
@@ -280,8 +279,6 @@ class DataManager: ObservableObject {
         }
     }
 
-    // MARK: - Throttling Helpers
-
     func isRecipeFetchOnCooldown() -> Bool {
         if let lastFetch = lastRecipeFetch {
             return Date().timeIntervalSince(lastFetch) < recipeFetchInterval
@@ -290,13 +287,11 @@ class DataManager: ObservableObject {
     }
 
     func isReportStatusFetchOnCooldown() -> Bool {
-        if let lastFetch = lastReportStatusFetch {
+        if let lastFetch = lastReportStatusFetchTime {
             return Date().timeIntervalSince(lastFetch) < reportStatusFetchInterval
         }
         return false
     }
-
-    // MARK: - Recipe Report Management
 
     func loadSubmittedReports() {
         if let data = UserDefaults.standard.data(forKey: submittedReportsKey),
@@ -365,8 +360,7 @@ class DataManager: ObservableObject {
     }
 
     func fetchRecipeReportStatuses(completion: @escaping () -> Void) {
-        // Throttle status fetches to avoid overloading CloudKit
-        if let lastFetch = lastReportStatusFetch,
+        if let lastFetch = lastReportStatusFetchTime,
            Date().timeIntervalSince(lastFetch) < reportStatusFetchInterval {
             print("Skipping report status fetch; last fetch was less than \(reportStatusFetchInterval) seconds ago.")
             completion()
@@ -416,14 +410,13 @@ class DataManager: ObservableObject {
                             let nextOperation = CKQueryOperation(cursor: cursor)
                             fetch(with: nextOperation)
                         } else {
-                            // Remove reports that no longer exist in CloudKit
                             let missingLocalIDs = Set(localIDs).subtracting(foundLocalIDs)
                             updatedReports.removeAll { report in
                                 missingLocalIDs.contains(report.localID)
                             }
                             self.submittedReports = updatedReports
                             self.saveSubmittedReports()
-                            self.lastReportStatusFetch = Date()
+                            self.lastReportStatusFetchTime = Date()
                             completion()
                         }
                     case .failure(let error):
@@ -444,7 +437,6 @@ class DataManager: ObservableObject {
 
     func deleteRecipeReport(_ report: RecipeReport, completion: @escaping (Bool) -> Void) {
         guard let recordIDString = report.recordID else {
-            // If there's no recordID, remove locally and consider it a success
             self.submittedReports.removeAll { $0.id == report.id }
             self.saveSubmittedReports()
             self.accessibilityAnnouncement = "Report deleted successfully"
@@ -459,7 +451,6 @@ class DataManager: ObservableObject {
         publicDatabase.delete(withRecordID: recordID) { _, error in
             DispatchQueue.main.async {
                 if let error = error as? CKError, error.code == .unknownItem {
-                    // If the record doesn't exist in CloudKit, remove it locally and consider it a success
                     self.submittedReports.removeAll { $0.id == report.id }
                     self.saveSubmittedReports()
                     self.accessibilityAnnouncement = "Report deleted successfully"
@@ -514,8 +505,6 @@ class DataManager: ObservableObject {
         publicDatabase.add(operation)
     }
 
-    // MARK: - Data Management
-
     func clearCache(completion: @escaping (Bool) -> Void) {
         let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
         do {
@@ -544,9 +533,7 @@ class DataManager: ObservableObject {
     }
 
     func clearAllData(completion: @escaping (Bool) -> Void) {
-        // Step 1: Clear recipe cache and CloudKit reports
         clearCache { cacheSuccess in
-            // Step 2: Clear favorites and recent searches
             self.clearFavorites()
             self.clearRecentSearches()
             

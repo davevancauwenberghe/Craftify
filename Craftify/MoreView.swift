@@ -13,7 +13,9 @@ struct MoreView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @State private var cooldownMessage: String? = nil // New state for cooldown message
+    @State private var cooldownMessage: String? = nil
+    @State private var remainingCooldownTime: Int = 0 // New state for countdown timer
+    @State private var cooldownTimer: Timer? = nil // Timer for countdown
 
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
@@ -21,7 +23,7 @@ struct MoreView: View {
         formatter.locale = Locale.autoupdatingCurrent
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        return "Synced: \(formatter.string(from: date))"
+        return "Last synced: \(formatter.string(from: date))" // Renamed "Synced" to "Last synced:"
     }
     
     var body: some View {
@@ -50,7 +52,7 @@ struct MoreView: View {
                         .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
                 }
                 
-                Section(header: Text("Data Management")) {
+                Section(header: Text("Recipe Sync")) {
                     VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 0) {
                             Text("\(dataManager.recipes.count) recipes available")
@@ -64,91 +66,53 @@ struct MoreView: View {
                         .accessibilityLabel("\(dataManager.recipes.count) recipes available, \(dataManager.syncStatus)")
                         .accessibilityHint("Information about the number of recipes and sync status")
                         
-                        Button(action: {
-                            print("Sync Recipes tapped")
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            dataManager.fetchRecipes(isManual: true) {
-                                print("Sync Recipes completed")
-                                // Check if the fetch was skipped due to the 30-second cooldown
-                                if dataManager.isRecipeFetchOnCooldown() {
-                                    cooldownMessage = "Please wait 30 seconds before syncing again."
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                                        cooldownMessage = nil
+                        // Combined Sync Recipes Button and Cooldown Message
+                        VStack(spacing: 8) {
+                            Button(action: {
+                                print("Sync Recipes tapped")
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                fetchRecipes(isUserInitiated: true)
+                            }) {
+                                HStack {
+                                    if dataManager.isLoading {
+                                        ProgressView()
+                                            .progressViewStyle(.circular)
+                                            .tint(Color.userAccentColor)
+                                            .padding(.trailing, 8)
+                                            .accessibilityLabel("Syncing")
+                                            .accessibilityHint("Recipes are currently syncing")
+                                            .opacity(dataManager.isLoading ? 1 : 0)
+                                            .animation(.easeInOut(duration: 0.3), value: dataManager.isLoading)
+                                    } else {
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.title2)
+                                            .foregroundColor(Color.userAccentColor)
                                     }
+                                    Text("Sync Recipes")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Spacer()
                                 }
+                                .id(accentColorPreference)
+                                .padding(horizontalSizeClass == .regular ? 16 : 12)
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(10)
                             }
-                        }) {
-                            HStack {
-                                if dataManager.isLoading {
-                                    ProgressView()
-                                        .progressViewStyle(.circular)
-                                        .tint(Color.userAccentColor)
-                                        .padding(.trailing, 8)
-                                        .accessibilityLabel("Syncing")
-                                        .accessibilityHint("Recipes are currently syncing")
-                                        .opacity(dataManager.isLoading ? 1 : 0)
-                                        .animation(.easeInOut(duration: 0.3), value: dataManager.isLoading)
-                                } else {
-                                    Image(systemName: "arrow.clockwise")
-                                        .font(.title2)
-                                        .foregroundColor(Color.userAccentColor)
-                                }
-                                Text("Sync Recipes")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                            }
-                            .id(accentColorPreference)
-                            .padding(horizontalSizeClass == .regular ? 16 : 12)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
-                        }
-                        .buttonStyle(.plain)
-                        .contentShape(Rectangle())
-                        .disabled(dataManager.isLoading)
-                        .accessibilityLabel("Sync Recipes")
-                        .accessibilityHint("Syncs Minecraft recipes from CloudKit")
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                            .disabled(dataManager.isLoading)
+                            .accessibilityLabel("Sync Recipes")
+                            .accessibilityHint("Syncs Minecraft recipes from CloudKit")
 
-                        // Cooldown Message
-                        if let message = cooldownMessage {
-                            Text(message)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .padding(.vertical, 8)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .accessibilityLabel(message)
-                        }
-                        
-                        Button(action: {
-                            print("Clear Cache tapped")
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            dataManager.clearCache { success in
-                                if !success {
-                                    dataManager.errorMessage = "Failed to clear cache. Please try again."
-                                }
-                                print("Clear Cache completed, success: \(success)")
+                            if let message = cooldownMessage {
+                                Text(message)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .accessibilityLabel(message)
                             }
-                        }) {
-                            HStack {
-                                Image(systemName: "trash.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.red)
-                                Text("Clear Cache")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                            }
-                            .id(accentColorPreference)
-                            .padding(horizontalSizeClass == .regular ? 16 : 12)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
                         }
-                        .buttonStyle(.plain)
-                        .contentShape(Rectangle())
-                        .accessibilityLabel("Clear Cache")
-                        .accessibilityHint("Clears the cached Minecraft recipes")
                     }
                 }
             }
@@ -169,14 +133,54 @@ struct MoreView: View {
                 )
             }
             .onAppear {
-                // Sync favorites, recent searches, and fetch recipes
                 dataManager.syncFavorites()
                 dataManager.syncRecentSearches()
-                dataManager.fetchRecipes(isManual: false)
+                fetchRecipes(isUserInitiated: false)
             }
             .onChange(of: dataManager.isLoading) { _, newValue in
                 if !newValue && dataManager.isManualSyncing {
                     dataManager.accessibilityAnnouncement = "Sync completed"
+                }
+            }
+            .onDisappear {
+                cooldownTimer?.invalidate()
+                cooldownTimer = nil
+                cooldownMessage = nil
+                remainingCooldownTime = 0
+            }
+        }
+    }
+    
+    private func fetchRecipes(isUserInitiated: Bool) {
+        dataManager.fetchRecipes(isManual: true) {
+            DispatchQueue.main.async {
+                if self.dataManager.isRecipeFetchOnCooldown() && isUserInitiated {
+                    let cooldownDuration = 30 // Assuming 30 seconds cooldown
+                    let lastFetchTime = self.dataManager.lastRecipeFetch ?? Date.distantPast
+                    let elapsed = Int(Date().timeIntervalSince(lastFetchTime))
+                    self.remainingCooldownTime = max(0, cooldownDuration - elapsed)
+                    
+                    if self.remainingCooldownTime > 0 {
+                        self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before syncing again."
+                        self.startCooldownTimer()
+                    }
+                }
+            }
+        }
+    }
+
+    private func startCooldownTimer() {
+        cooldownTimer?.invalidate()
+        cooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            DispatchQueue.main.async {
+                if self.remainingCooldownTime > 0 {
+                    self.remainingCooldownTime -= 1
+                    self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before syncing again."
+                } else {
+                    self.cooldownMessage = nil
+                    self.remainingCooldownTime = 0
+                    timer.invalidate()
+                    self.cooldownTimer = nil
                 }
             }
         }
