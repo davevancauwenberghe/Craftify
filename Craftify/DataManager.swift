@@ -389,88 +389,100 @@ class DataManager: ObservableObject {
         let container = CKContainer(identifier: "iCloud.craftifydb")
         let publicDatabase = container.publicCloudDatabase
 
-        // Fetch all localIDs from submittedReports
-        let localIDs = submittedReports.map { $0.localID }
-        guard !localIDs.isEmpty else {
-            completion()
-            return
-        }
-
-        // Query RecipeReport records matching the localIDs
-        let predicate = NSPredicate(format: "localID IN %@", localIDs)
-        let query = CKQuery(recordType: "RecipeReport", predicate: predicate)
-
-        var updatedReports = [RecipeReport]()
-        var foundLocalIDs: Set<String> = []
-
-        func fetch(with queryOperation: CKQueryOperation) {
-            queryOperation.resultsLimit = CKQueryOperation.maximumResults
-
-            queryOperation.recordMatchedBlock = { recordID, result in
-                switch result {
-                case .success(let record):
-                    guard let localID = record["localID"] as? String,
-                          let reportType = record["reportType"] as? String,
-                          let recipeName = record["recipeName"] as? String,
-                          let category = record["category"] as? String,
-                          let description = record["description"] as? String,
-                          let timestamp = record["timestamp"] as? Date,
-                          let status = record["status"] as? String else {
-                        return
-                    }
-                    let recipeID = record["recipeID"] as? Int
-                    let report = RecipeReport(
-                        id: localID,
-                        recordID: recordID.recordName,
-                        localID: localID,
-                        reportType: reportType,
-                        recipeName: recipeName,
-                        category: category,
-                        recipeID: recipeID,
-                        description: description,
-                        timestamp: timestamp,
-                        status: status
-                    )
-                    updatedReports.append(report)
-                    foundLocalIDs.insert(localID)
-                case .failure(let error):
-                    DispatchQueue.main.async {
-                        let errorType = self.errorType(for: error)
-                        self.errorMessage = "Error fetching report status for \(recordID.recordName): \(errorType.rawValue)"
-                        self.accessibilityAnnouncement = self.errorMessage
-                    }
+        // Fetch the current user's record ID
+        container.fetchUserRecordID { userRecordID, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    let errorType = self.errorType(for: error)
+                    self.errorMessage = "Failed to fetch user ID: \(errorType.rawValue)"
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion()
                 }
+                return
             }
 
-            queryOperation.queryResultBlock = { result in
+            guard let userRecordID = userRecordID else {
                 DispatchQueue.main.async {
+                    self.errorMessage = "Unable to identify current user. Please ensure iCloud is enabled."
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion()
+                }
+                return
+            }
+
+            // Create a predicate to fetch reports where ___createdBy matches the current user
+            let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
+            let predicate = NSPredicate(format: "___createdBy == %@", userReference)
+            let query = CKQuery(recordType: "RecipeReport", predicate: predicate)
+
+            var updatedReports = [RecipeReport]()
+
+            func fetch(with queryOperation: CKQueryOperation) {
+                queryOperation.resultsLimit = CKQueryOperation.maximumResults
+
+                queryOperation.recordMatchedBlock = { recordID, result in
                     switch result {
-                    case .success(let cursor):
-                        if let cursor = cursor {
-                            let nextOperation = CKQueryOperation(cursor: cursor)
-                            fetch(with: nextOperation)
-                        } else {
-                            // Remove local reports that no longer exist in CloudKit
-                            let missingLocalIDs = Set(localIDs).subtracting(foundLocalIDs)
-                            self.submittedReports = updatedReports.filter { !missingLocalIDs.contains($0.localID) }
-                            self.saveSubmittedReports()
-                            self.lastReportStatusFetchTime = Date()
+                    case .success(let record):
+                        guard let localID = record["localID"] as? String,
+                              let reportType = record["reportType"] as? String,
+                              let recipeName = record["recipeName"] as? String,
+                              let category = record["category"] as? String,
+                              let description = record["description"] as? String,
+                              let timestamp = record["timestamp"] as? Date,
+                              let status = record["status"] as? String else {
+                            return
+                        }
+                        let recipeID = record["recipeID"] as? Int
+                        let report = RecipeReport(
+                            id: localID,
+                            recordID: recordID.recordName,
+                            localID: localID,
+                            reportType: reportType,
+                            recipeName: recipeName,
+                            category: category,
+                            recipeID: recipeID,
+                            description: description,
+                            timestamp: timestamp,
+                            status: status
+                        )
+                        updatedReports.append(report)
+                    case .failure(let error):
+                        DispatchQueue.main.async {
+                            let errorType = self.errorType(for: error)
+                            self.errorMessage = "Error fetching report status for \(recordID.recordName): \(errorType.rawValue)"
+                            self.accessibilityAnnouncement = self.errorMessage
+                        }
+                    }
+                }
+
+                queryOperation.queryResultBlock = { result in
+                    DispatchQueue.main.async {
+                        switch result {
+                        case .success(let cursor):
+                            if let cursor = cursor {
+                                let nextOperation = CKQueryOperation(cursor: cursor)
+                                fetch(with: nextOperation)
+                            } else {
+                                self.submittedReports = updatedReports
+                                self.saveSubmittedReports()
+                                self.lastReportStatusFetchTime = Date()
+                                completion()
+                            }
+                        case .failure(let error):
+                            let errorType = self.errorType(for: error)
+                            self.errorMessage = "Failed to fetch report statuses: \(errorType.rawValue)"
+                            self.accessibilityAnnouncement = self.errorMessage
                             completion()
                         }
-                    case .failure(let error):
-                        let errorType = self.errorType(for: error)
-                        self.errorMessage = "Failed to fetch report statuses: \(errorType.rawValue)"
-                        self.accessibilityAnnouncement = self.errorMessage
-                        completion()
                     }
                 }
+
+                publicDatabase.add(queryOperation)
             }
 
-            publicDatabase.add(queryOperation)
+            let initialOperation = CKQueryOperation(query: query)
+            fetch(with: initialOperation)
         }
-
-        let initialOperation = CKQueryOperation(query: query)
-        fetch(with: initialOperation)
     }
 
     func deleteRecipeReport(_ report: RecipeReport, completion: @escaping (Bool) -> Void) {

@@ -438,6 +438,8 @@ struct ReportRecipeView: View {
             }
             .onChange(of: viewMode) { _, newValue in
                 if newValue == .myReports {
+                    // Force a sync when switching to My Reports mode, ignoring cooldown
+                    dataManager.lastReportStatusFetchTime = nil // Reset cooldown
                     fetchReportStatuses(isUserInitiated: false)
                 } else {
                     cooldownTimer?.invalidate()
