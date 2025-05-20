@@ -14,8 +14,8 @@ struct MoreView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var cooldownMessage: String? = nil
-    @State private var remainingCooldownTime: Int = 0 // New state for countdown timer
-    @State private var cooldownTimer: Timer? = nil // Timer for countdown
+    @State private var remainingCooldownTime: Int = 0
+    @State private var cooldownTimer: Timer? = nil
 
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
@@ -23,7 +23,7 @@ struct MoreView: View {
         formatter.locale = Locale.autoupdatingCurrent
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        return "Last synced: \(formatter.string(from: date))" // Renamed "Synced" to "Last synced:"
+        return "Last synced: \(formatter.string(from: date))"
     }
     
     var body: some View {
@@ -135,7 +135,7 @@ struct MoreView: View {
             .onAppear {
                 dataManager.syncFavorites()
                 dataManager.syncRecentSearches()
-                fetchRecipes(isUserInitiated: false)
+                // Removed automatic fetchRecipes call to reduce CloudKit strain
             }
             .onChange(of: dataManager.isLoading) { _, newValue in
                 if !newValue && dataManager.isManualSyncing {
@@ -155,7 +155,7 @@ struct MoreView: View {
         dataManager.fetchRecipes(isManual: true) {
             DispatchQueue.main.async {
                 if self.dataManager.isRecipeFetchOnCooldown() && isUserInitiated {
-                    let cooldownDuration = 30 // Assuming 30 seconds cooldown
+                    let cooldownDuration = 30
                     let lastFetchTime = self.dataManager.lastRecipeFetch ?? Date.distantPast
                     let elapsed = Int(Date().timeIntervalSince(lastFetchTime))
                     self.remainingCooldownTime = max(0, cooldownDuration - elapsed)

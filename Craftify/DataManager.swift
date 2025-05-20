@@ -24,7 +24,7 @@ class DataManager: ObservableObject {
     @Published var accessibilityAnnouncement: String? = nil
     @Published var searchText: String = ""
     @Published var lastReportStatusFetchTime: Date?
-    @Published var lastRecipeFetch: Date? // Made public with @Published
+    @Published var lastRecipeFetch: Date?
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudRecentSearchesKey = "recentSearches"
@@ -88,6 +88,9 @@ class DataManager: ObservableObject {
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
         }
+
+        // Perform initial sync of submitted reports
+        syncSubmittedReports()
     }
 
     deinit {
@@ -98,6 +101,7 @@ class DataManager: ObservableObject {
         NSUbiquitousKeyValueStore.default.synchronize()
         syncFavorites()
         syncRecentSearches()
+        syncSubmittedReports()
     }
 
     var syncStatus: String {
@@ -175,6 +179,7 @@ class DataManager: ObservableObject {
     @objc private func icloudDidChange() {
         syncFavorites()
         syncRecentSearches()
+        syncSubmittedReports()
     }
 
     func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
@@ -350,12 +355,26 @@ class DataManager: ObservableObject {
                         timestamp: Date(),
                         status: "Pending"
                     )
-                    self.submittedReports.append(report)
+                    // Update local cache with the CloudKit record
+                    if let index = self.submittedReports.firstIndex(where: { $0.localID == localID }) {
+                        self.submittedReports[index] = report
+                    } else {
+                        self.submittedReports.append(report)
+                    }
                     self.saveSubmittedReports()
                     self.accessibilityAnnouncement = "Report submitted successfully"
                     completion(.success(report))
                 }
             }
+        }
+    }
+
+    func syncSubmittedReports() {
+        // Fetch all RecipeReport records for the current user and sync with local cache
+        fetchRecipeReportStatuses { [weak self] in
+            guard let self = self else { return }
+            // After initial sync, ensure local cache is up-to-date
+            self.saveSubmittedReports()
         }
     }
 
@@ -367,18 +386,21 @@ class DataManager: ObservableObject {
             return
         }
 
-        guard !submittedReports.isEmpty else {
+        let container = CKContainer(identifier: "iCloud.craftifydb")
+        let publicDatabase = container.publicCloudDatabase
+
+        // Fetch all localIDs from submittedReports
+        let localIDs = submittedReports.map { $0.localID }
+        guard !localIDs.isEmpty else {
             completion()
             return
         }
 
-        let container = CKContainer(identifier: "iCloud.craftifydb")
-        let publicDatabase = container.publicCloudDatabase
-        let localIDs = submittedReports.map { $0.localID }
+        // Query RecipeReport records matching the localIDs
         let predicate = NSPredicate(format: "localID IN %@", localIDs)
         let query = CKQuery(recordType: "RecipeReport", predicate: predicate)
 
-        var updatedReports = submittedReports
+        var updatedReports = [RecipeReport]()
         var foundLocalIDs: Set<String> = []
 
         func fetch(with queryOperation: CKQueryOperation) {
@@ -387,12 +409,30 @@ class DataManager: ObservableObject {
             queryOperation.recordMatchedBlock = { recordID, result in
                 switch result {
                 case .success(let record):
-                    if let localID = record["localID"] as? String,
-                       let status = record["status"] as? String,
-                       let index = updatedReports.firstIndex(where: { $0.localID == localID }) {
-                        updatedReports[index].status = status
-                        foundLocalIDs.insert(localID)
+                    guard let localID = record["localID"] as? String,
+                          let reportType = record["reportType"] as? String,
+                          let recipeName = record["recipeName"] as? String,
+                          let category = record["category"] as? String,
+                          let description = record["description"] as? String,
+                          let timestamp = record["timestamp"] as? Date,
+                          let status = record["status"] as? String else {
+                        return
                     }
+                    let recipeID = record["recipeID"] as? Int
+                    let report = RecipeReport(
+                        id: localID,
+                        recordID: recordID.recordName,
+                        localID: localID,
+                        reportType: reportType,
+                        recipeName: recipeName,
+                        category: category,
+                        recipeID: recipeID,
+                        description: description,
+                        timestamp: timestamp,
+                        status: status
+                    )
+                    updatedReports.append(report)
+                    foundLocalIDs.insert(localID)
                 case .failure(let error):
                     DispatchQueue.main.async {
                         let errorType = self.errorType(for: error)
@@ -410,11 +450,9 @@ class DataManager: ObservableObject {
                             let nextOperation = CKQueryOperation(cursor: cursor)
                             fetch(with: nextOperation)
                         } else {
+                            // Remove local reports that no longer exist in CloudKit
                             let missingLocalIDs = Set(localIDs).subtracting(foundLocalIDs)
-                            updatedReports.removeAll { report in
-                                missingLocalIDs.contains(report.localID)
-                            }
-                            self.submittedReports = updatedReports
+                            self.submittedReports = updatedReports.filter { !missingLocalIDs.contains($0.localID) }
                             self.saveSubmittedReports()
                             self.lastReportStatusFetchTime = Date()
                             completion()

@@ -430,6 +430,8 @@ struct ReportRecipeView: View {
                 Text("Are you sure you want to delete this report? This action cannot be undone.")
             }
             .onAppear {
+                // Always sync reports on appear to handle changes from other devices
+                dataManager.syncSubmittedReports()
                 if viewMode == .myReports {
                     fetchReportStatuses(isUserInitiated: false)
                 }
