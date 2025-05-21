@@ -54,7 +54,7 @@ struct MoreView: View {
                 }
                 
                 Section(header: Text("Data Sync & Status")) {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
                         // 1. Sync Recipes Button + Cooldown Message
                         VStack(spacing: 8) {
                             Button(action: {
@@ -78,12 +78,14 @@ struct MoreView: View {
                                             .foregroundColor(dataManager.isConnected ? Color.userAccentColor : Color.gray)
                                     }
                                     Text("Sync Recipes")
-                                        .font(.headline)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
                                         .foregroundColor(dataManager.isConnected ? .primary : .gray)
                                     Spacer()
                                 }
                                 .id(accentColorPreference)
                                 .padding(horizontalSizeClass == .regular ? 16 : 12)
+                                .padding(.vertical, horizontalSizeClass == .regular ? 8 : 6)
                                 .frame(maxWidth: .infinity, minHeight: 44)
                                 .background(Color.gray.opacity(dataManager.isConnected ? 0.1 : 0.05))
                                 .cornerRadius(10)
@@ -96,7 +98,7 @@ struct MoreView: View {
 
                             if let message = cooldownMessage, dataManager.isConnected {
                                 Text(message)
-                                    .font(.subheadline)
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .accessibilityLabel(message)
@@ -106,32 +108,51 @@ struct MoreView: View {
                         // 2. Network Status
                         HStack {
                             Image(systemName: dataManager.isConnected ? "wifi" : "wifi.slash")
-                                .foregroundColor(dataManager.isConnected ? .green : .gray)
+                                .font(.body)
+                                .foregroundColor(dataManager.isConnected ? .green : .red)
                             Text(dataManager.isConnected ? "Connected to the Internet" : "No Internet Connection")
-                                .foregroundColor(dataManager.isConnected ? .green : .gray)
+                                .font(.caption)
+                                .foregroundColor(dataManager.isConnected ? .green : .red)
+                            Spacer()
                         }
-                        .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                        .padding(.vertical, horizontalSizeClass == .regular ? 4 : 2)
                         .accessibilityElement()
                         .accessibilityLabel(dataManager.isConnected ? "Connected to the internet" : "No internet connection")
                         .accessibilityHint(dataManager.isConnected ? "Your device is connected to the internet" : "Please connect to the internet to sync recipes")
 
-                        // 3. Last Synced
-                        Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
-                            .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                            .foregroundColor(.secondary)
-                            .allowsHitTesting(false)
-                            .padding(.vertical, horizontalSizeClass == .regular ? 6 : 4)
+                        // 3 & 4. Last Synced + Recipes Available (Grouped Together)
+                        VStack(spacing: 0) {
+                            HStack {
+                                Image(systemName: "clock")
+                                    .font(.body)
+                                    .foregroundColor(.gray)
+                                    .frame(width: 20) // Set a fixed width for the icon to ensure alignment
+                                Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
+                            .padding(.vertical, 2)
                             .accessibilityLabel(dataManager.syncStatus)
 
-                        // 4. Recipes Available
-                        Text("\(dataManager.recipes.count) recipes available")
-                            .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                            .foregroundColor(.secondary)
-                            .allowsHitTesting(false)
-                            .padding(.vertical, horizontalSizeClass == .regular ? 6 : 4)
+                            HStack {
+                                Image(systemName: "list.bullet")
+                                    .font(.body)
+                                    .foregroundColor(.gray)
+                                    .frame(width: 20) // Set a fixed width for the icon to ensure alignment
+                                Text("\(dataManager.recipes.count) recipes available")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
+                            .padding(.vertical, 2)
                             .accessibilityLabel("\(dataManager.recipes.count) recipes available")
                             .accessibilityHint("Number of recipes currently available in the app")
+                        }
+                        .padding(.vertical, horizontalSizeClass == .regular ? 4 : 2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Last synced and recipes available: \(dataManager.syncStatus), \(dataManager.recipes.count) recipes available")
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Data Sync and Status: Sync Recipes button, \(dataManager.isConnected ? "Connected to the internet" : "No internet connection"), \(dataManager.syncStatus), \(dataManager.recipes.count) recipes available")

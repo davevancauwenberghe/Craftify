@@ -9,7 +9,7 @@ import Foundation
 import Combine
 import CloudKit
 import UIKit
-import Network // Added for network monitoring
+import Network
 
 class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []
@@ -25,15 +25,15 @@ class DataManager: ObservableObject {
     @Published var searchText: String = ""
     @Published var lastReportStatusFetchTime: Date?
     @Published var lastRecipeFetch: Date?
-    @Published var isConnected: Bool = true // Added for network status
+    @Published var isConnected: Bool = true
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudRecentSearchesKey = "recentSearches"
     private var cancellables = Set<AnyCancellable>()
     private let reportStatusFetchInterval: TimeInterval = 30
     private let recipeFetchInterval: TimeInterval = 30
-    private let networkMonitor = NWPathMonitor() // Added for network monitoring
-    private let networkQueue = DispatchQueue(label: "NetworkMonitor") // Queue for network monitoring
+    private let networkMonitor = NWPathMonitor()
+    private let networkQueue = DispatchQueue(label: "NetworkMonitor")
 
     enum ErrorType: String {
         case network = "Network issue, please check your connection and try again."
@@ -47,7 +47,6 @@ class DataManager: ObservableObject {
     init() {
         NSUbiquitousKeyValueStore.default.synchronize()
 
-        // Set up network monitoring
         networkMonitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
                 self?.isConnected = path.status == .satisfied
@@ -107,7 +106,7 @@ class DataManager: ObservableObject {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
-        networkMonitor.cancel() // Stop network monitoring
+        networkMonitor.cancel()
     }
 
     @objc private func appWillEnterForeground() {
@@ -338,7 +337,7 @@ class DataManager: ObservableObject {
         }
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
-        let publicDatabase = container.publicCloudDatabase
+        let privateDatabase = container.privateCloudDatabase // Use private database
         let record = CKRecord(recordType: "RecipeReport")
         let localID = UUID().uuidString
 
@@ -351,7 +350,7 @@ class DataManager: ObservableObject {
         record["timestamp"] = Date()
         record["status"] = "Pending"
 
-        publicDatabase.save(record) { record, error in
+        privateDatabase.save(record) { record, error in
             DispatchQueue.main.async {
                 if let error = error {
                     let errorType = self.errorType(for: error)
@@ -396,7 +395,7 @@ class DataManager: ObservableObject {
         }
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
-        let publicDatabase = container.publicCloudDatabase
+        let privateDatabase = container.privateCloudDatabase // Use private database
 
         container.fetchUserRecordID { userRecordID, error in
             if let error = error {
@@ -486,7 +485,7 @@ class DataManager: ObservableObject {
                     }
                 }
 
-                publicDatabase.add(queryOperation)
+                privateDatabase.add(queryOperation)
             }
 
             let initialOperation = CKQueryOperation(query: query)
@@ -511,10 +510,10 @@ class DataManager: ObservableObject {
         }
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
-        let publicDatabase = container.publicCloudDatabase
+        let privateDatabase = container.privateCloudDatabase // Use private database
         let recordID = CKRecord.ID(recordName: recordIDString)
 
-        publicDatabase.delete(withRecordID: recordID) { _, error in
+        privateDatabase.delete(withRecordID: recordID) { _, error in
             DispatchQueue.main.async {
                 if let error = error as? CKError, error.code == .unknownItem {
                     self.accessibilityAnnouncement = "Report deleted successfully"
@@ -550,7 +549,7 @@ class DataManager: ObservableObject {
         }
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
-        let publicDatabase = container.publicCloudDatabase
+        let privateDatabase = container.privateCloudDatabase // Use private database
         let recordIDs = reportsWithRecordID.compactMap { $0.recordID }.map { CKRecord.ID(recordName: $0) }
         let operation = CKModifyRecordsOperation(recordsToSave: nil, recordIDsToDelete: recordIDs)
 
@@ -569,7 +568,7 @@ class DataManager: ObservableObject {
             }
         }
 
-        publicDatabase.add(operation)
+        privateDatabase.add(operation)
     }
 
     func clearCache(completion: @escaping (Bool) -> Void) {
