@@ -337,8 +337,8 @@ class DataManager: ObservableObject {
         }
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
-        let privateDatabase = container.privateCloudDatabase // Use private database
-        let record = CKRecord(recordType: "RecipeReport")
+        let publicDatabase = container.publicCloudDatabase
+        let record = CKRecord(recordType: "PublicRecipeReport")
         let localID = UUID().uuidString
 
         record["localID"] = localID
@@ -350,7 +350,7 @@ class DataManager: ObservableObject {
         record["timestamp"] = Date()
         record["status"] = "Pending"
 
-        privateDatabase.save(record) { record, error in
+        publicDatabase.save(record) { record, error in
             DispatchQueue.main.async {
                 if let error = error {
                     let errorType = self.errorType(for: error)
@@ -395,9 +395,12 @@ class DataManager: ObservableObject {
         }
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
-        let privateDatabase = container.privateCloudDatabase // Use private database
+        let publicDatabase = container.publicCloudDatabase
 
-        container.fetchUserRecordID { userRecordID, error in
+        // Fetch the current user's record ID
+        container.fetchUserRecordID { [weak self] userRecordID, error in
+            guard let self = self else { return }
+
             if let error = error {
                 DispatchQueue.main.async {
                     let errorType = self.errorType(for: error)
@@ -412,14 +415,15 @@ class DataManager: ObservableObject {
                 DispatchQueue.main.async {
                     self.errorMessage = ErrorType.userIdentification.rawValue
                     self.accessibilityAnnouncement = self.errorMessage
-                    completion(.failure(NSError(domain: "DataManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "User record ID is nil"])))
+                    completion(.failure(NSError(domain: "DataManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "User record ID not found"])))
                 }
                 return
             }
 
+            // Filter reports by the current user's ___createdBy field
             let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
             let predicate = NSPredicate(format: "___createdBy == %@", userReference)
-            let query = CKQuery(recordType: "RecipeReport", predicate: predicate)
+            let query = CKQuery(recordType: "PublicRecipeReport", predicate: predicate)
 
             var fetchedReports = [RecipeReport]()
 
@@ -485,7 +489,7 @@ class DataManager: ObservableObject {
                     }
                 }
 
-                privateDatabase.add(queryOperation)
+                publicDatabase.add(queryOperation)
             }
 
             let initialOperation = CKQueryOperation(query: query)
@@ -510,10 +514,10 @@ class DataManager: ObservableObject {
         }
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
-        let privateDatabase = container.privateCloudDatabase // Use private database
+        let publicDatabase = container.publicCloudDatabase
         let recordID = CKRecord.ID(recordName: recordIDString)
 
-        privateDatabase.delete(withRecordID: recordID) { _, error in
+        publicDatabase.delete(withRecordID: recordID) { _, error in
             DispatchQueue.main.async {
                 if let error = error as? CKError, error.code == .unknownItem {
                     self.accessibilityAnnouncement = "Report deleted successfully"
@@ -549,7 +553,7 @@ class DataManager: ObservableObject {
         }
 
         let container = CKContainer(identifier: "iCloud.craftifydb")
-        let privateDatabase = container.privateCloudDatabase // Use private database
+        let publicDatabase = container.publicCloudDatabase
         let recordIDs = reportsWithRecordID.compactMap { $0.recordID }.map { CKRecord.ID(recordName: $0) }
         let operation = CKModifyRecordsOperation(recordsToSave: nil, recordIDsToDelete: recordIDs)
 
@@ -568,7 +572,7 @@ class DataManager: ObservableObject {
             }
         }
 
-        privateDatabase.add(operation)
+        publicDatabase.add(operation)
     }
 
     func clearCache(completion: @escaping (Bool) -> Void) {

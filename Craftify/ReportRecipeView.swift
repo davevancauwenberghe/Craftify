@@ -19,7 +19,7 @@ struct ReportRecipeView: View {
     @State private var recipeErrorName: String = ""
     @State private var recipeErrorCategory: String = ""
     @State private var additionalInfo: String = ""
-    @State private var reports: [RecipeReport] = [] // Local array to store fetched reports
+    @State private var reports: [RecipeReport] = []
     @State private var isLoadingReports: Bool = false
     @State private var reportToDelete: RecipeReport?
     @State private var showDeleteConfirmation: Bool = false
@@ -28,14 +28,16 @@ struct ReportRecipeView: View {
     @State private var cooldownMessage: String? = nil
     @State private var remainingCooldownTime: Int = 0
     @State private var cooldownTimer: Timer?
+    @State private var showValidationError: Bool = false
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
 
     private let categories: [String] = [
-        "Beds", "Crafting", "Food", "Lighting", "Planks",
+        "Beds", "Consumables", "Crafting", "Lighting", "Planks",
         "Smelting", "Storage", "Tools", "Transportation", "Utilities", "Not listed"
     ]
     private let maxRecipeNameLength = 100
-    private let maxAdditionalInfoLength = 1000
+    private let maxAdditionalInfoLength = 500 // Reduced to 500 characters
+    private let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ")
     private var fieldHeight: CGFloat {
         horizontalSizeClass == .regular ? 48 : 44
     }
@@ -104,7 +106,7 @@ struct ReportRecipeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.userAccentColor, lineWidth: 2)
+                .stroke(selectedCategory.isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
         )
         .pickerStyle(.menu)
         .accessibilityLabel("Category")
@@ -123,7 +125,7 @@ struct ReportRecipeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.userAccentColor, lineWidth: 2)
+                .stroke(recipeErrorCategory.isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
         )
         .pickerStyle(.menu)
         .accessibilityLabel("Category")
@@ -140,15 +142,19 @@ struct ReportRecipeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.userAccentColor, lineWidth: 2)
+                    .stroke(recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
             )
             .onChange(of: recipeName) { _, newValue in
-                if newValue.count > maxRecipeNameLength {
-                    recipeName = String(newValue.prefix(maxRecipeNameLength))
+                // Limit length and filter out special characters
+                let filtered = newValue.filter { allowedCharacters.contains($0.unicodeScalars.first!) }
+                if filtered.count > maxRecipeNameLength {
+                    recipeName = String(filtered.prefix(maxRecipeNameLength))
+                } else {
+                    recipeName = filtered
                 }
             }
             .accessibilityLabel("Recipe name")
-            .accessibilityHint("Enter the name of the missing recipe")
+            .accessibilityHint("Enter the name of the missing recipe using only letters, numbers, and spaces")
     }
 
     private var recipeErrorNameTextField: some View {
@@ -161,15 +167,19 @@ struct ReportRecipeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.userAccentColor, lineWidth: 2)
+                    .stroke(recipeErrorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
             )
             .onChange(of: recipeErrorName) { _, newValue in
-                if newValue.count > maxRecipeNameLength {
-                    recipeErrorName = String(newValue.prefix(maxRecipeNameLength))
+                // Limit length and filter out special characters
+                let filtered = newValue.filter { allowedCharacters.contains($0.unicodeScalars.first!) }
+                if filtered.count > maxRecipeNameLength {
+                    recipeErrorName = String(filtered.prefix(maxRecipeNameLength))
+                } else {
+                    recipeErrorName = filtered
                 }
             }
             .accessibilityLabel("Recipe name")
-            .accessibilityHint("Enter the name of the recipe with an error")
+            .accessibilityHint("Enter the name of the recipe with an error using only letters, numbers, and spaces")
     }
 
     private var additionalInfoView: some View {
@@ -200,11 +210,21 @@ struct ReportRecipeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.userAccentColor, lineWidth: 2)
+                    .stroke(additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
             )
             .accessibilityLabel("Additional Information")
-            .accessibilityHint("Enter details about the missing recipe or error")
+            .accessibilityHint("Enter details about the missing recipe or error, up to 500 characters")
             .accessibilityValue(additionalInfo.isEmpty ? "No details entered" : additionalInfo)
+
+            // Character count display
+            HStack {
+                Spacer()
+                Text("\(additionalInfo.count)/\(maxAdditionalInfoLength)")
+                    .font(.caption)
+                    .foregroundColor(additionalInfo.count > maxAdditionalInfoLength ? .red : .secondary)
+                    .padding(.trailing, horizontalSizeClass == .regular ? 16 : 12)
+                    .accessibilityLabel("Character count: \(additionalInfo.count) out of \(maxAdditionalInfoLength)")
+            }
         }
     }
 
@@ -247,6 +267,13 @@ struct ReportRecipeView: View {
 
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                if isFormIncomplete {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showValidationError = true
+                                    }
+                                    return
+                                }
+                                showValidationError = false
                                 submitReport()
                             }) {
                                 Text("Submit Report")
@@ -255,11 +282,12 @@ struct ReportRecipeView: View {
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
                                     .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
-                                    .background(isFormIncomplete ? Color.userAccentColor.opacity(0.5) : Color.userAccentColor)
+                                    .background(isFormIncomplete || !dataManager.isConnected ? Color.userAccentColor.opacity(0.5) : Color.userAccentColor)
                                     .foregroundColor(.white)
                                     .clipShape(RoundedRectangle(cornerRadius: 16))
                             }
-                            .disabled(isFormIncomplete || !dataManager.isConnected) // Disable if no internet
+                            .disabled(isFormIncomplete || !dataManager.isConnected)
+                            .modifier(ShakeEffect(animatableData: showValidationError ? 1 : 0))
                             .accessibilityLabel("Submit Report")
                             .accessibilityHint(isFormIncomplete ? "Submit Report button is disabled. Please fill in all required fields: recipe name, category, and additional information." : dataManager.isConnected ? "Submits the report" : "Submit Report button is disabled due to no internet connection")
                         } else {
@@ -287,13 +315,13 @@ struct ReportRecipeView: View {
                                             Text("Refresh Status")
                                         }
                                         .font(.headline)
-                                        .foregroundColor(dataManager.isConnected ? Color.userAccentColor : Color.gray) // Gray out if no internet
+                                        .foregroundColor(dataManager.isConnected ? Color.userAccentColor : Color.gray)
                                         .padding(.vertical, 12)
                                         .frame(maxWidth: .infinity)
                                         .background(dataManager.isConnected ? Color(.systemGray5) : Color(.systemGray5).opacity(0.5))
                                         .clipShape(RoundedRectangle(cornerRadius: 16))
                                     }
-                                    .disabled(!dataManager.isConnected) // Disable if no internet
+                                    .disabled(!dataManager.isConnected)
                                     .accessibilityLabel("Refresh Status")
                                     .accessibilityHint(dataManager.isConnected ? "Refreshes the status of your submitted reports" : "Refresh is disabled due to no internet connection")
 
@@ -411,7 +439,6 @@ struct ReportRecipeView: View {
                             showSubmissionPopup = false
                             if case .success = submissionState {
                                 resetForm()
-                                // Refresh reports after a successful submission
                                 if viewMode == .myReports {
                                     fetchReportStatuses(isUserInitiated: false)
                                 }
@@ -436,15 +463,13 @@ struct ReportRecipeView: View {
                 Text("Are you sure you want to delete this report? This action cannot be undone.")
             }
             .onAppear {
-                // Fetch reports on appear to ensure the latest data
                 if viewMode == .myReports {
                     fetchReportStatuses(isUserInitiated: false)
                 }
             }
             .onChange(of: viewMode) { _, newValue in
                 if newValue == .myReports {
-                    // Force a fetch when switching to My Reports mode, ignoring cooldown
-                    dataManager.lastReportStatusFetchTime = nil // Reset cooldown
+                    dataManager.lastReportStatusFetchTime = nil
                     fetchReportStatuses(isUserInitiated: false)
                 } else {
                     cooldownTimer?.invalidate()
@@ -541,6 +566,15 @@ struct ReportRecipeView: View {
         }
     }
 
+    // Shake animation modifier
+    struct ShakeEffect: GeometryEffect {
+        var animatableData: CGFloat
+
+        func effectValue(size: CGSize) -> ProjectionTransform {
+            ProjectionTransform(CGAffineTransform(translationX: 10 * sin(animatableData * 3 * .pi), y: 0))
+        }
+    }
+
     private func formattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -556,6 +590,7 @@ struct ReportRecipeView: View {
         recipeErrorName = ""
         recipeErrorCategory = ""
         additionalInfo = ""
+        showValidationError = false
     }
 
     private func submitReport() {
@@ -618,7 +653,6 @@ struct ReportRecipeView: View {
                         }
                     }
                 case .failure:
-                    // Error message is already set by DataManager
                     self.reports = []
                 }
             }
@@ -650,7 +684,6 @@ struct ReportRecipeView: View {
                         self.reports.removeAll { $0.id == report.id }
                         self.reportToDelete = nil
                     } else {
-                        // Error message is already set by DataManager
                         self.reportToDelete = nil
                     }
                 }
