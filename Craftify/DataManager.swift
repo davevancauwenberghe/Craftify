@@ -358,6 +358,13 @@ class DataManager: ObservableObject {
                     self.accessibilityAnnouncement = self.errorMessage
                     completion(.failure(error))
                 } else if let savedRecord = record {
+                    // Log the ___createdBy field to debug
+                    if let creatorID = savedRecord["___createdBy"] as? CKRecord.Reference {
+                        print("Report created by: \(creatorID.recordID.recordName)")
+                    } else {
+                        print("Warning: ___createdBy field is nil for record \(savedRecord.recordID.recordName)")
+                    }
+
                     let report = RecipeReport(
                         id: localID,
                         recordID: savedRecord.recordID.recordName,
@@ -371,6 +378,8 @@ class DataManager: ObservableObject {
                         status: "Pending"
                     )
                     self.accessibilityAnnouncement = "Report submitted successfully"
+                    // Reset the report fetch cooldown to ensure immediate fetching
+                    self.lastReportStatusFetchTime = nil
                     completion(.success(report))
                 }
             }
