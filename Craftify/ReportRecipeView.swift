@@ -25,21 +25,31 @@ struct ReportRecipeView: View {
     @State private var showDeleteConfirmation: Bool = false
     @State private var submissionState: SubmissionState = .idle
     @State private var showSubmissionPopup: Bool = false
-    @State private var cooldownMessage: String? = nil
-    @State private var remainingCooldownTime: Int = 0
-    @State private var cooldownTimer: Timer?
-    @State private var showValidationError: Bool = false
+    @State private var lastSubmissionTime: Date?
+    @State private var submissionCooldownMessage: String?
+    @State private var submissionCooldownTimer: Timer?
+    @State private var showDeleteConfirmationPopup: Bool = false
+    @State private var deleteConfirmationMessage: String?
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
 
     private let categories: [String] = [
-        "Beds", "Consumables", "Crafting", "Lighting", "Planks",
+        "Beds", "Crafting", "Consumables", "Lighting", "Planks",
         "Smelting", "Storage", "Tools", "Transportation", "Utilities", "Not listed"
     ]
     private let maxRecipeNameLength = 100
-    private let maxAdditionalInfoLength = 500 // Reduced to 500 characters
+    private let maxAdditionalInfoLength = 500
+    private let submissionCooldownDuration: TimeInterval = 30
     private let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ")
     private var fieldHeight: CGFloat {
         horizontalSizeClass == .regular ? 48 : 44
+    }
+    private var remainingSubmissionCooldown: Int {
+        guard let lastSubmission = lastSubmissionTime else { return 0 }
+        let elapsed = Int(Date().timeIntervalSince(lastSubmission))
+        return max(0, Int(submissionCooldownDuration) - elapsed)
+    }
+    private var isSubmissionOnCooldown: Bool {
+        remainingSubmissionCooldown > 0
     }
 
     enum ViewMode: String {
@@ -99,14 +109,14 @@ struct ReportRecipeView: View {
             categoryPickerContent
         }
         .font(.body)
-        .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
-        .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, minHeight: fieldHeight)
         .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(selectedCategory.isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.userAccentColor, lineWidth: 2)
         )
         .pickerStyle(.menu)
         .accessibilityLabel("Category")
@@ -118,14 +128,14 @@ struct ReportRecipeView: View {
             categoryPickerContent
         }
         .font(.body)
-        .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
-        .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, minHeight: fieldHeight)
         .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(recipeErrorCategory.isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.userAccentColor, lineWidth: 2)
         )
         .pickerStyle(.menu)
         .accessibilityLabel("Category")
@@ -135,17 +145,12 @@ struct ReportRecipeView: View {
     private var recipeNameTextField: some View {
         TextField("Recipe name", text: $recipeName)
             .font(.body)
-            .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
-            .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, minHeight: fieldHeight)
             .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(recipeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 0)) // No individual border
             .onChange(of: recipeName) { _, newValue in
-                // Limit length and filter out special characters
                 let filtered = newValue.filter { allowedCharacters.contains($0.unicodeScalars.first!) }
                 if filtered.count > maxRecipeNameLength {
                     recipeName = String(filtered.prefix(maxRecipeNameLength))
@@ -160,17 +165,12 @@ struct ReportRecipeView: View {
     private var recipeErrorNameTextField: some View {
         TextField("Recipe name", text: $recipeErrorName)
             .font(.body)
-            .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
-            .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, minHeight: fieldHeight)
             .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(recipeErrorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 0)) // No individual border
             .onChange(of: recipeErrorName) { _, newValue in
-                // Limit length and filter out special characters
                 let filtered = newValue.filter { allowedCharacters.contains($0.unicodeScalars.first!) }
                 if filtered.count > maxRecipeNameLength {
                     recipeErrorName = String(filtered.prefix(maxRecipeNameLength))
@@ -183,49 +183,106 @@ struct ReportRecipeView: View {
     }
 
     private var additionalInfoView: some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .topLeading) {
-                Text("Add details...")
-                    .font(horizontalSizeClass == .regular ? .callout : .subheadline)
-                    .foregroundColor(.secondary.opacity(additionalInfo.isEmpty ? 0.7 : 0))
-                    .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
-                    .padding(.vertical, horizontalSizeClass == .regular ? 18 : 14)
-                    .onChange(of: additionalInfo) { _, _ in
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            // Opacity updated via binding
-                        }
+        ZStack(alignment: .topLeading) {
+            Text("Add details...")
+                .font(.subheadline)
+                .foregroundColor(.secondary.opacity(additionalInfo.isEmpty ? 0.7 : 0))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .onChange(of: additionalInfo) { _, _ in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        // Opacity updated via binding
                     }
-                TextEditorRepresentable(text: $additionalInfo)
-                    .font(.body)
-                    .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-                    .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
-                    .frame(maxWidth: .infinity, minHeight: fieldHeight * 2)
-                    .onChange(of: additionalInfo) { _, newValue in
-                        if newValue.count > maxAdditionalInfoLength {
-                            additionalInfo = String(newValue.prefix(maxAdditionalInfoLength))
-                        }
+                }
+            TextEditorRepresentable(text: $additionalInfo)
+                .font(.body)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, minHeight: fieldHeight * 2)
+                .onChange(of: additionalInfo) { _, newValue in
+                    if newValue.count > maxAdditionalInfoLength {
+                        additionalInfo = String(newValue.prefix(maxAdditionalInfoLength))
                     }
-            }
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(additionalInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && showValidationError ? Color.red : Color.userAccentColor, lineWidth: 2)
-            )
-            .accessibilityLabel("Additional Information")
-            .accessibilityHint("Enter details about the missing recipe or error, up to 500 characters")
-            .accessibilityValue(additionalInfo.isEmpty ? "No details entered" : additionalInfo)
+                }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 0)) // No individual border
+        .accessibilityLabel("Additional Information")
+        .accessibilityHint("Enter details about the missing recipe or error, up to 500 characters")
+        .accessibilityValue(additionalInfo.isEmpty ? "No details entered" : additionalInfo)
+    }
 
-            // Character count display
+    private var combinedInputFields: some View {
+        VStack(spacing: 0) {
+            if reportType == .missingRecipe {
+                recipeNameTextField
+                Divider()
+                    .background(Color.gray.opacity(0.3))
+                additionalInfoView
+            } else {
+                recipeErrorNameTextField
+                Divider()
+                    .background(Color.gray.opacity(0.3))
+                additionalInfoView
+            }
+
             HStack {
                 Spacer()
                 Text("\(additionalInfo.count)/\(maxAdditionalInfoLength)")
                     .font(.caption)
                     .foregroundColor(additionalInfo.count > maxAdditionalInfoLength ? .red : .secondary)
-                    .padding(.trailing, horizontalSizeClass == .regular ? 16 : 12)
+                    .padding(.trailing, 16)
+                    .padding(.vertical, 4)
                     .accessibilityLabel("Character count: \(additionalInfo.count) out of \(maxAdditionalInfoLength)")
             }
         }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.userAccentColor, lineWidth: 2)
+        )
+    }
+
+    private var reportTypeToggle: some View {
+        HStack(spacing: 8) {
+            Button(action: {
+                withAnimation(.easeInOut) {
+                    reportType = .missingRecipe
+                }
+            }) {
+                Text("Missing Recipe")
+                    .font(.subheadline)
+                    .foregroundColor(reportType == .missingRecipe ? .white : Color.userAccentColor)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .background(reportType == .missingRecipe ? Color.userAccentColor : Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .accessibilityLabel("Report Missing Recipe")
+            .accessibilityHint("Select to report a missing recipe")
+            .accessibilityValue(reportType == .missingRecipe ? "Selected" : "Not selected")
+
+            Button(action: {
+                withAnimation(.easeInOut) {
+                    reportType = .recipeError
+                }
+            }) {
+                Text("Recipe Error")
+                    .font(.subheadline)
+                    .foregroundColor(reportType == .recipeError ? .white : Color.userAccentColor)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .background(reportType == .recipeError ? Color.userAccentColor : Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .accessibilityLabel("Report Recipe Error")
+            .accessibilityHint("Select to report an error in a recipe")
+            .accessibilityValue(reportType == .recipeError ? "Selected" : "Not selected")
+        }
+        .padding(.horizontal, 16)
     }
 
     var body: some View {
@@ -235,198 +292,201 @@ struct ReportRecipeView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 ScrollView {
-                    VStack(spacing: horizontalSizeClass == .regular ? 24 : 16) {
+                    VStack(spacing: 24) {
+                        // View Mode Picker
                         Picker("View Mode", selection: $viewMode) {
                             Text(ViewMode.submitReport.rawValue).tag(ViewMode.submitReport)
                             Text(ViewMode.myReports.rawValue).tag(ViewMode.myReports)
                         }
                         .pickerStyle(SegmentedPickerStyle())
-                        .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
+                        .padding(.horizontal, 16)
                         .accessibilityLabel("View Mode")
                         .accessibilityHint("Select whether to submit a new report or view your reports")
 
+                        // Submit Report Section
                         if viewMode == .submitReport {
-                            Picker("Report Type", selection: $reportType) {
-                                Text(ReportType.missingRecipe.rawValue).tag(ReportType.missingRecipe)
-                                Text(ReportType.recipeError.rawValue).tag(ReportType.recipeError)
-                            }
-                            .pickerStyle(SegmentedPickerStyle())
-                            .padding(.horizontal, horizontalSizeClass == .regular ? 16 : 12)
-                            .accessibilityLabel("Report Type")
-                            .accessibilityHint("Select whether to report a missing recipe or an error in an existing recipe")
+                            VStack(alignment: .leading, spacing: 16) {
+                                reportTypeToggle
 
-                            if reportType == .missingRecipe {
-                                categoryPicker
-                                recipeNameTextField
-                            } else {
-                                recipeErrorCategoryPicker
-                                recipeErrorNameTextField
-                            }
-
-                            additionalInfoView
-
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                if isFormIncomplete {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showValidationError = true
-                                    }
-                                    return
+                                if reportType == .missingRecipe {
+                                    categoryPicker
+                                } else {
+                                    recipeErrorCategoryPicker
                                 }
-                                showValidationError = false
-                                submitReport()
-                            }) {
-                                Text("Submit Report")
-                                    .font(horizontalSizeClass == .regular ? .title3 : .headline)
-                                    .bold()
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
-                                    .background(isFormIncomplete || !dataManager.isConnected ? Color.userAccentColor.opacity(0.5) : Color.userAccentColor)
-                                    .foregroundColor(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                            }
-                            .disabled(isFormIncomplete || !dataManager.isConnected)
-                            .modifier(ShakeEffect(animatableData: showValidationError ? 1 : 0))
-                            .accessibilityLabel("Submit Report")
-                            .accessibilityHint(isFormIncomplete ? "Submit Report button is disabled. Please fill in all required fields: recipe name, category, and additional information." : dataManager.isConnected ? "Submits the report" : "Submit Report button is disabled due to no internet connection")
-                        } else {
-                            if reports.isEmpty && !isLoadingReports {
-                                VStack(spacing: 16) {
-                                    Text(dataManager.isConnected ? "No Reports Found" : "No Internet Connection")
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                    Text(dataManager.isConnected ? "You haven’t submitted any reports yet." : "Please connect to the internet to view your reports.")
-                                        .font(horizontalSizeClass == .regular ? .body : .subheadline)
+
+                                combinedInputFields
+
+                                if let message = submissionCooldownMessage {
+                                    Text(message)
+                                        .font(.subheadline)
                                         .foregroundColor(.secondary)
-                                        .multilineTextAlignment(.center)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .padding(.horizontal, 16)
+                                        .accessibilityLabel(message)
                                 }
-                                .padding()
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel(dataManager.isConnected ? "No reports found. You haven’t submitted any reports yet." : "No internet connection. Please connect to the internet to view your reports.")
-                            } else {
-                                // Combined Refresh Status and Cooldown Message
-                                VStack(spacing: 8) {
-                                    Button(action: {
-                                        fetchReportStatuses(isUserInitiated: true)
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "arrow.clockwise")
-                                            Text("Refresh Status")
-                                        }
-                                        .font(.headline)
-                                        .foregroundColor(dataManager.isConnected ? Color.userAccentColor : Color.gray)
-                                        .padding(.vertical, 12)
-                                        .frame(maxWidth: .infinity)
-                                        .background(dataManager.isConnected ? Color(.systemGray5) : Color(.systemGray5).opacity(0.5))
-                                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    }
-                                    .disabled(!dataManager.isConnected)
-                                    .accessibilityLabel("Refresh Status")
-                                    .accessibilityHint(dataManager.isConnected ? "Refreshes the status of your submitted reports" : "Refresh is disabled due to no internet connection")
 
-                                    if let message = cooldownMessage, dataManager.isConnected {
-                                        Text(message)
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    if isFormIncomplete {
+                                        return
+                                    }
+                                    if isSubmissionOnCooldown {
+                                        updateSubmissionCooldownMessage()
+                                        startSubmissionCooldownTimer()
+                                        return
+                                    }
+                                    submitReport()
+                                }) {
+                                    Text("Submit Report")
+                                        .font(.headline.bold())
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 16)
+                                        .padding(.horizontal, 32)
+                                        .background(
+                                            (isFormIncomplete || !dataManager.isConnected || isSubmissionOnCooldown)
+                                                ? Color.userAccentColor.opacity(0.5)
+                                                : Color.userAccentColor
+                                        )
+                                        .foregroundColor(.white)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                }
+                                .padding(.horizontal, 16)
+                                .disabled(isFormIncomplete || !dataManager.isConnected || isSubmissionOnCooldown)
+                                .accessibilityLabel("Submit Report")
+                                .accessibilityHint(
+                                    isFormIncomplete ? "Submit Report button is disabled. Please fill in all required fields: recipe name, category, and additional information." :
+                                    !dataManager.isConnected ? "Submit Report button is disabled due to no internet connection." :
+                                    isSubmissionOnCooldown ? "Submit Report button is disabled. Please wait \(remainingSubmissionCooldown) seconds." :
+                                    "Submits the report"
+                                )
+                            }
+                            .padding(.vertical, 16)
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .padding(.horizontal, 16)
+                        } else {
+                            // My Reports Section
+                            VStack(alignment: .leading, spacing: 16) {
+                                if reports.isEmpty && !isLoadingReports {
+                                    VStack(spacing: 16) {
+                                        Text(dataManager.isConnected ? "No Reports Found" : "No Internet Connection")
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                        Text(dataManager.isConnected ? "You haven’t submitted any reports yet." : "Please connect to the internet to view your reports.")
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
-                                            .frame(maxWidth: .infinity, alignment: .center)
-                                            .accessibilityLabel(message)
+                                            .multilineTextAlignment(.center)
                                     }
-                                }
+                                    .padding()
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel(dataManager.isConnected ? "No reports found. You haven’t submitted any reports yet." : "No internet connection. Please connect to the internet to view your reports.")
+                                } else {
+                                    if let errorMessage = dataManager.errorMessage, dataManager.isConnected {
+                                        Text(errorMessage)
+                                            .font(.subheadline)
+                                            .foregroundColor(.red)
+                                            .frame(maxWidth: .infinity, alignment: .center)
+                                            .padding(.horizontal, 16)
+                                            .accessibilityLabel("Error: \(errorMessage)")
+                                    }
 
-                                if isLoadingReports {
-                                    ProgressView()
-                                        .progressViewStyle(.circular)
-                                        .tint(Color.userAccentColor)
-                                        .accessibilityLabel("Loading reports")
-                                } else if dataManager.isConnected {
-                                    ForEach(reports.sorted(by: { $0.timestamp > $1.timestamp })) { report in
-                                        VStack(alignment: .leading, spacing: 8) {
-                                            HStack {
-                                                Text(report.reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error")
-                                                    .font(.headline)
-                                                    .foregroundColor(Color.userAccentColor)
-                                                Spacer()
-                                                Text(report.status)
-                                                    .font(.subheadline)
-                                                    .foregroundColor(report.status == "Pending" ? .orange : .green)
-                                                    .padding(.horizontal, 12)
-                                                    .padding(.vertical, 6)
-                                                    .background(Color(.systemGray5))
-                                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                            }
+                                    if isLoadingReports {
+                                        ProgressView()
+                                            .progressViewStyle(.circular)
+                                            .tint(Color.userAccentColor)
+                                            .accessibilityLabel("Loading reports")
+                                    } else if dataManager.isConnected {
+                                        ForEach(reports.sorted(by: { $0.timestamp > $1.timestamp })) { report in
+                                            VStack(alignment: .leading, spacing: 8) {
+                                                HStack {
+                                                    Text(report.reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error")
+                                                        .font(.headline)
+                                                        .foregroundColor(Color.userAccentColor)
+                                                    Spacer()
+                                                    Text(report.status)
+                                                        .font(.subheadline)
+                                                        .foregroundColor(report.status == "Pending" ? .orange : .green)
+                                                        .padding(.horizontal, 12)
+                                                        .padding(.vertical, 6)
+                                                        .background(Color(.systemGray5))
+                                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                                }
 
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text("Recipe Name")
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.secondary)
-                                                Text(report.recipeName)
-                                                    .font(.body)
-                                            }
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text("Recipe Name")
+                                                        .font(.subheadline)
+                                                        .foregroundColor(.secondary)
+                                                    Text(report.recipeName)
+                                                        .font(.body)
+                                                }
 
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text("Category")
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.secondary)
-                                                Text(report.category)
-                                                    .font(.body)
-                                            }
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text("Category")
+                                                        .font(.subheadline)
+                                                        .foregroundColor(.secondary)
+                                                    Text(report.category)
+                                                        .font(.body)
+                                                }
 
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text("Details")
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.secondary)
-                                                Text(report.description)
-                                                    .font(.body)
-                                            }
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text("Details")
+                                                        .font(.subheadline)
+                                                        .foregroundColor(.secondary)
+                                                    Text(report.description)
+                                                        .font(.body)
+                                                }
 
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text("Submitted")
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.secondary)
-                                                Text(formattedDate(report.timestamp))
-                                                    .font(.body)
-                                            }
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text("Submitted")
+                                                        .font(.subheadline)
+                                                        .foregroundColor(.secondary)
+                                                    Text(formattedDate(report.timestamp))
+                                                        .font(.body)
+                                                }
 
-                                            Button(action: {
-                                                reportToDelete = report
-                                                showDeleteConfirmation = true
-                                            }) {
-                                                Text("Delete Report")
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.red)
-                                                    .padding(.vertical, 8)
-                                                    .frame(maxWidth: .infinity, alignment: .center)
+                                                Button(action: {
+                                                    reportToDelete = report
+                                                    showDeleteConfirmation = true
+                                                }) {
+                                                    Text("Delete Report")
+                                                        .font(.subheadline)
+                                                        .foregroundColor(.red)
+                                                        .padding(.vertical, 8)
+                                                        .frame(maxWidth: .infinity, alignment: .center)
+                                                }
+                                                .accessibilityLabel("Delete this report")
+                                                .accessibilityHint("Deletes the selected report")
                                             }
-                                            .accessibilityLabel("Delete this report")
-                                            .accessibilityHint("Deletes the selected report")
+                                            .padding(.vertical, 12)
+                                            .padding(.horizontal, 16)
+                                            .background(Color(.systemGray6))
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .stroke(
+                                                        Color.userAccentColor.opacity(0.3),
+                                                        style: StrokeStyle(lineWidth: 1)
+                                                    )
+                                            )
+                                            .transition(.asymmetric(
+                                                insertion: .opacity,
+                                                removal: .opacity.combined(with: .move(edge: .leading))
+                                            ))
+                                            .accessibilityElement(children: .combine)
+                                            .accessibilityLabel("Report: \(report.reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error") for \(report.recipeName), Category: \(report.category), Status: \(report.status), Details: \(report.description), Submitted: \(formattedDate(report.timestamp))")
+                                            .accessibilityHint("Tap the delete button to remove this report")
                                         }
-                                        .padding(.vertical, 12)
-                                        .padding(.horizontal, 16)
-                                        .background(Color(.systemGray6))
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .stroke(
-                                                    Color.userAccentColor.opacity(0.3),
-                                                    style: StrokeStyle(lineWidth: 1)
-                                                )
-                                        )
-                                        .transition(.asymmetric(
-                                            insertion: .opacity,
-                                            removal: .opacity.combined(with: .move(edge: .leading))
-                                        ))
-                                        .accessibilityElement(children: .combine)
-                                        .accessibilityLabel("Report: \(report.reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error") for \(report.recipeName), Category: \(report.category), Status: \(report.status), Details: \(report.description), Submitted: \(formattedDate(report.timestamp))")
-                                        .accessibilityHint("Tap the delete button to remove this report")
                                     }
                                 }
                             }
+                            .padding(.vertical, 16)
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .padding(.horizontal, 16)
                         }
                     }
                     .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
-                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                    .padding(.vertical, horizontalSizeClass == .regular ? 32 : 24)
+                    .padding(.vertical, 24)
                 }
                 .id(accentColorPreference)
                 .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
@@ -440,13 +500,24 @@ struct ReportRecipeView: View {
                             if case .success = submissionState {
                                 resetForm()
                                 if viewMode == .myReports {
-                                    fetchReportStatuses(isUserInitiated: false)
+                                    fetchReportStatuses()
                                 }
                             }
                             submissionState = .idle
                         }
                     )
                     .animation(.easeInOut, value: showSubmissionPopup)
+                }
+
+                if showDeleteConfirmationPopup {
+                    DeleteConfirmationPopup(
+                        message: deleteConfirmationMessage ?? "",
+                        onDismiss: {
+                            showDeleteConfirmationPopup = false
+                            deleteConfirmationMessage = nil
+                        }
+                    )
+                    .animation(.easeInOut, value: showDeleteConfirmationPopup)
                 }
             }
             .navigationTitle("Report Issue")
@@ -464,28 +535,17 @@ struct ReportRecipeView: View {
             }
             .onAppear {
                 if viewMode == .myReports {
-                    fetchReportStatuses(isUserInitiated: false)
+                    fetchReportStatuses()
                 }
             }
             .onChange(of: viewMode) { _, newValue in
                 if newValue == .myReports {
                     dataManager.lastReportStatusFetchTime = nil
-                    fetchReportStatuses(isUserInitiated: false)
-                } else {
-                    cooldownTimer?.invalidate()
-                    cooldownTimer = nil
-                    cooldownMessage = nil
-                    remainingCooldownTime = 0
+                    fetchReportStatuses()
                 }
             }
             .onChange(of: reportType) { _, _ in
                 resetForm()
-            }
-            .onDisappear {
-                cooldownTimer?.invalidate()
-                cooldownTimer = nil
-                cooldownMessage = nil
-                remainingCooldownTime = 0
             }
         }
     }
@@ -551,7 +611,7 @@ struct ReportRecipeView: View {
                                 .padding()
                                 .frame(maxWidth: .infinity)
                                 .background(Color.userAccentColor)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .padding(.horizontal, 40)
                     }
@@ -566,12 +626,50 @@ struct ReportRecipeView: View {
         }
     }
 
-    // Shake animation modifier
-    struct ShakeEffect: GeometryEffect {
-        var animatableData: CGFloat
+    struct DeleteConfirmationPopup: View {
+        let message: String
+        let onDismiss: () -> Void
 
-        func effectValue(size: CGSize) -> ProjectionTransform {
-            ProjectionTransform(CGAffineTransform(translationX: 10 * sin(animatableData * 3 * .pi), y: 0))
+        var body: some View {
+            ZStack {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        onDismiss()
+                    }
+
+                VStack(spacing: 20) {
+                    Image(systemName: message.contains("Failed") ? "xmark.circle.fill" : "checkmark.circle.fill")
+                        .resizable()
+                        .frame(width: 60, height: 60)
+                        .foregroundColor(message.contains("Failed") ? .red : .green)
+
+                    Text(message)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Button(action: onDismiss) {
+                        Text("OK")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.userAccentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .padding(.horizontal, 40)
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(radius: 10)
+                .frame(maxWidth: 300)
+                .padding()
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Delete confirmation: \(message)")
+                .accessibilityAddTraits(.isModal)
+            }
         }
     }
 
@@ -590,7 +688,27 @@ struct ReportRecipeView: View {
         recipeErrorName = ""
         recipeErrorCategory = ""
         additionalInfo = ""
-        showValidationError = false
+    }
+
+    private func updateSubmissionCooldownMessage() {
+        let remaining = remainingSubmissionCooldown
+        submissionCooldownMessage = "Please wait \(remaining) second\(remaining == 1 ? "" : "s") before submitting again."
+    }
+
+    private func startSubmissionCooldownTimer() {
+        submissionCooldownTimer?.invalidate()
+        submissionCooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            DispatchQueue.main.async {
+                let remaining = self.remainingSubmissionCooldown
+                if remaining > 0 {
+                    self.updateSubmissionCooldownMessage()
+                } else {
+                    self.submissionCooldownMessage = nil
+                    timer.invalidate()
+                    self.submissionCooldownTimer = nil
+                }
+            }
+        }
     }
 
     private func submitReport() {
@@ -620,6 +738,9 @@ struct ReportRecipeView: View {
                         recipeName: recipeNameValue,
                         category: categoryValue
                     )
+                    self.lastSubmissionTime = Date()
+                    self.updateSubmissionCooldownMessage()
+                    self.startSubmissionCooldownTimer()
                 case .failure(let error):
                     self.submissionState = .failure("Failed to submit report: \(error.localizedDescription)")
                 }
@@ -627,7 +748,7 @@ struct ReportRecipeView: View {
         }
     }
 
-    private func fetchReportStatuses(isUserInitiated: Bool) {
+    private func fetchReportStatuses() {
         guard dataManager.isConnected else {
             isLoadingReports = false
             return
@@ -641,36 +762,9 @@ struct ReportRecipeView: View {
                 switch result {
                 case .success(let fetchedReports):
                     self.reports = fetchedReports
-                    if self.dataManager.isReportStatusFetchOnCooldown() && isUserInitiated {
-                        let cooldownDuration = 30
-                        let lastFetchTime = self.dataManager.lastReportStatusFetchTime ?? Date.distantPast
-                        let elapsed = Int(Date().timeIntervalSince(lastFetchTime))
-                        self.remainingCooldownTime = max(0, cooldownDuration - elapsed)
-                        
-                        if self.remainingCooldownTime > 0 {
-                            self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before refreshing again."
-                            self.startCooldownTimer()
-                        }
-                    }
                 case .failure:
-                    self.reports = []
-                }
-            }
-        }
-    }
-
-    private func startCooldownTimer() {
-        cooldownTimer?.invalidate()
-        cooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            DispatchQueue.main.async {
-                if self.remainingCooldownTime > 0 {
-                    self.remainingCooldownTime -= 1
-                    self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before refreshing again."
-                } else {
-                    self.cooldownMessage = nil
-                    self.remainingCooldownTime = 0
-                    timer.invalidate()
-                    self.cooldownTimer = nil
+                    // Preserve existing reports instead of clearing them
+                    break
                 }
             }
         }
@@ -682,10 +776,12 @@ struct ReportRecipeView: View {
                 DispatchQueue.main.async {
                     if success {
                         self.reports.removeAll { $0.id == report.id }
-                        self.reportToDelete = nil
+                        self.deleteConfirmationMessage = "Report deleted successfully."
                     } else {
-                        self.reportToDelete = nil
+                        self.deleteConfirmationMessage = "Failed to delete report."
                     }
+                    self.reportToDelete = nil
+                    self.showDeleteConfirmationPopup = true
                 }
             }
         }
