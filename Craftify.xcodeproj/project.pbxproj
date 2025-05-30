@@ -426,7 +426,7 @@
 				CODE_SIGN_ENTITLEMENTS = Craftify/Craftify.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 74;
-				DEVELOPMENT_ASSET_PATHS = "\"Craftify/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Craftify/Info.plist;
@@ -466,7 +466,7 @@
 				CODE_SIGN_ENTITLEMENTS = Craftify/Craftify.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 74;
-				DEVELOPMENT_ASSET_PATHS = "\"Craftify/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Craftify/Info.plist;

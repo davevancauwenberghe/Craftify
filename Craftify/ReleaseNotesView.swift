@@ -81,6 +81,7 @@ let releaseNotes: [ReleaseNote] = [
         "Major report recipes issues improvements",
         "Privacy policy & data control added",
         "Network status added",
+        "UI fixes",
         "Image assets added"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 58-61", changes: [

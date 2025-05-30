@@ -236,6 +236,7 @@ struct ReportRecipeView: View {
                     .accessibilityLabel("Character count: \(additionalInfo.count) out of \(maxAdditionalInfoLength)")
             }
         }
+        .frame(maxWidth: .infinity)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
@@ -282,14 +283,13 @@ struct ReportRecipeView: View {
             .accessibilityHint("Select to report an error in a recipe")
             .accessibilityValue(reportType == .recipeError ? "Selected" : "Not selected")
         }
-        .padding(.horizontal, 16)
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Color(.systemBackground)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 24) {
@@ -350,20 +350,10 @@ struct ReportRecipeView: View {
                                         .foregroundColor(.white)
                                         .clipShape(RoundedRectangle(cornerRadius: 12))
                                 }
-                                .padding(.horizontal, 16)
-                                .disabled(isFormIncomplete || !dataManager.isConnected || isSubmissionOnCooldown)
-                                .accessibilityLabel("Submit Report")
-                                .accessibilityHint(
-                                    isFormIncomplete ? "Submit Report button is disabled. Please fill in all required fields: recipe name, category, and additional information." :
-                                    !dataManager.isConnected ? "Submit Report button is disabled due to no internet connection." :
-                                    isSubmissionOnCooldown ? "Submit Report button is disabled. Please wait \(remainingSubmissionCooldown) seconds." :
-                                    "Submits the report"
-                                )
                             }
                             .padding(.vertical, 16)
-                            .background(Color(.systemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
                             .padding(.horizontal, 16)
+                            .background(Color(.systemBackground))
                         } else {
                             // My Reports Section
                             VStack(alignment: .leading, spacing: 16) {
@@ -378,6 +368,7 @@ struct ReportRecipeView: View {
                                             .multilineTextAlignment(.center)
                                     }
                                     .padding()
+                                    .frame(maxWidth: .infinity)
                                     .accessibilityElement(children: .combine)
                                     .accessibilityLabel(dataManager.isConnected ? "No reports found. You haven’t submitted any reports yet." : "No internet connection. Please connect to the internet to view your reports.")
                                 } else {
@@ -394,6 +385,7 @@ struct ReportRecipeView: View {
                                         ProgressView()
                                             .progressViewStyle(.circular)
                                             .tint(Color.userAccentColor)
+                                            .frame(maxWidth: .infinity)
                                             .accessibilityLabel("Loading reports")
                                     } else if dataManager.isConnected {
                                         ForEach(reports.sorted(by: { $0.timestamp > $1.timestamp })) { report in
@@ -459,6 +451,7 @@ struct ReportRecipeView: View {
                                             }
                                             .padding(.vertical, 12)
                                             .padding(.horizontal, 16)
+                                            .frame(maxWidth: .infinity)
                                             .background(Color(.systemGray6))
                                             .clipShape(RoundedRectangle(cornerRadius: 12))
                                             .overlay(
@@ -480,17 +473,14 @@ struct ReportRecipeView: View {
                                 }
                             }
                             .padding(.vertical, 16)
-                            .background(Color(.systemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
                             .padding(.horizontal, 16)
+                            .background(Color(.systemBackground))
                         }
                     }
-                    .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
                     .padding(.vertical, 24)
+                    .frame(maxWidth: .infinity)
                 }
                 .id(accentColorPreference)
-                .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
-                .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
 
                 if showSubmissionPopup {
                     SubmissionPopup(
