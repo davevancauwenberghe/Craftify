@@ -1,10 +1,3 @@
-//
-//  SupportView.swift
-//  Craftify
-//
-//  Created by Dave Van Cauwenberghe on 19/05/2025.
-//
-
 import SwiftUI
 
 struct SupportView: View {
@@ -94,6 +87,24 @@ struct SupportView: View {
             }
 
             Section(header: Text("Privacy")) {
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    if let url = URL(string: "https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/privacy-policy/") {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    buttonStyle(title: "View Privacy Policy Online", systemImage: "safari.fill")
+                }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets(
+                    top: horizontalSizeClass == .regular ? 12 : 8,
+                    leading: horizontalSizeClass == .regular ? 16 : 12,
+                    bottom: horizontalSizeClass == .regular ? 12 : 8,
+                    trailing: horizontalSizeClass == .regular ? 16 : 12
+                ))
+                .accessibilityLabel("View Privacy Policy Online")
+                .accessibilityHint("Opens the privacy policy in your web browser")
+
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Privacy Policy")
                         .font(.title2)

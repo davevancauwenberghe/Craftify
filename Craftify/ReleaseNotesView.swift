@@ -77,7 +77,11 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 58-76", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 76", changes: [
+        "Privacy policy URL button added",
+        "Image assets added"
+    ]),
+    ReleaseNote(version: "Version 1.0 - Build 61-75", changes: [
         "Major report recipes issues improvements",
         "Privacy policy & data control added",
         "Network status added",
@@ -147,16 +151,12 @@ let releaseNotes: [ReleaseNote] = [
         "Added: Image assets",
         "Asynchronous loading"
     ]),
-    ReleaseNote(version: "Version 1.0 - Build 22-23", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 20-23", changes: [
         "Added: Search on Categories",
-        "Added: Basic LaunchScreen"
-    ]),
-    ReleaseNote(version: "Version 1.0 - Build 21", changes: [
+        "Added: Basic LaunchScreen",
         "Added: Collapsible Craftify Picks",
         "Added: Image assets",
-        "Removed: Share button in the RecipeDetailView"
-    ]),
-    ReleaseNote(version: "Version 1.0 - Build 20", changes: [
+        "Removed: Share button in the RecipeDetailView",
         "Updated Favorites when no favorites are added yet",
         "Updated Image assets naming"
     ]),
