@@ -743,7 +743,7 @@ class DataManager: ObservableObject {
                     self.errorMessage = "Push notifications not registered. Please try again later."
                     self.accessibilityAnnouncement = self.errorMessage
                     print("Subscription failed: Push notifications not registered")
-                    DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
                         self.createReportStatusSubscription(completion: completion)
                     }
                     return
@@ -761,7 +761,7 @@ class DataManager: ObservableObject {
                             return
                         }
 
-                        // Validate container
+                        // Validate container and user
                         self.container.fetchUserRecordID { userRecordID, error in
                             if let error = error {
                                 DispatchQueue.main.async {
@@ -786,162 +786,217 @@ class DataManager: ObservableObject {
 
                             let subscriptionID = "ReportStatusChanges_\(userRecordID.recordName)"
 
-                            // Validate PublicRecipeReport schema
-                            let predicate = NSPredicate(value: true)
-                            let query = CKQuery(recordType: "PublicRecipeReport", predicate: predicate)
-                            let operation = CKQueryOperation(query: query)
-                            operation.resultsLimit = 1
+                            // Check for existing subscriptions
+                            self.publicDatabase.fetchAllSubscriptions { subscriptions, error in
+                                if let error = error {
+                                    DispatchQueue.main.async {
+                                        self.errorMessage = "Failed to fetch existing subscriptions: \(error.localizedDescription)"
+                                        self.accessibilityAnnouncement = self.errorMessage
+                                        print("Subscription fetch error: \(error.localizedDescription)")
+                                        completion(false)
+                                    }
+                                    return
+                                }
 
-                            operation.queryResultBlock = { result in
-                                DispatchQueue.main.async {
+                                if let subscriptions = subscriptions,
+                                   subscriptions.contains(where: { $0.subscriptionID == subscriptionID }) {
+                                    DispatchQueue.main.async {
+                                        self.errorMessage = nil
+                                        self.accessibilityAnnouncement = "Notifications already enabled"
+                                        print("Subscription already exists: \(subscriptionID)")
+                                        completion(true)
+                                    }
+                                    return
+                                }
+
+                                // Validate PublicRecipeReport schema and fields
+                                let predicate = NSPredicate(value: true)
+                                let query = CKQuery(recordType: "PublicRecipeReport", predicate: predicate)
+                                let operation = CKQueryOperation(query: query)
+                                operation.resultsLimit = 1
+                                operation.desiredKeys = ["recipeName", "status", "___createdBy"]
+
+                                operation.recordMatchedBlock = { _, result in
                                     switch result {
-                                    case .success:
-                                        print("Schema validation: PublicRecipeReport exists")
+                                    case .success(let record):
+                                        let recipeNameValid = record["recipeName"] as? String != nil
+                                        let statusValid = record["status"] as? String != nil
+                                        let createdByValid = record["___createdBy"] as? CKRecord.Reference != nil
+                                        print("Schema validation: PublicRecipeReport exists with fields: recipeName=\(recipeNameValid ? "valid" : "invalid"), status=\(statusValid ? "valid" : "invalid"), ___createdBy=\(createdByValid ? "valid" : "invalid")")
                                     case .failure(let error):
-                                        if let ckError = error as? CKError, ckError.code == .unknownItem {
-                                            self.errorMessage = "Report type not found. Please ensure the database schema is correct."
+                                        DispatchQueue.main.async {
+                                            self.errorMessage = "Schema validation failed: \(error.localizedDescription)"
                                             self.accessibilityAnnouncement = self.errorMessage
-                                            print("Schema validation failed: PublicRecipeReport not found - \(error.localizedDescription)")
+                                            print("Schema validation error: \(error.localizedDescription)")
+                                            completion(false)
+                                        }
+                                    }
+                                }
+
+                                operation.queryResultBlock = { result in
+                                    DispatchQueue.main.async {
+                                        switch result {
+                                        case .success:
+                                            print("Schema validation: PublicRecipeReport query completed")
+                                        case .failure(let error):
+                                            if let ckError = error as? CKError, ckError.code == .unknownItem {
+                                                self.errorMessage = "Report type not found. Please ensure the database schema is correct."
+                                                self.accessibilityAnnouncement = self.errorMessage
+                                                print("Schema validation failed: PublicRecipeReport not found - \(error.localizedDescription)")
+                                                completion(false)
+                                                return
+                                            }
+                                            self.errorMessage = "Failed to validate schema: \(error.localizedDescription)"
+                                            self.accessibilityAnnouncement = self.errorMessage
+                                            print("Schema validation error: \(error.localizedDescription)")
                                             completion(false)
                                             return
                                         }
-                                        self.errorMessage = "Failed to validate schema: \(error.localizedDescription)"
-                                        self.accessibilityAnnouncement = self.errorMessage
-                                        print("Schema validation error: \(error.localizedDescription)")
-                                        completion(false)
-                                        return
-                                    }
 
-                                    // Delete existing subscription to avoid conflicts
-                                    self.publicDatabase.delete(withSubscriptionID: subscriptionID) { _, error in
-                                        if let error = error, (error as? CKError)?.code != .unknownItem {
-                                            DispatchQueue.main.async {
-                                                self.errorMessage = "Failed to clear existing subscription: \(error.localizedDescription)"
-                                                self.accessibilityAnnouncement = self.errorMessage
-                                                print("Failed to delete existing subscription: \(error.localizedDescription)")
-                                                completion(false)
-                                            }
-                                            return
-                                        }
-
-                                        // Create new subscription
-                                        let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
-                                        let predicate = NSPredicate(format: "___createdBy == %@", userReference)
-                                        let subscription = CKQuerySubscription(
-                                            recordType: "PublicRecipeReport",
-                                            predicate: predicate,
-                                            subscriptionID: subscriptionID,
-                                            options: [.firesOnRecordUpdate]
-                                        )
-
-                                        let notificationInfo = CKSubscription.NotificationInfo()
-                                        notificationInfo.title = "Report Status Update"
-                                        notificationInfo.alertBody = "Your report status has changed."
-                                        subscription.notificationInfo = notificationInfo
-
-                                        func saveSubscription(retryCount: Int = 0, attempt: Int = 0) {
-                                            if attempt == 1 {
-                                                // First fallback: Use status only
-                                                notificationInfo.desiredKeys = ["status"]
-                                                notificationInfo.alertBody = "Your report status is now %1$@!"
-                                            } else if attempt == 2 {
-                                                // Second fallback: Use recipeName and status
-                                                notificationInfo.desiredKeys = ["recipeName", "status"]
-                                                notificationInfo.alertBody = "Your report for %1$@ is now %2$@!"
-                                            }
-
-                                            self.publicDatabase.save(subscription) { _, error in
+                                        // Delete existing subscription to avoid conflicts
+                                        self.publicDatabase.delete(withSubscriptionID: subscriptionID) { _, error in
+                                            if let error = error, (error as? CKError)?.code != .unknownItem {
                                                 DispatchQueue.main.async {
-                                                    if let error = error as? CKError {
-                                                        switch error.code {
-                                                        case .badDatabase:
-                                                            self.errorMessage = "Invalid CloudKit database. Please check the container configuration."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription error: Bad database - \(error.localizedDescription)")
-                                                        case .permissionFailure, .notAuthenticated:
-                                                            self.errorMessage = "Please sign in to iCloud to enable notifications."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription error: Permission failure - \(error.localizedDescription)")
-                                                        case .networkFailure, .networkUnavailable:
-                                                            self.errorMessage = "Network error. Please check your internet connection and try again."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription error: Network issue - \(error.localizedDescription)")
-                                                        case .serverRejectedRequest:
-                                                            self.errorMessage = "Server rejected the request. Please try again later."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription error: Server rejected - \(error.localizedDescription)")
-                                                        case .quotaExceeded:
-                                                            self.errorMessage = "CloudKit subscription quota exceeded. Please contact support."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription error: Quota exceeded - \(error.localizedDescription)")
-                                                        case .badContainer:
-                                                            self.errorMessage = "Invalid CloudKit container. Check the iCloud.craftifydb configuration."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription error: Bad container - \(error.localizedDescription)")
-                                                        case .unknownItem:
-                                                            self.errorMessage = "Report type not found. Please ensure the database schema is correct."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription error: Unknown item - \(error.localizedDescription)")
-                                                        case .partialFailure:
-                                                            if let serverError = error.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error],
-                                                               serverError.values.contains(where: { ($0 as? CKError)?.code == .serverRecordChanged }) {
-                                                                self.errorMessage = nil
-                                                                self.accessibilityAnnouncement = "Notifications already enabled"
-                                                                print("Subscription already exists (partial failure): \(subscriptionID)")
-                                                                completion(true)
-                                                            } else {
-                                                                self.errorMessage = "Failed to enable notifications: Partial failure - \(error.localizedDescription)"
+                                                    self.errorMessage = "Failed to clear existing subscription: \(error.localizedDescription)"
+                                                    self.accessibilityAnnouncement = self.errorMessage
+                                                    print("Failed to delete existing subscription: \(error.localizedDescription)")
+                                                    completion(false)
+                                                }
+                                                return
+                                            }
+
+                                            // Create new subscription
+                                            let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
+                                            let predicate = NSPredicate(format: "___createdBy == %@", userReference)
+                                            let subscription = CKQuerySubscription(
+                                                recordType: "PublicRecipeReport",
+                                                predicate: predicate,
+                                                subscriptionID: subscriptionID,
+                                                options: [.firesOnRecordUpdate]
+                                            )
+
+                                            let notificationInfo = CKSubscription.NotificationInfo()
+                                            notificationInfo.title = "Report Status Update"
+                                            notificationInfo.alertBody = "Your report status has changed."
+                                            notificationInfo.soundName = "default"
+                                            subscription.notificationInfo = notificationInfo
+
+                                            func saveSubscription(retryCount: Int = 0, attempt: Int = 0) {
+                                                if attempt == 1 {
+                                                    // First fallback: Use status only
+                                                    notificationInfo.desiredKeys = ["status"]
+                                                    notificationInfo.alertBody = "Your report status is now %1$@!"
+                                                } else if attempt == 2 {
+                                                    // Second fallback: Use recipeName and status
+                                                    notificationInfo.desiredKeys = ["recipeName", "status"]
+                                                    notificationInfo.alertBody = "Your report for %1$@ is now %2$@!"
+                                                } else if attempt == 3 {
+                                                    // Third fallback: No desiredKeys, minimal notification
+                                                    notificationInfo.desiredKeys = nil
+                                                    notificationInfo.alertBody = "A report status has changed."
+                                                } else if attempt == 4 {
+                                                    // Fourth fallback: Minimal notificationInfo
+                                                    notificationInfo.desiredKeys = nil
+                                                    notificationInfo.alertBody = nil
+                                                    notificationInfo.title = "Craftify Update"
+                                                    notificationInfo.soundName = "default"
+                                                }
+
+                                                self.publicDatabase.save(subscription) { _, error in
+                                                    DispatchQueue.main.async {
+                                                        if let error = error as? CKError {
+                                                            let retryAfter = error.userInfo[CKErrorRetryAfterKey] as? Double ?? 3.0
+                                                            switch error.code {
+                                                            case .badDatabase:
+                                                                self.errorMessage = "Invalid CloudKit database. Please check the container configuration."
                                                                 self.accessibilityAnnouncement = self.errorMessage
-                                                                print("Subscription error: Partial failure - \(error.localizedDescription)")
-                                                                completion(false)
-                                                            }
-                                                        case .invalidArguments:
-                                                            if attempt < 2 && retryCount < 1 {
-                                                                print("Retrying subscription creation (attempt \(attempt + 1)) due to invalid arguments: \(error.localizedDescription)")
+                                                                print("Subscription error: Bad database - \(error.localizedDescription)")
+                                                            case .permissionFailure, .notAuthenticated:
+                                                                self.errorMessage = "Please sign in to iCloud to enable notifications."
+                                                                self.accessibilityAnnouncement = self.errorMessage
+                                                                print("Subscription error: Permission failure - \(error.localizedDescription)")
+                                                            case .networkFailure, .networkUnavailable:
+                                                                self.errorMessage = "Network error. Please check your internet connection and try again."
+                                                                self.accessibilityAnnouncement = self.errorMessage
+                                                                print("Subscription error: Network issue - \(error.localizedDescription)")
+                                                            case .serverRejectedRequest:
+                                                                self.errorMessage = "Server rejected the request. Please try again later."
+                                                                self.accessibilityAnnouncement = self.errorMessage
+                                                                print("Subscription error: Server rejected - \(error.localizedDescription)")
+                                                            case .quotaExceeded:
+                                                                self.errorMessage = "CloudKit subscription quota exceeded. Please contact support."
+                                                                self.accessibilityAnnouncement = self.errorMessage
+                                                                print("Subscription error: Quota exceeded - \(error.localizedDescription)")
+                                                            case .badContainer:
+                                                                self.errorMessage = "Invalid CloudKit container. Check the iCloud.craftifydb configuration."
+                                                                self.accessibilityAnnouncement = self.errorMessage
+                                                                print("Subscription error: Bad container - \(error.localizedDescription)")
+                                                            case .unknownItem:
+                                                                self.errorMessage = "Report type not found. Please ensure the database schema is correct."
+                                                                self.accessibilityAnnouncement = self.errorMessage
+                                                                print("Subscription error: Unknown item - \(error.localizedDescription)")
+                                                            case .partialFailure:
+                                                                if let serverError = error.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error],
+                                                                   serverError.values.contains(where: { ($0 as? CKError)?.code == .serverRecordChanged }) {
+                                                                    self.errorMessage = nil
+                                                                    self.accessibilityAnnouncement = "Notifications already enabled"
+                                                                    print("Subscription already exists (partial failure): \(subscriptionID)")
+                                                                    completion(true)
+                                                                } else {
+                                                                    self.errorMessage = "Failed to enable notifications: Partial failure - \(error.localizedDescription)"
+                                                                    self.accessibilityAnnouncement = self.errorMessage
+                                                                    print("Subscription error: Partial failure - \(error.localizedDescription)")
+                                                                    completion(false)
+                                                                }
+                                                            case .invalidArguments:
+                                                                if attempt < 4 && retryCount < 3 {
+                                                                    print("Retrying subscription creation (attempt \(attempt + 1), retry \(retryCount + 1)) due to invalid arguments: \(error.localizedDescription)")
+                                                                    print("Error userInfo: \(error.userInfo)")
+                                                                    if let underlyingError = error.userInfo[NSUnderlyingErrorKey] as? Error {
+                                                                        print("Underlying error: \(underlyingError.localizedDescription)")
+                                                                    }
+                                                                    print("Retry after: \(retryAfter) seconds")
+                                                                    DispatchQueue.global().asyncAfter(deadline: .now() + retryAfter) {
+                                                                        saveSubscription(retryCount: retryCount + 1, attempt: attempt + 1)
+                                                                    }
+                                                                    return
+                                                                }
+                                                                self.errorMessage = "Failed to enable notifications: Invalid subscription configuration."
+                                                                self.accessibilityAnnouncement = self.errorMessage
+                                                                print("Subscription error: Invalid arguments - \(error.localizedDescription)")
                                                                 print("Error userInfo: \(error.userInfo)")
                                                                 if let underlyingError = error.userInfo[NSUnderlyingErrorKey] as? Error {
                                                                     print("Underlying error: \(underlyingError.localizedDescription)")
                                                                 }
-                                                                DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
-                                                                    saveSubscription(retryCount: retryCount + 1, attempt: attempt + 1)
-                                                                }
-                                                                return
+                                                                completion(false)
+                                                            default:
+                                                                self.errorMessage = "Failed to enable notifications: \(error.localizedDescription)"
+                                                                self.accessibilityAnnouncement = self.errorMessage
+                                                                print("Subscription error: \(error.localizedDescription)")
+                                                                completion(false)
                                                             }
-                                                            self.errorMessage = "Failed to enable notifications: Invalid subscription configuration."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription error: Invalid arguments - \(error.localizedDescription)")
-                                                            print("Error userInfo: \(error.userInfo)")
-                                                            if let underlyingError = error.userInfo[NSUnderlyingErrorKey] as? Error {
-                                                                print("Underlying error: \(underlyingError.localizedDescription)")
-                                                            }
-                                                            completion(false)
-                                                        default:
+                                                        } else if let error = error {
                                                             self.errorMessage = "Failed to enable notifications: \(error.localizedDescription)"
                                                             self.accessibilityAnnouncement = self.errorMessage
                                                             print("Subscription error: \(error.localizedDescription)")
                                                             completion(false)
+                                                        } else {
+                                                            self.errorMessage = nil
+                                                            self.accessibilityAnnouncement = "Notifications enabled successfully"
+                                                            print("Subscription created successfully: \(subscriptionID)")
+                                                            completion(true)
                                                         }
-                                                    } else if let error = error {
-                                                        self.errorMessage = "Failed to enable notifications: \(error.localizedDescription)"
-                                                        self.accessibilityAnnouncement = self.errorMessage
-                                                        print("Subscription error: \(error.localizedDescription)")
-                                                        completion(false)
-                                                    } else {
-                                                        self.errorMessage = nil
-                                                        self.accessibilityAnnouncement = "Notifications enabled successfully"
-                                                        print("Subscription created successfully: \(subscriptionID)")
-                                                        completion(true)
                                                     }
                                                 }
                                             }
-                                        }
 
-                                        saveSubscription()
+                                            saveSubscription()
+                                        }
                                     }
                                 }
-                            }
 
-                            self.publicDatabase.add(operation)
+                                self.publicDatabase.add(operation)
+                            }
                         }
                     }
                 }
