@@ -716,19 +716,27 @@ class DataManager: ObservableObject {
             return
         }
 
-        // Check iCloud account status
-        container.accountStatus { [weak self] status, error in
+        // Check iCloud account status and fetch user record ID
+        container.fetchUserRecordID { [weak self] userRecordID, error in
             guard let self = self else {
                 completion(false)
                 return
             }
 
             DispatchQueue.main.async {
-                guard status == .available else {
-                    let message = error?.localizedDescription ?? "Please sign in to iCloud to enable notifications."
-                    self.errorMessage = message
-                    self.accessibilityAnnouncement = message
-                    print("Subscription failed: iCloud account status \(status.rawValue), error: \(message)")
+                if let error = error {
+                    let errorType = self.errorType(for: error)
+                    self.errorMessage = "Failed to fetch user ID: \(errorType.rawValue)"
+                    self.accessibilityAnnouncement = self.errorMessage
+                    print("Subscription failed: Fetch user ID error - \(errorType.rawValue)")
+                    completion(false)
+                    return
+                }
+
+                guard let userRecordID = userRecordID else {
+                    self.errorMessage = ErrorType.userIdentification.rawValue
+                    self.accessibilityAnnouncement = self.errorMessage
+                    print("Subscription failed: User record ID not found")
                     completion(false)
                     return
                 }
@@ -747,7 +755,8 @@ class DataManager: ObservableObject {
                         }
                     } else if let error = error as? CKError, error.code == .unknownItem {
                         // No subscription, create a new one
-                        let predicate = NSPredicate(format: "creatorUserRecordID == %@", CKCurrentUserDefaultName)
+                        let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
+                        let predicate = NSPredicate(format: "___createdBy == %@", userReference)
                         let subscription = CKQuerySubscription(
                             recordType: "PublicRecipeReport",
                             predicate: predicate,
@@ -808,6 +817,10 @@ class DataManager: ObservableObject {
                                             print("Subscription error: Partial failure - \(error.localizedDescription)")
                                             completion(false)
                                         }
+                                    case .invalidArguments:
+                                        self.errorMessage = "Invalid subscription configuration. Please ensure the report type and fields are correct."
+                                        self.accessibilityAnnouncement = self.errorMessage
+                                        print("Subscription error: Invalid arguments - \(error.localizedDescription)")
                                     default:
                                         self.errorMessage = "Failed to enable notifications: \(error.localizedDescription)"
                                         self.accessibilityAnnouncement = self.errorMessage

@@ -77,7 +77,7 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 76-78", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 76-79", changes: [
         "APN support added for report updates",
         "Privacy policy URL button added",
         "Image assets added"
@@ -86,8 +86,8 @@ let releaseNotes: [ReleaseNote] = [
         "Major report recipes issues improvements",
         "Privacy policy & data control added",
         "Network status added",
-        "UI fixes",
-        "Image assets added"
+        "Image assets added",
+        "UI fixes"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 58-60", changes: [
         "Accent themes added",
@@ -149,30 +149,30 @@ let releaseNotes: [ReleaseNote] = [
     ReleaseNote(version: "Version 1.0 - Build 24", changes: [
         "Added: RecipeDetailView now shows more info regarding which utility block needs to be used",
         "CloudKit Container expanded with new strings for optional remarks",
-        "Added: Image assets",
+        "Image assets added",
         "Asynchronous loading"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 20-23", changes: [
         "Added: Search on Categories",
         "Added: Basic LaunchScreen",
         "Added: Collapsible Craftify Picks",
-        "Added: Image assets",
+        "Image assets added",
         "Removed: Share button in the RecipeDetailView",
         "Updated Favorites when no favorites are added yet",
         "Updated Image assets naming"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 14-19", changes: [
         "Added: Data management in More",
-        "Added: Image Assets",
+        "Image assets added",
         "UI fixes"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 11-13", changes: [
         "CloudKit support added",
-        "Added: Local cache",
-        "Added: Sync info in More"
+        "Local cache added",
+        "Sync info added in More"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 1-10", changes: [
-        "Initial release of Craftify for Minecraft.",
+        "Initial build of Craftify for Minecraft.",
         "Recipe management and favorite syncing via CloudKit.",
         "Improved UI for crafting grid and recipe details.",
         "Enhanced haptic feedback and smooth transitions."
