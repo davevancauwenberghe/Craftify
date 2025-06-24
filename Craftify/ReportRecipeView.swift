@@ -103,195 +103,6 @@ struct ReportRecipeView: View {
         }
     }
 
-    @ViewBuilder
-    private var categoryPickerContent: some View {
-        Text("Select category").tag("")
-        ForEach(categories, id: \.self) { cat in
-            Text(cat).tag(cat)
-        }
-    }
-
-    private var categoryPicker: some View {
-        Picker("Category", selection: $selectedCategory) {
-            categoryPickerContent
-        }
-        .font(.body)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, minHeight: fieldHeight)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.userAccentColor, lineWidth: 2)
-        )
-        .pickerStyle(.menu)
-        .accessibilityLabel("Category")
-        .accessibilityHint("Select the category of the missing recipe")
-    }
-
-    private var recipeErrorCategoryPicker: some View {
-        Picker("Category", selection: $recipeErrorCategory) {
-            categoryPickerContent
-        }
-        .font(.body)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, minHeight: fieldHeight)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.userAccentColor, lineWidth: 2)
-        )
-        .pickerStyle(.menu)
-        .accessibilityLabel("Category")
-        .accessibilityHint("Select the category of the recipe with an error")
-    }
-
-    private var recipeNameTextField: some View {
-        TextField("Recipe name", text: $recipeName)
-            .font(.body)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, minHeight: fieldHeight)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 0)) // No individual border
-            .onChange(of: recipeName) { _, newValue in
-                let filtered = newValue.filter { allowedCharacters.contains($0.unicodeScalars.first!) }
-                if filtered.count > maxRecipeNameLength {
-                    recipeName = String(filtered.prefix(maxRecipeNameLength))
-                } else {
-                    recipeName = filtered
-                }
-            }
-            .accessibilityLabel("Recipe name")
-            .accessibilityHint("Enter the name of the missing recipe using only letters, numbers, and spaces")
-    }
-
-    private var recipeErrorNameTextField: some View {
-        TextField("Recipe name", text: $recipeErrorName)
-            .font(.body)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, minHeight: fieldHeight)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 0)) // No individual border
-            .onChange(of: recipeErrorName) { _, newValue in
-                let filtered = newValue.filter { allowedCharacters.contains($0.unicodeScalars.first!) }
-                if filtered.count > maxRecipeNameLength {
-                    recipeErrorName = String(filtered.prefix(maxRecipeNameLength))
-                } else {
-                    recipeErrorName = filtered
-                }
-            }
-            .accessibilityLabel("Recipe name")
-            .accessibilityHint("Enter the name of the recipe with an error using only letters, numbers, and spaces")
-    }
-
-    private var additionalInfoView: some View {
-        ZStack(alignment: .topLeading) {
-            Text("Add details...")
-                .font(.subheadline)
-                .foregroundColor(.secondary.opacity(additionalInfo.isEmpty ? 0.7 : 0))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .onChange(of: additionalInfo) { _, _ in
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        // Opacity updated via binding
-                    }
-                }
-            TextEditorRepresentable(text: $additionalInfo)
-                .font(.body)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity, minHeight: fieldHeight * 2)
-                .onChange(of: additionalInfo) { _, newValue in
-                    if newValue.count > maxAdditionalInfoLength {
-                        additionalInfo = String(newValue.prefix(maxAdditionalInfoLength))
-                    }
-                }
-        }
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 0)) // No individual border
-        .accessibilityLabel("Additional Information")
-        .accessibilityHint("Enter details about the missing recipe or error, up to 500 characters")
-        .accessibilityValue(additionalInfo.isEmpty ? "No details entered" : additionalInfo)
-    }
-
-    private var combinedInputFields: some View {
-        VStack(spacing: 0) {
-            if reportType == .missingRecipe {
-                recipeNameTextField
-                Divider()
-                    .background(Color.gray.opacity(0.3))
-                additionalInfoView
-            } else {
-                recipeErrorNameTextField
-                Divider()
-                    .background(Color.gray.opacity(0.3))
-                additionalInfoView
-            }
-
-            HStack {
-                Spacer()
-                Text("\(additionalInfo.count)/\(maxAdditionalInfoLength)")
-                    .font(.caption)
-                    .foregroundColor(additionalInfo.count > maxAdditionalInfoLength ? .red : .secondary)
-                    .padding(.trailing, 16)
-                    .padding(.vertical, 4)
-                    .accessibilityLabel("Character count: \(additionalInfo.count) out of \(maxAdditionalInfoLength)")
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.userAccentColor, lineWidth: 2)
-        )
-    }
-
-    private var reportTypeToggle: some View {
-        HStack(spacing: 8) {
-            Button(action: {
-                withAnimation(.easeInOut) {
-                    reportType = .missingRecipe
-                }
-            }) {
-                Text("Missing Recipe")
-                    .font(.subheadline)
-                    .foregroundColor(reportType == .missingRecipe ? .white : Color.userAccentColor)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity, minHeight: 36)
-                    .background(reportType == .missingRecipe ? Color.userAccentColor : Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-            .accessibilityLabel("Report Missing Recipe")
-            .accessibilityHint("Select to report a missing recipe")
-            .accessibilityValue(reportType == .missingRecipe ? "Selected" : "Not selected")
-
-            Button(action: {
-                withAnimation(.easeInOut) {
-                    reportType = .recipeError
-                }
-            }) {
-                Text("Recipe Error")
-                    .font(.subheadline)
-                    .foregroundColor(reportType == .recipeError ? .white : Color.userAccentColor)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity, minHeight: 36)
-                    .background(reportType == .recipeError ? Color.userAccentColor : Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-            .accessibilityLabel("Report Recipe Error")
-            .accessibilityHint("Select to report an error in a recipe")
-            .accessibilityValue(reportType == .recipeError ? "Selected" : "Not selected")
-        }
-    }
-
     var body: some View {
         NavigationStack {
             ZStack {
@@ -314,15 +125,12 @@ struct ReportRecipeView: View {
                         if viewMode == .submitReport {
                             VStack(alignment: .leading, spacing: 16) {
                                 reportTypeToggle
-
                                 if reportType == .missingRecipe {
                                     categoryPicker
                                 } else {
                                     recipeErrorCategoryPicker
                                 }
-
                                 combinedInputFields
-
                                 if let message = submissionCooldownMessage {
                                     Text(message)
                                         .font(.subheadline)
@@ -331,7 +139,6 @@ struct ReportRecipeView: View {
                                         .padding(.horizontal, 16)
                                         .accessibilityLabel(message)
                                 }
-
                                 Button(action: {
                                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                     if isFormIncomplete {
@@ -387,7 +194,6 @@ struct ReportRecipeView: View {
                                             .padding(.horizontal, 16)
                                             .accessibilityLabel("Error: \(errorMessage)")
                                     }
-
                                     if isLoadingReports {
                                         ProgressView()
                                             .progressViewStyle(.circular)
@@ -410,7 +216,6 @@ struct ReportRecipeView: View {
                                                         .background(Color(.systemGray5))
                                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                                 }
-
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text("Recipe Name")
                                                         .font(.subheadline)
@@ -418,7 +223,6 @@ struct ReportRecipeView: View {
                                                     Text(report.recipeName)
                                                         .font(.body)
                                                 }
-
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text("Category")
                                                         .font(.subheadline)
@@ -426,7 +230,6 @@ struct ReportRecipeView: View {
                                                     Text(report.category)
                                                         .font(.body)
                                                 }
-
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text("Details")
                                                         .font(.subheadline)
@@ -434,7 +237,6 @@ struct ReportRecipeView: View {
                                                     Text(report.description)
                                                         .font(.body)
                                                 }
-
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text("Submitted")
                                                         .font(.subheadline)
@@ -442,7 +244,6 @@ struct ReportRecipeView: View {
                                                     Text(formattedDate(report.timestamp))
                                                         .font(.body)
                                                 }
-
                                                 Button(action: {
                                                     reportToDelete = report
                                                     showDeleteConfirmation = true
@@ -488,7 +289,6 @@ struct ReportRecipeView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .id(accentColorPreference)
-
                 if showSubmissionPopup {
                     SubmissionPopup(
                         state: submissionState,
@@ -510,7 +310,6 @@ struct ReportRecipeView: View {
                     )
                     .animation(.easeInOut, value: showSubmissionPopup)
                 }
-
                 if showDeleteConfirmationPopup {
                     DeleteConfirmationPopup(
                         message: deleteConfirmationMessage ?? "",
@@ -521,7 +320,6 @@ struct ReportRecipeView: View {
                     )
                     .animation(.easeInOut, value: showDeleteConfirmationPopup)
                 }
-
                 if showNotificationPermissionPrompt {
                     NotificationPermissionPopup(
                         onAllow: {
@@ -588,196 +386,196 @@ struct ReportRecipeView: View {
                 fetchReportStatuses()
             }
         }
+    }
 
-    struct NotificationPermissionPopup: View {
-        let onAllow: () -> Void
-        let onDeny: () -> Void
-
-        var body: some View {
-            ZStack {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        onDeny()
-                    }
-
-                VStack(spacing: 20) {
-                    Image(systemName: "bell.fill")
-                        .resizable()
-                        .frame(width: 60, height: 60)
-                        .foregroundColor(Color.userAccentColor)
-
-                    Text("Enable Notifications")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-
-                    Text("Would you like to receive notifications when the status of your reports changes (e.g., from Pending to Resolved)?")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-
-                    HStack(spacing: 16) {
-                        Button(action: onDeny) {
-                            Text("Deny")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.gray)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-
-                        Button(action: onAllow) {
-                            Text("Allow")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.userAccentColor)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                    .padding(.horizontal, 40)
-                }
-                .padding()
-                .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .shadow(radius: 10)
-                .frame(maxWidth: 300)
-                .padding()
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Enable notifications prompt: Would you like to receive notifications when the status of your reports changes?")
-                .accessibilityHint("Select Allow to enable notifications or Deny to disable them")
-                .accessibilityAddTraits(.isModal)
-            }
+    @ViewBuilder
+    var categoryPickerContent: some View {
+        Text("Select category").tag("")
+        ForEach(categories, id: \.self) { cat in
+            Text(cat).tag(cat)
         }
     }
 
-    struct SubmissionPopup: View {
-        let state: SubmissionState
-        let onDismiss: () -> Void
+    var categoryPicker: some View {
+        Picker("Category", selection: $selectedCategory) {
+            categoryPickerContent
+        }
+        .font(.body)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: fieldHeight)
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.userAccentColor, lineWidth: 2)
+        )
+        .pickerStyle(.menu)
+        .accessibilityLabel("Category")
+        .accessibilityHint("Select the category of the missing recipe")
+    }
 
-        var body: some View {
-            ZStack {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        if state == .submitting {
-                            // Don't dismiss while submitting
-                        } else {
-                            onDismiss()
-                        }
-                    }
+    var recipeErrorCategoryPicker: some View {
+        Picker("Category", selection: $recipeErrorCategory) {
+            categoryPickerContent
+        }
+        .font(.body)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: fieldHeight)
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.userAccentColor, lineWidth: 2)
+        )
+        .pickerStyle(.menu)
+        .accessibilityLabel("Category")
+        .accessibilityHint("Select the category of the recipe with an error")
+    }
 
-                VStack(spacing: 20) {
-                    switch state {
-                    case .submitting:
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(Color.userAccentColor)
-                            .scaleEffect(1.5)
-                        Text("Sending report...")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+    var recipeNameTextField: some View {
+        TextField("Recipe name", text: $recipeName)
+            .font(.body)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: fieldHeight)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 0)) // No individual border
+            .onChange(of: recipeName) { _, newValue in
+                let filtered = newValue.filter { allowedCharacters.contains($0.unicodeScalars.first!) }
+                if filtered.count > maxRecipeNameLength {
+                    recipeName = String(filtered.prefix(maxRecipeNameLength))
+                } else {
+                    recipeName = filtered
+                }
+            }
+            .accessibilityLabel("Recipe name")
+            .accessibilityHint("Enter the name of the missing recipe using only letters, numbers, and spaces")
+    }
 
-                    case .success(let reportType, let recipeName, let category):
-                        Image(systemName: "checkmark.circle.fill")
-                            .resizable()
-                            .frame(width: 60, height: 60)
-                            .foregroundColor(.green)
-                        Text("Thanks for submitting your \(reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error") report for '\(recipeName)' in the \(category) category!")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                            .multilineTextAlignment(.center)
+    var recipeErrorNameTextField: some View {
+        TextField("Recipe name", text: $recipeErrorName)
+            .font(.body)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: fieldHeight)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 0)) // No individual border
+            .onChange(of: recipeErrorName) { _, newValue in
+                let filtered = newValue.filter { allowedCharacters.contains($0.unicodeScalars.first!) }
+                if filtered.count > maxRecipeNameLength {
+                    recipeErrorName = String(filtered.prefix(maxRecipeNameLength))
+                } else {
+                    recipeErrorName = filtered
+                }
+            }
+            .accessibilityLabel("Recipe name")
+            .accessibilityHint("Enter the name of the recipe with an error using only letters, numbers, and spaces")
+    }
 
-                    case .failure(let errorMessage):
-                        Image(systemName: "xmark.circle.fill")
-                            .resizable()
-                            .frame(width: 60, height: 60)
-                            .foregroundColor(.red)
-                        Text("Failed to submit report")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        Text(errorMessage)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    case .idle:
-                        EmptyView()
-                    }
-
-                    if state != .submitting {
-                        Button(action: onDismiss) {
-                            Text("OK")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.userAccentColor)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        .padding(.horizontal, 40)
+    var additionalInfoView: some View {
+        ZStack(alignment: .topLeading) {
+            Text("Add details...")
+                .font(.subheadline)
+                .foregroundColor(.secondary.opacity(additionalInfo.isEmpty ? 0.7 : 0))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .onChange(of: additionalInfo) { _, _ in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        // Opacity updated via binding
                     }
                 }
-                .padding()
-                .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .shadow(radius: 10)
-                .frame(maxWidth: 300)
-                .padding()
+            TextEditorRepresentable(text: $additionalInfo)
+                .font(.body)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, minHeight: fieldHeight * 2)
+                .onChange(of: additionalInfo) { _, newValue in
+                    if newValue.count > maxAdditionalInfoLength {
+                        additionalInfo = String(newValue.prefix(maxAdditionalInfoLength))
+                    }
+                }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 0)) // No individual border
+        .accessibilityLabel("Additional Information")
+        .accessibilityHint("Enter details about the missing recipe or error, up to 500 characters")
+        .accessibilityValue(additionalInfo.isEmpty ? "No details entered" : additionalInfo)
+    }
+
+    var combinedInputFields: some View {
+        VStack(spacing: 0) {
+            if reportType == .missingRecipe {
+                recipeNameTextField
+                Divider()
+                    .background(Color.gray.opacity(0.3))
+                additionalInfoView
+            } else {
+                recipeErrorNameTextField
+                Divider()
+                    .background(Color.gray.opacity(0.3))
+                additionalInfoView
             }
+            HStack {
+                Spacer()
+                Text("\(additionalInfo.count)/\(maxAdditionalInfoLength)")
+                    .font(.caption)
+                    .foregroundColor(additionalInfo.count > maxAdditionalInfoLength ? .red : .secondary)
+                    .padding(.trailing, 16)
+                    .padding(.vertical, 4)
+                    .accessibilityLabel("Character count: \(additionalInfo.count) out of \(maxAdditionalInfoLength)")
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.userAccentColor, lineWidth: 2)
+        )
+    }
+
+    var reportTypeToggle: some View {
+        HStack(spacing: 8) {
+            Button(action: {
+                withAnimation(.easeInOut) {
+                    reportType = .missingRecipe
+                }
+            }) {
+                Text("Missing Recipe")
+                    .font(.subheadline)
+                    .foregroundColor(reportType == .missingRecipe ? .white : Color.userAccentColor)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .background(reportType == .missingRecipe ? Color.userAccentColor : Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .accessibilityLabel("Report Missing Recipe")
+            .accessibilityHint("Select to report a missing recipe")
+            .accessibilityValue(reportType == .missingRecipe ? "Selected" : "Not selected")
+            Button(action: {
+                withAnimation(.easeInOut) {
+                    reportType = .recipeError
+                }
+            }) {
+                Text("Recipe Error")
+                    .font(.subheadline)
+                    .foregroundColor(reportType == .recipeError ? .white : Color.userAccentColor)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .background(reportType == .recipeError ? Color.userAccentColor : Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .accessibilityLabel("Report Recipe Error")
+            .accessibilityHint("Select to report an error in a recipe")
+            .accessibilityValue(reportType == .recipeError ? "Selected" : "Not selected")
         }
     }
 
-    struct DeleteConfirmationPopup: View {
-        let message: String
-        let onDismiss: () -> Void
-
-        var body: some View {
-            ZStack {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        onDismiss()
-                    }
-
-                VStack(spacing: 20) {
-                    Image(systemName: message.contains("Failed") ? "xmark.circle.fill" : "checkmark.circle.fill")
-                        .resizable()
-                        .frame(width: 60, height: 60)
-                        .foregroundColor(message.contains("Failed") ? .red : .green)
-
-                    Text(message)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-
-                    Button(action: onDismiss) {
-                        Text("OK")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color.userAccentColor)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .padding(.horizontal, 40)
-                }
-                .padding()
-                .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .shadow(radius: 10)
-                .frame(maxWidth: 300)
-                .padding()
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Delete confirmation: \(message)")
-                .accessibilityAddTraits(.isModal)
-            }
-        }
-    }
-
-    private func formattedDate(_ date: Date) -> String {
+    func formattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
@@ -786,7 +584,7 @@ struct ReportRecipeView: View {
         return formatter.string(from: date)
     }
 
-    private func resetForm() {
+    func resetForm() {
         recipeName = ""
         selectedCategory = ""
         recipeErrorName = ""
@@ -794,12 +592,12 @@ struct ReportRecipeView: View {
         additionalInfo = ""
     }
 
-    private func updateSubmissionCooldownMessage() {
+    func updateSubmissionCooldownMessage() {
         let remaining = remainingSubmissionCooldown
         submissionCooldownMessage = "Please wait \(remaining) second\(remaining == 1 ? "" : "s") before submitting again."
     }
 
-    private func startSubmissionCooldownTimer() {
+    func startSubmissionCooldownTimer() {
         submissionCooldownTimer?.invalidate()
         submissionCooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
             DispatchQueue.main.async {
@@ -815,18 +613,15 @@ struct ReportRecipeView: View {
         }
     }
 
-    private func submitReport() {
+    func submitReport() {
         if isFormIncomplete {
             return
         }
-
         submissionState = .submitting
         showSubmissionPopup = true
-
         let reportTypeString = reportType.rawValue
         let recipeNameValue = reportType == .missingRecipe ? recipeName : recipeErrorName
         let categoryValue = reportType == .missingRecipe ? selectedCategory : recipeErrorCategory
-
         dataManager.submitRecipeReport(
             reportType: reportTypeString,
             recipeName: recipeNameValue,
@@ -852,14 +647,12 @@ struct ReportRecipeView: View {
         }
     }
 
-    private func fetchReportStatuses() {
+    func fetchReportStatuses() {
         guard dataManager.isConnected else {
             isLoadingReports = false
             return
         }
-
         isLoadingReports = true
-
         dataManager.fetchRecipeReports { result in
             DispatchQueue.main.async {
                 self.isLoadingReports = false
@@ -874,7 +667,7 @@ struct ReportRecipeView: View {
         }
     }
 
-    private func deleteReport(_ report: RecipeReport) {
+    func deleteReport(_ report: RecipeReport) {
         withAnimation(.easeInOut(duration: 0.3)) {
             dataManager.deleteRecipeReport(report) { success in
                 DispatchQueue.main.async {
@@ -891,7 +684,7 @@ struct ReportRecipeView: View {
         }
     }
 
-    private func requestNotificationPermission() {
+    func requestNotificationPermission() {
         #if os(iOS)
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             DispatchQueue.main.async {
@@ -914,9 +707,181 @@ struct ReportRecipeView: View {
     }
 }
 
+struct NotificationPermissionPopup: View {
+    let onAllow: () -> Void
+    let onDeny: () -> Void
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    onDeny()
+                }
+            VStack(spacing: 20) {
+                Image(systemName: "bell.fill")
+                    .resizable()
+                    .frame(width: 60, height: 60)
+                    .foregroundColor(Color.userAccentColor)
+                Text("Enable Notifications")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                Text("Would you like to receive notifications when the status of your reports changes (e.g., from Pending to Resolved)?")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                HStack(spacing: 16) {
+                    Button(action: onDeny) {
+                        Text("Deny")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.gray)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    Button(action: onAllow) {
+                        Text("Allow")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.userAccentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+                .padding(.horizontal, 40)
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(radius: 10)
+            .frame(maxWidth: 300)
+            .padding()
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Enable notifications prompt: Would you like to receive notifications when the status of your reports changes?")
+            .accessibilityHint("Select Allow to enable notifications or Deny to disable them")
+            .accessibilityAddTraits(.isModal)
+        }
+    }
+}
+
+struct SubmissionPopup: View {
+    let state: ReportRecipeView.SubmissionState
+    let onDismiss: () -> Void
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    if state == .submitting {
+                        // Don't dismiss while submitting
+                    } else {
+                        onDismiss()
+                    }
+                }
+            VStack(spacing: 20) {
+                switch state {
+                case .submitting:
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(Color.userAccentColor)
+                        .scaleEffect(1.5)
+                    Text("Sending report...")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                case .success(let reportType, let recipeName, let category):
+                    Image(systemName: "checkmark.circle.fill")
+                        .resizable()
+                        .frame(width: 60, height: 60)
+                        .foregroundColor(.green)
+                    Text("Thanks for submitting your \(reportType == "Report Missing Recipe" ? "Missing Recipe" : "Recipe Error") report for '\(recipeName)' in the \(category) category!")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+                case .failure(let errorMessage):
+                    Image(systemName: "xmark.circle.fill")
+                        .resizable()
+                        .frame(width: 60, height: 60)
+                        .foregroundColor(.red)
+                    Text("Failed to submit report")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text(errorMessage)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                case .idle:
+                    EmptyView()
+                }
+                if state != .submitting {
+                    Button(action: onDismiss) {
+                        Text("OK")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.userAccentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .padding(.horizontal, 40)
+                }
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(radius: 10)
+            .frame(maxWidth: 300)
+            .padding()
+        }
+    }
+}
+
+struct DeleteConfirmationPopup: View {
+    let message: String
+    let onDismiss: () -> Void
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    onDismiss()
+                }
+            VStack(spacing: 20) {
+                Image(systemName: message.contains("Failed") ? "xmark.circle.fill" : "checkmark.circle.fill")
+                    .resizable()
+                    .frame(width: 60, height: 60)
+                    .foregroundColor(message.contains("Failed") ? .red : .green)
+                Text(message)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                Button(action: onDismiss) {
+                    Text("OK")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.userAccentColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(.horizontal, 40)
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(radius: 10)
+            .frame(maxWidth: 300)
+            .padding()
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Delete confirmation: \(message)")
+            .accessibilityAddTraits(.isModal)
+        }
+    }
+}
+
 struct TextEditorRepresentable: UIViewRepresentable {
     @Binding var text: String
-
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.font = .preferredFont(forTextStyle: .body)
@@ -925,24 +890,19 @@ struct TextEditorRepresentable: UIViewRepresentable {
         textView.delegate = context.coordinator
         return textView
     }
-
     func updateUIView(_ uiView: UITextView, context: Context) {
         uiView.text = text
         uiView.backgroundColor = UIColor.secondarySystemGroupedBackground
         uiView.font = .preferredFont(forTextStyle: .body)
     }
-
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: TextEditorRepresentable
-
         init(_ parent: TextEditorRepresentable) {
             self.parent = parent
         }
-
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.text ?? ""
         }
