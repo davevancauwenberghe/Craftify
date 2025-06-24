@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import UserNotifications
 
 struct ReportRecipeView: View {
     @EnvironmentObject var dataManager: DataManager
@@ -30,7 +31,10 @@ struct ReportRecipeView: View {
     @State private var submissionCooldownTimer: Timer?
     @State private var showDeleteConfirmationPopup: Bool = false
     @State private var deleteConfirmationMessage: String?
+    @State private var showNotificationPermissionPrompt: Bool = false
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = false
+    @Binding var navigateToMyReports: Bool
 
     private let categories: [String] = [
         "Beds", "Crafting", "Consumables", "Lighting", "Planks",
@@ -40,14 +44,17 @@ struct ReportRecipeView: View {
     private let maxAdditionalInfoLength = 500
     private let submissionCooldownDuration: TimeInterval = 30
     private let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ")
+
     private var fieldHeight: CGFloat {
         horizontalSizeClass == .regular ? 48 : 44
     }
+
     private var remainingSubmissionCooldown: Int {
         guard let lastSubmission = lastSubmissionTime else { return 0 }
         let elapsed = Int(Date().timeIntervalSince(lastSubmission))
         return max(0, Int(submissionCooldownDuration) - elapsed)
     }
+
     private var isSubmissionOnCooldown: Bool {
         remainingSubmissionCooldown > 0
     }
@@ -492,6 +499,11 @@ struct ReportRecipeView: View {
                                 if viewMode == .myReports {
                                     fetchReportStatuses()
                                 }
+                                #if os(iOS)
+                                if !notificationsEnabled {
+                                    showNotificationPermissionPrompt = true
+                                }
+                                #endif
                             }
                             submissionState = .idle
                         }
@@ -508,6 +520,19 @@ struct ReportRecipeView: View {
                         }
                     )
                     .animation(.easeInOut, value: showDeleteConfirmationPopup)
+                }
+
+                if showNotificationPermissionPrompt {
+                    NotificationPermissionPopup(
+                        onAllow: {
+                            requestNotificationPermission()
+                            showNotificationPermissionPrompt = false
+                        },
+                        onDeny: {
+                            showNotificationPermissionPrompt = false
+                        }
+                    )
+                    .animation(.easeInOut, value: showNotificationPermissionPrompt)
                 }
             }
             .navigationTitle("Report Issue")
@@ -536,6 +561,95 @@ struct ReportRecipeView: View {
             }
             .onChange(of: reportType) { _, _ in
                 resetForm()
+            }
+            .onChange(of: notificationsEnabled) { _, enabled in
+                #if os(iOS)
+                if enabled {
+                    dataManager.createReportStatusSubscription { success in
+                        if !success {
+                            DispatchQueue.main.async {
+                                notificationsEnabled = false
+                            }
+                        }
+                    }
+                } else {
+                    dataManager.deleteReportStatusSubscription { _ in }
+                }
+                #endif
+            }
+            .onChange(of: navigateToMyReports) { _, newValue in
+                if newValue {
+                    viewMode = .myReports
+                    fetchReportStatuses()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .navigateToMyReports)) { _ in
+                viewMode = .myReports
+                fetchReportStatuses()
+            }
+        }
+
+    struct NotificationPermissionPopup: View {
+        let onAllow: () -> Void
+        let onDeny: () -> Void
+
+        var body: some View {
+            ZStack {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        onDeny()
+                    }
+
+                VStack(spacing: 20) {
+                    Image(systemName: "bell.fill")
+                        .resizable()
+                        .frame(width: 60, height: 60)
+                        .foregroundColor(Color.userAccentColor)
+
+                    Text("Enable Notifications")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Would you like to receive notifications when the status of your reports changes (e.g., from Pending to Resolved)?")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    HStack(spacing: 16) {
+                        Button(action: onDeny) {
+                            Text("Deny")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.gray)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+
+                        Button(action: onAllow) {
+                            Text("Allow")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.userAccentColor)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                    .padding(.horizontal, 40)
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(radius: 10)
+                .frame(maxWidth: 300)
+                .padding()
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Enable notifications prompt: Would you like to receive notifications when the status of your reports changes?")
+                .accessibilityHint("Select Allow to enable notifications or Deny to disable them")
+                .accessibilityAddTraits(.isModal)
             }
         }
     }
@@ -775,6 +889,28 @@ struct ReportRecipeView: View {
                 }
             }
         }
+    }
+
+    private func requestNotificationPermission() {
+        #if os(iOS)
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            DispatchQueue.main.async {
+                if granted {
+                    self.notificationsEnabled = true
+                    self.dataManager.createReportStatusSubscription { success in
+                        if !success {
+                            self.notificationsEnabled = false
+                        }
+                    }
+                } else {
+                    self.notificationsEnabled = false
+                    if let error = error {
+                        print("Notification permission error: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+        #endif
     }
 }
 

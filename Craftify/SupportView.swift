@@ -1,9 +1,17 @@
+//
+//  SupportView.swift
+//  Craftify
+//
+//  Created by Dave Van Cauwenberghe on 19/05/2025.
+//
+
 import SwiftUI
 
 struct SupportView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showClearDataAlert: Bool = false
+    @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = false
 
     var body: some View {
         List {
@@ -26,6 +34,33 @@ struct SupportView: View {
                 ))
                 .accessibilityLabel("Contact Support")
                 .accessibilityHint("Opens the mail app to contact support")
+
+                #if os(iOS)
+                Toggle(isOn: $notificationsEnabled) {
+                    buttonStyle(title: "Report Status Notifications", systemImage: "bell.fill")
+                }
+                .listRowInsets(EdgeInsets(
+                    top: horizontalSizeClass == .regular ? 12 : 8,
+                    leading: horizontalSizeClass == .regular ? 16 : 12,
+                    bottom: horizontalSizeClass == .regular ? 12 : 8,
+                    trailing: horizontalSizeClass == .regular ? 16 : 12
+                ))
+                .accessibilityLabel("Report Status Notifications")
+                .accessibilityHint("Toggle to enable or disable notifications for report status changes")
+                .onChange(of: notificationsEnabled) { _, enabled in
+                    if enabled {
+                        dataManager.createReportStatusSubscription { success in
+                            if !success {
+                                DispatchQueue.main.async {
+                                    notificationsEnabled = false
+                                }
+                            }
+                        }
+                    } else {
+                        dataManager.deleteReportStatusSubscription { _ in }
+                    }
+                }
+                #endif
             }
 
             Section(header: Text("Data Management")) {
@@ -152,6 +187,7 @@ struct SupportView: View {
                                     Text("• Sync Favorites, Recent Searches, and Recipe Reports across your devices using CloudKit.")
                                     Text("• Store Recipe Reports in CloudKit to improve Craftify’s recipe database.")
                                     Text("• Let you view and manage your reports in the \"My Reports\" section using CloudKit sync.")
+                                    Text("• Send notifications when the status of your reports changes (e.g., from Pending to Resolved), if you enable notifications.")
                                 }
                                 .font(.body)
                             }
@@ -169,6 +205,7 @@ struct SupportView: View {
                                     Text("• Favorites and Recent Searches: Stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
                                     Text("• Recipe Reports: Stored privately in a CloudKit database (accessible only to you via your iCloud account) for the \"My Reports\" feature.")
                                     Text("• Local Recipe Cache: Stored on your device with no personal information.")
+                                    Text("• Notifications: If enabled, minimal data (recipe name and status) is sent via Apple Push Notification Service to notify you of report status changes.")
                                 }
                                 .font(.body)
                             }
@@ -179,7 +216,7 @@ struct SupportView: View {
                                     .fontWeight(.bold)
                                     .accessibilityAddTraits(.isHeader)
 
-                                Text("Craftify does not share your data with third parties. The app uses no third-party dependencies, and all data stays in your iCloud account or in a private CloudKit database (for Recipe Reports, accessible only to you).")
+                                Text("Craftify does not share your data with third parties. The app uses no third-party dependencies, and all data stays in your iCloud account or in a private CloudKit database (for Recipe Reports, accessible only to you). Notifications are sent via Apple’s Push Notification Service, which handles data securely.")
                                     .font(.body)
                             }
 
@@ -215,6 +252,7 @@ struct SupportView: View {
                                     Text("• Clear All Data: Tap \"Clear All Data\" in this section to delete everything, including Favorites, Recent Searches, Recipe Reports, and the local cache.")
                                     Text("• Clear Cache: Use \"Clear Cache\" in the More tab to remove the local cache, keeping iCloud data like Favorites.")
                                     Text("• Recipe Reports: In the \"My Reports\" section of \"Report Issue\", you can view and delete your reports, which also removes them from CloudKit.")
+                                    Text("• Notifications: Toggle \"Report Status Notifications\" in this section to enable or disable notifications for report status changes.")
                                 }
                                 .font(.body)
 
@@ -239,6 +277,7 @@ struct SupportView: View {
 
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("• Using the \"Clear All Data\" button in the Support & Privacy section to remove all data from local storage, iCloud, and CloudKit.")
+                                    Text("• Disabling \"Report Status Notifications\" to prevent notifications.")
                                 }
                                 .font(.body)
                             }
@@ -271,7 +310,7 @@ struct SupportView: View {
                     }
                     .frame(maxHeight: 300)
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Privacy Policy for Craftify, last updated 20 May 2025. Craftify does not collect personal information. We collect Favorites, Recent Searches, and Recipe Reports (stored in iCloud and CloudKit) for syncing across devices. We monitor network connectivity to manage syncing, but this data stays on your device and is not shared. Data is used only for app features like syncing and reporting, with no third-party sharing. We use CloudKit for recipes and reports but only see anonymized metadata. You can manage your data, including clearing everything. Craftify is safe for kids under 13 and complies with COPPA, GDPR, and other laws. Contact us via the Contact Support button.")
+                    .accessibilityLabel("Privacy Policy for Craftify, last updated 20 May 2025. Craftify does not collect personal information. We collect Favorites, Recent Searches, and Recipe Reports (stored in iCloud and CloudKit) for syncing across devices. We monitor network connectivity to manage syncing, but this data stays on your device and is not shared. Data is used only for app features like syncing, reporting, and notifications (if enabled), with no third-party sharing. We use CloudKit for recipes and reports but only see anonymized metadata. You can manage your data, including clearing everything and disabling notifications. Craftify is safe for kids under 13 and complies with COPPA, GDPR, and other laws. Contact us via the Contact Support button.")
                 }
                 .padding(.vertical, 8)
             }

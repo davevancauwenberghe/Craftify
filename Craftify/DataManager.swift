@@ -358,7 +358,6 @@ class DataManager: ObservableObject {
                     self.accessibilityAnnouncement = self.errorMessage
                     completion(.failure(error))
                 } else if let savedRecord = record {
-                    // Log the ___createdBy field to debug
                     if let creatorID = savedRecord["___createdBy"] as? CKRecord.Reference {
                         print("Report created by: \(creatorID.recordID.recordName)")
                     } else {
@@ -378,7 +377,6 @@ class DataManager: ObservableObject {
                         status: "Pending"
                     )
                     self.accessibilityAnnouncement = "Report submitted successfully"
-                    // Reset the report fetch cooldown to ensure immediate fetching
                     self.lastReportStatusFetchTime = nil
                     completion(.success(report))
                 }
@@ -406,7 +404,6 @@ class DataManager: ObservableObject {
         let container = CKContainer(identifier: "iCloud.craftifydb")
         let publicDatabase = container.publicCloudDatabase
 
-        // Fetch the current user's record ID
         container.fetchUserRecordID { [weak self] userRecordID, error in
             guard let self = self else { return }
 
@@ -429,7 +426,6 @@ class DataManager: ObservableObject {
                 return
             }
 
-            // Filter reports by the current user's ___createdBy field
             let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
             let predicate = NSPredicate(format: "___createdBy == %@", userReference)
             let query = CKQuery(recordType: "PublicRecipeReport", predicate: predicate)
@@ -717,6 +713,120 @@ class DataManager: ObservableObject {
             let matchesCategory = selectedCategory == nil || recipe.category == selectedCategory
             let matchesSearch = searchText.isEmpty || recipe.name.lowercased().contains(searchText.lowercased())
             return matchesCategory && matchesSearch
+        }
+    }
+
+    func createReportStatusSubscription(completion: @escaping (Bool) -> Void) {
+        guard isConnected else {
+            DispatchQueue.main.async {
+                self.errorMessage = "No internet connection. Please connect to enable notifications."
+                self.accessibilityAnnouncement = self.errorMessage
+                completion(false)
+            }
+            return
+        }
+
+        let subscriptionID = "ReportStatusChanges"
+        let container = CKContainer(identifier: "iCloud.craftifydb")
+        let privateDatabase = container.privateCloudDatabase
+
+        // Fetch user record ID
+        container.fetchUserRecordID { [weak self] userRecordID, error in
+            guard let self = self else {
+                completion(false)
+                return
+            }
+
+            if let error = error {
+                DispatchQueue.main.async {
+                    let errorType = self.errorType(for: error)
+                    self.errorMessage = "Failed to fetch user ID: \(errorType.rawValue)"
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion(false)
+                }
+                return
+            }
+
+            guard let userRecordID = userRecordID else {
+                DispatchQueue.main.async {
+                    self.errorMessage = ErrorType.userIdentification.rawValue
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion(false)
+                }
+                return
+            }
+
+            // Check if subscription exists
+            privateDatabase.fetch(withSubscriptionID: subscriptionID) { subscription, error in
+                if subscription != nil || (error as? CKError)?.code == .unknownItem {
+                    // Create subscription
+                    let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
+                    let predicate = NSPredicate(format: "___createdBy == %@", userReference)
+                    let subscription = CKQuerySubscription(
+                        recordType: "PublicRecipeReport",
+                        predicate: predicate,
+                        subscriptionID: subscriptionID,
+                        options: [.firesOnRecordUpdate]
+                    )
+
+                    let notificationInfo = CKSubscription.NotificationInfo()
+                    notificationInfo.title = "Report Status Update"
+                    notificationInfo.alertBody = "Your report for %1$@ is now %2$@!"
+                    notificationInfo.shouldSendContentAvailable = true
+                    notificationInfo.desiredKeys = ["recipeName", "status"]
+                    subscription.notificationInfo = notificationInfo
+
+                    privateDatabase.save(subscription) { _, error in
+                        DispatchQueue.main.async {
+                            if let error = error {
+                                let errorType = self.errorType(for: error)
+                                self.errorMessage = "Failed to enable notifications: \(errorType.rawValue)"
+                                self.accessibilityAnnouncement = self.errorMessage
+                                completion(false)
+                            } else {
+                                self.accessibilityAnnouncement = "Notifications enabled successfully"
+                                completion(true)
+                            }
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        let errorType = self.errorType(for: error ?? NSError(domain: "DataManager", code: -1, userInfo: nil))
+                        self.errorMessage = "Failed to check notification settings: \(errorType.rawValue)"
+                        self.accessibilityAnnouncement = self.errorMessage
+                        completion(false)
+                    }
+                }
+            }
+        }
+    }
+
+    func deleteReportStatusSubscription(completion: @escaping (Bool) -> Void) {
+        guard isConnected else {
+            DispatchQueue.main.async {
+                self.errorMessage = "No internet connection. Please connect to disable notifications."
+                self.accessibilityAnnouncement = self.errorMessage
+                completion(false)
+            }
+            return
+        }
+
+        let subscriptionID = "ReportStatusChanges"
+        let container = CKContainer(identifier: "iCloud.craftifydb")
+        let privateDatabase = container.privateCloudDatabase
+
+        privateDatabase.delete(withSubscriptionID: subscriptionID) { _, error in
+            DispatchQueue.main.async {
+                if let error = error, (error as? CKError)?.code != .unknownItem {
+                    let errorType = self.errorType(for: error)
+                    self.errorMessage = "Failed to disable notifications: \(errorType.rawValue)"
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion(false)
+                } else {
+                    self.accessibilityAnnouncement = "Notifications disabled successfully"
+                    completion(true)
+                }
+            }
         }
     }
 }
