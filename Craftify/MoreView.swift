@@ -17,6 +17,8 @@ struct MoreView: View {
     @State private var remainingCooldownTime: Int = 0
     @State private var cooldownTimer: Timer? = nil
     @State private var attemptedSyncWhileOffline: Bool = false
+    @State private var navigationPath = NavigationPath()
+    @Binding var navigateToMyReports: Bool
 
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
@@ -28,14 +30,17 @@ struct MoreView: View {
     }
     
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             List {
                 Section(header: Text("Need Help?")) {
-                    NavigationLink(destination: ReportRecipeView()) {
+                    NavigationLink {
+                        ReportRecipeView(navigateToMyReports: $navigateToMyReports)
+                            .environmentObject(dataManager)
+                    } label: {
                         buttonStyle(title: "Report Issue", systemImage: "envelope.fill")
                     }
                     .accessibilityLabel("Report Issue")
-                    .accessibilityHint("Navigate to report a missing recipe or an error in an existing recipe")
+                    .accessibilityHint("Navigate to report a missing recipe or view your submitted reports")
                 }
                 
                 Section(header: Text("About")) {
@@ -191,11 +196,24 @@ struct MoreView: View {
                     dataManager.accessibilityAnnouncement = "Reconnected to the internet. Retrying sync."
                 }
             }
+            .onChange(of: navigateToMyReports) { _, newValue in
+                if newValue {
+                    navigationPath.append(ReportNavigationDestination.myReports)
+                }
+            }
+            .navigationDestination(for: ReportNavigationDestination.self) { destination in
+                switch destination {
+                case .myReports:
+                    ReportRecipeView(navigateToMyReports: $navigateToMyReports)
+                        .environmentObject(dataManager)
+                }
+            }
             .onDisappear {
                 cooldownTimer?.invalidate()
                 cooldownTimer = nil
                 cooldownMessage = nil
                 remainingCooldownTime = 0
+                navigationPath = NavigationPath() // Reset navigation
             }
         }
     }
@@ -250,6 +268,11 @@ struct MoreView: View {
         }
         .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
     }
+}
+
+// Navigation destination type for programmatic navigation
+enum ReportNavigationDestination: Hashable {
+    case myReports
 }
 
 struct AboutView: View {
