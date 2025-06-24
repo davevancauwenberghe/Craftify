@@ -17,13 +17,7 @@ struct CraftifyApp: App {
     @State private var onboardingOpacity: CGFloat = 1.0
     @State private var onboardingOffset: CGFloat = 0.0
     @State private var navigateToMyReports: Bool = false
-
-    init() {
-        #if os(iOS)
-        // Set up notification delegate
-        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
-        #endif
-    }
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
         WindowGroup {
@@ -71,20 +65,6 @@ struct CraftifyApp: App {
                     showOnboarding = true
                 }
                 print("CraftifyApp: DataManager initialized, isLoading: \(dataManager.isLoading)")
-                
-                #if os(iOS)
-                // Register for push notifications
-                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-                    if granted {
-                        DispatchQueue.main.async {
-                            UIApplication.shared.registerForRemoteNotifications()
-                        }
-                    }
-                    if let error = error {
-                        print("Notification authorization error: \(error.localizedDescription)")
-                    }
-                }
-                #endif
             }
             .onChange(of: navigateToMyReports) { _, newValue in
                 if !newValue {
@@ -98,7 +78,32 @@ struct CraftifyApp: App {
     }
 }
 
-// Singleton for notification delegate to avoid strong reference cycles
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            if granted {
+                print("Notification authorization granted")
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            }
+            if let error = error {
+                print("Notification authorization error: \(error.localizedDescription)")
+            }
+        }
+        return true
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        print("Registered for remote notifications with token: \(deviceToken.map { String(format: "%02.2hhx", $0) }.joined())")
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("Failed to register for remote notifications: \(error.localizedDescription)")
+    }
+}
+
 class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationDelegate()
 
@@ -113,7 +118,7 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         if let ckNotification = CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKQueryNotification,
            ckNotification.recordID != nil {
-            // Trigger navigation to My Reports
+            print("Received CloudKit notification for record: \(ckNotification.recordID?.recordName ?? "unknown")")
             NotificationCenter.default.post(name: .navigateToMyReports, object: nil)
         }
         completionHandler()

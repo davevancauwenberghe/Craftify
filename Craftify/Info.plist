@@ -28,29 +28,9 @@
         <string>remote-notification</string>
     </array>
 
-    <!-- iCloud Documents Configuration -->
-    <key>NSUbiquitousContainers</key>
-    <dict>
-        <key>iCloud.be.ghentphotography.www.Craftify</key>
-        <dict>
-            <key>NSUbiquitousContainerIsDocumentScopePublic</key>
-            <true/>
-            <key>NSUbiquitousContainerName</key>
-            <string>Craftify</string>
-            <key>NSUbiquitousContainerSupportedFolderLevels</key>
-            <string>All</string>
-        </dict>
-    </dict>
-
-    <!-- CloudKit Container -->
-    <key>com.apple.developer.icloud-container-identifiers</key>
-    <array>
-        <string>iCloud.craftifydb</string>
-    </array>
-    <key>com.apple.developer.icloud-services</key>
-    <array>
-        <string>CloudKit</string>
-    </array>
+    <!-- Notification Usage Description -->
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>Craftify uses notifications to inform you about updates to your recipe reports.</string>
 
     <!-- App Icon Configuration -->
     <key>CFBundleIcons</key>
