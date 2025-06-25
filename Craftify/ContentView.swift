@@ -11,7 +11,6 @@ import CloudKit
 
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @StateObject private var notificationManager = NotificationManager()
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -35,7 +34,6 @@ struct ContentView: View {
                     .tag(1)
                 
                 MoreView(navigateToMyReports: $navigateToMyReports)
-                    .environmentObject(notificationManager)
                     .tabItem {
                         Label("More", systemImage: "ellipsis.circle")
                     }
@@ -53,7 +51,6 @@ struct ContentView: View {
                 (colorSchemePreference == "light" ? .light : .dark)
             )
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .environmentObject(dataManager)
             
             // Show loading indicator during manual syncing
             if dataManager.isManualSyncing {
@@ -89,7 +86,6 @@ struct ContentView: View {
     }
 }
 
-// Rest of ContentView.swift (RecipesTabView, CategoryView, etc.) remains unchanged
 struct RecipesTabView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -188,6 +184,7 @@ struct CategoryView: View {
     }
 }
 
+// Extracted view for the category filter bar
 struct CategoryFilterBar: View {
     @Binding var selectedCategory: String?
     let categories: [String]
@@ -237,6 +234,7 @@ struct CategoryFilterBar: View {
     }
 }
 
+// Extracted view for the recipe list
 struct RecipeListView: View {
     @Binding var recommendedRecipes: [Recipe]
     @Binding var isCraftifyPicksExpanded: Bool

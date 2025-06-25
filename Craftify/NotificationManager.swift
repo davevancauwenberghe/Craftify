@@ -43,7 +43,7 @@ protocol NotificationManaging {
 
 /// Concrete implementation of `NotificationManaging`
 /// that uses CloudKit and UserNotifications.
-final class NotificationManager: NSObject, ObservableObject {
+final class NotificationManager: NotificationManaging {
     private let container: CKContainer
     private let publicDB: CKDatabase
 
@@ -52,7 +52,6 @@ final class NotificationManager: NSObject, ObservableObject {
     init(containerIdentifier: String = "iCloud.craftifydb") {
         container = CKContainer(identifier: containerIdentifier)
         publicDB = container.publicCloudDatabase
-        super.init()
     }
 
     func requestUserPermissions(completion: @escaping (Bool) -> Void) {
