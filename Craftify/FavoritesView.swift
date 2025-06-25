@@ -32,6 +32,36 @@ struct EmptyFavoritesView: View {
     }
 }
 
+struct FavoritesSection: View {
+    let filteredFavorites: [String: [Recipe]]
+    let navigationPath: Binding<NavigationPath>
+    let horizontalSizeClass: UserInterfaceSizeClass?
+    
+    var body: some View {
+        ForEach(filteredFavorites.keys.sorted(), id: \.self) { letter in
+            Section {
+                ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
+                    NavigationLink {
+                        RecipeDetailView(recipe: recipe, navigationPath: navigationPath)
+                    } label: {
+                        RecipeCell(recipe: recipe, isCraftifyPick: false)
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+                }
+            } header: {
+                Text(letter)
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemBackground))
+            }
+        }
+    }
+}
+
 struct FavoritesView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -61,7 +91,6 @@ struct FavoritesView: View {
                         ProgressView()
                             .progressViewStyle(.circular)
                             .tint(Color.userAccentColor)
-                            .accessibilityValue("Loading") // Added for VoiceOver
                         Text("Loading Favorites…")
                             .font(.headline)
                             .foregroundColor(.secondary)
@@ -139,35 +168,18 @@ struct FavoritesView: View {
                                                 }
                                             }
                                         } header: {
-                                            CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded, accentColorPreference: accentColorPreference) {
+                                            CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded, accentColorPreference: accentColorPreference, toggle: {
                                                 withAnimation { isCraftifyPicksExpanded.toggle() }
-                                            }
+                                            })
                                             .background(Color(.systemBackground))
                                         }
                                     }
                                     
-                                    ForEach(filteredFavorites.keys.sorted(), id: \.self) { letter in
-                                        Section {
-                                            ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
-                                                NavigationLink {
-                                                    RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                                } label: {
-                                                    RecipeCell(recipe: recipe, isCraftifyPick: false)
-                                                }
-                                                .buttonStyle(.plain)
-                                                .contentShape(Rectangle())
-                                            }
-                                        } header: {
-                                            Text(letter)
-                                                .font(.headline)
-                                                .fontWeight(.bold)
-                                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                                .padding(.vertical, 8)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .background(Color(.systemBackground))
-                                                .accessibilityAddTraits(.isHeader) // Added for VoiceOver
-                                        }
-                                    }
+                                    FavoritesSection(
+                                        filteredFavorites: filteredFavorites,
+                                        navigationPath: $navigationPath,
+                                        horizontalSizeClass: horizontalSizeClass
+                                    )
                                 }
                                 .scrollContentBackground(.hidden)
                             }
@@ -182,7 +194,6 @@ struct FavoritesView: View {
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .onAppear {
-                // Sync favorites, recent searches, and fetch recipes
                 dataManager.syncFavorites()
                 dataManager.syncRecentSearches()
                 dataManager.fetchRecipes(isManual: false)
@@ -212,8 +223,6 @@ struct FavoritesView: View {
                     message: Text(dataManager.errorMessage ?? "Unknown error"),
                     dismissButton: .default(Text("OK"))
                 )
-                .accessibilityLabel("Error alert") // Added for VoiceOver
-                .accessibilityHint("Dismiss to continue") // Added for VoiceOver
             }
         }
     }

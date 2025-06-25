@@ -18,6 +18,7 @@ struct RecipeSearchView: View {
     @State private var filteredRecipes: [String: [Recipe]] = [:]
     @State private var navigationPath = NavigationPath()
     @State private var searchFilter: SearchFilter = .all
+    @State private var cachedRecentSearchRecipes: [Recipe] = []
     
     enum SearchFilter: String, CaseIterable {
         case all = "All recipes"
@@ -26,33 +27,36 @@ struct RecipeSearchView: View {
     
     // Computed property to get recent search recipes, filtered by searchFilter
     private var recentSearchRecipes: [Recipe] {
-        var recipes: [Recipe] = []
-        for name in dataManager.recentSearchNames {
-            if let recipe = dataManager.recipes.first(where: { $0.name == name }),
-               !recipes.contains(where: { $0.name == name }) {
-                recipes.append(recipe)
-            } else {
-                print("Skipping invalid recent search name: \(name) - no matching recipe found")
+        if cachedRecentSearchRecipes.isEmpty || cachedRecentSearchRecipes.first?.id != dataManager.recipes.first?.id {
+            var recipes: [Recipe] = []
+            for name in dataManager.recentSearchNames {
+                if let recipe = dataManager.recipes.first(where: { $0.name == name }),
+                   !recipes.contains(where: { $0.name == name }) {
+                    recipes.append(recipe)
+                } else {
+                    print("Skipping invalid recent search name: \(name) - no matching recipe found")
+                }
             }
+            cachedRecentSearchRecipes = Array((searchFilter == .all ? recipes : recipes.filter { recipe in dataManager.favorites.contains { $0.id == recipe.id } }).prefix(10))
         }
-        // Apply filter to recent searches, limit set to 10
-        return Array((searchFilter == .all ? recipes : recipes.filter { recipe in dataManager.favorites.contains { $0.id == recipe.id } }).prefix(10))
+        return cachedRecentSearchRecipes
     }
     
     // Save a new recent search using DataManager
     private func saveRecentSearch(_ recipe: Recipe) {
         dataManager.saveRecentSearch(recipe)
+        cachedRecentSearchRecipes = [] // Invalidate cache
     }
     
     // Clear all recent searches using DataManager
     private func clearRecentSearches() {
         dataManager.clearRecentSearches()
+        cachedRecentSearchRecipes = []
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
     
     private func updateFilteredRecipes() {
-        // Start with either all recipes or favorited recipes based on the filter
         let baseRecipes = searchFilter == .all ? dataManager.recipes : dataManager.favorites
-        
         let filtered = searchText.isEmpty ? baseRecipes :
             baseRecipes.filter { recipe in
                 recipe.name.localizedCaseInsensitiveContains(searchText) ||
@@ -134,7 +138,6 @@ struct RecipeSearchView: View {
                                             
                                             Button(action: {
                                                 clearRecentSearches()
-                                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                             }) {
                                                 Text("Clear All")
                                                     .font(.subheadline)
@@ -159,8 +162,9 @@ struct RecipeSearchView: View {
                                     }
                                     .padding(.vertical, 16)
                                     .accessibilityElement(children: .combine)
-                                    .accessibilityLabel("Recent Searches, filtered by \(searchFilter == .all ? "All recipes" : "Favorite recipes")")
-                                    .accessibilityHint("Shows the last 10 recipes you searched for, filtered by \(searchFilter == .all ? "all recipes" : "favorite recipes")")
+                                    .accessibilityLabel("Recent Searches")
+                                    .accessibilityValue(searchFilter == .all ? "Filtered by all recipes" : "Filtered by favorite recipes")
+                                    .accessibilityHint("Shows the last 10 recipes you searched for")
                                 }
                             } else {
                                 // Search filter picker (always visible when search is active)
@@ -176,6 +180,7 @@ struct RecipeSearchView: View {
                                 .accessibilityHint("Choose to search all recipes or only favorite recipes")
                                 .onChange(of: searchFilter) { _, _ in
                                     updateFilteredRecipes()
+                                    cachedRecentSearchRecipes = []
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 }
                                 
@@ -218,18 +223,18 @@ struct RecipeSearchView: View {
                                     .padding(.vertical, 32)
                                     .accessibilityElement(children: .combine)
                                     .accessibilityLabel("No Favorite Recipes")
-                                    .accessibilityHint("You haven't favorited any recipes yet. Add some favorites or switch to All recipes.")
+                                    .accessibilityHint("No favorite recipes found. Add favorites or switch to all recipes")
                                 } else if !searchText.isEmpty && filteredRecipes.isEmpty {
                                     // Empty state when no recipes are found after searching
                                     VStack(spacing: 16) {
                                         Image(systemName: "exclamationmark.triangle.fill")
                                             .font(.system(size: 48))
                                             .foregroundColor(.gray.opacity(0.8))
-                                        Text("No recipes found")
+                                        Text("No Recipes Found")
                                             .font(.title2)
                                             .fontWeight(.bold)
                                             .foregroundColor(.primary)
-                                        Text("Try adjusting your search term\(searchFilter == .favorites ? " or switch to All recipes" : "").")
+                                        Text("Try adjusting your search term or switch to All recipes.")
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
                                             .multilineTextAlignment(.center)
@@ -237,8 +242,8 @@ struct RecipeSearchView: View {
                                     }
                                     .padding(.vertical, 32)
                                     .accessibilityElement(children: .combine)
-                                    .accessibilityLabel("No recipes found")
-                                    .accessibilityHint("No recipes match your search term. Try adjusting your search\(searchFilter == .favorites ? " or switch to All recipes" : "").")
+                                    .accessibilityLabel("No Recipes Found")
+                                    .accessibilityHint(searchFilter == .favorites ? "No recipes match your search. Try adjusting or switch to all recipes" : "No recipes match your search. Try adjusting your search term")
                                 } else {
                                     // Search results
                                     LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
@@ -294,6 +299,7 @@ struct RecipeSearchView: View {
             .onChange(of: dataManager.isLoading) { _, newValue in
                 if !newValue && dataManager.isManualSyncing {
                     updateFilteredRecipes()
+                    cachedRecentSearchRecipes = []
                 }
             }
             .task(id: searchText) {
@@ -302,7 +308,6 @@ struct RecipeSearchView: View {
                 }
             }
             .onAppear {
-                // Sync favorites, recent searches, and fetch recipes
                 dataManager.syncFavorites()
                 dataManager.syncRecentSearches()
                 dataManager.fetchRecipes(isManual: false)
@@ -312,7 +317,6 @@ struct RecipeSearchView: View {
     }
 }
 
-// A compact view for displaying recent search items
 struct RecentSearchItem: View {
     let recipe: Recipe
     let accentColorPreference: String
@@ -348,7 +352,6 @@ struct RecentSearchItem: View {
     }
 }
 
-// Extracted view for the recent searches list
 struct RecentSearchesList: View {
     let recipes: [Recipe]
     @Binding var navigationPath: NavigationPath

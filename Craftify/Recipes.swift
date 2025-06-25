@@ -78,7 +78,7 @@ struct RecipeReport: Identifiable, Codable {
 
     init(id: String, recordID: String?, localID: String, reportType: String, recipeName: String, category: String, recipeID: Int?, description: String, timestamp: Date, status: String) {
         self.id = id
-        self.recordID = recordID // Already a String?, no conversion needed
+        self.recordID = recordID
         self.localID = localID
         self.reportType = reportType
         self.recipeName = recipeName

@@ -36,7 +36,9 @@ struct SyncOverlayView: View {
             .padding(.horizontal, cardHorizontalPadding)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(message)
+            .accessibilityValue("Syncing in progress")
             .accessibilityHint("Please wait while the data is being synced")
+            .accessibilityAddTraits(.isModal)
         }
     }
 }

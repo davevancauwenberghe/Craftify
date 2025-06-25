@@ -86,7 +86,7 @@ struct RecipeDetailView: View {
                             .foregroundColor(.secondary)
                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                             .padding(.top, 8)
-                            .accessibilityLabel("No alternate crafting options available for \(recipe.name)")
+                            .accessibilityLabel("No alternate crafting options")
                     }
                     
                     if ingredientSets.count > 1 {
@@ -110,7 +110,7 @@ struct RecipeDetailView: View {
                                             .cornerRadius(10)
                                     }
                                     .accessibilityLabel("Recipe \(index + 1)")
-                                    .accessibilityHint("Selects ingredient combination \(index + 1) for crafting \(recipe.name)")
+                                    .accessibilityHint("Selects ingredient combination \(index + 1)")
                                 }
                             }
                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
@@ -119,8 +119,8 @@ struct RecipeDetailView: View {
                         }
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .accessibilityElement(children: .contain)
-                        .accessibilityLabel("Crafting option picker")
-                        .accessibilityHint("Select different ingredient combinations for crafting \(recipe.name)")
+                        .accessibilityLabel("Crafting options")
+                        .accessibilityHint("Select different ingredient combinations")
                     }
                     
                     GridView(
@@ -157,7 +157,7 @@ struct RecipeDetailView: View {
                                             .foregroundColor(.gray)
                                             .background(Color(.systemGray5))
                                             .cornerRadius(12)
-                                            .accessibilityLabel("Image unavailable for \(detail)")
+                                            .accessibilityLabel("Image unavailable")
                                     }
                                 }
                                 Text(detail)
@@ -167,17 +167,28 @@ struct RecipeDetailView: View {
                                     .padding(.horizontal, 8)
                                     .lineLimit(2)
                                     .minimumScaleFactor(0.8)
+                                    .accessibilityLabel(detail)
                                 
                                 Text(
                                     selectedItem == .imageremark
                                         ? (recipe.remarks?.isEmpty == false ? recipe.remarks! : "No remarks available")
-                                        : (detail == recipe.name ? "Output of crafting" : "Ingredient for \(recipe.name)")
+                                        : (detail == recipe.name ? "Output of crafting" : "Ingredient for crafting")
                                 )
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .padding(.horizontal, 8)
                                     .lineLimit(3)
                                     .minimumScaleFactor(0.8)
+                                    .accessibilityLabel(
+                                        selectedItem == .imageremark
+                                            ? "Remark"
+                                            : (detail == recipe.name ? "Output" : "Ingredient")
+                                    )
+                                    .accessibilityValue(
+                                        selectedItem == .imageremark
+                                            ? (recipe.remarks?.isEmpty == false ? recipe.remarks! : "No remarks available")
+                                            : (detail == recipe.name ? recipe.name : "Ingredient for crafting")
+                                    )
                             }
                             .padding(.vertical, 12)
                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
@@ -215,19 +226,13 @@ struct RecipeDetailView: View {
                             .padding(.top, 4)
                             .padding(.trailing, 4)
                             .accessibilityLabel("Close popup")
-                            .accessibilityHint("Dismisses the details for \(detail)")
+                            .accessibilityHint("Dismisses the details")
                         }
                         .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                         .padding(.bottom, horizontalSizeClass == .regular ? 24 : 16)
                         .transition(.scale)
                         .animation(.spring(response: 0.3, dampingFraction: 0.5), value: selectedDetail)
                         .accessibilityElement(children: .contain)
-                        .accessibilityLabel(
-                            selectedItem == .imageremark
-                                ? "Remark: \(recipe.remarks?.isEmpty == false ? recipe.remarks! : "No remarks available")"
-                                : (detail == recipe.name ? "Output: \(detail)" : "Ingredient: \(detail)")
-                        )
-                        .accessibilityHint("Tap the close button or select another item to dismiss")
                     }
                     
                     VStack(spacing: 8) {
@@ -258,8 +263,8 @@ struct RecipeDetailView: View {
                                             .foregroundColor(.gray)
                                     }
                                 }
-                                .accessibilityLabel("Remark image: \(imageRemark)")
-                                .accessibilityHint("Tap to view details and remarks for \(imageRemark)")
+                                .accessibilityLabel("Remark image")
+                                .accessibilityHint("Tap to view remarks")
                                 .onTapGesture {
                                     feedbackGenerator.impactOccurred()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
@@ -289,7 +294,7 @@ struct RecipeDetailView: View {
                 .padding(.vertical, 16)
                 .padding(.bottom, 50)
             }
-            .id(accentColorPreference) // Force redraw when accent color changes
+            .id(accentColorPreference)
             .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
             .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             .accessibilityElement(children: .contain)
@@ -330,7 +335,85 @@ struct RecipeDetailView: View {
                         .scaleEffect(animateHeart ? 1.3 : 1.0)
                 }
                 .accessibilityLabel(dataManager.isFavorite(recipe: recipe) ? "Remove from favorites" : "Add to favorites")
-                .accessibilityHint("Toggles favorite status for \(recipe.name)")
+                .accessibilityHint("Toggles favorite status")
+            }
+        }
+    }
+}
+
+struct FurnaceGridView: View {
+    let ingredients: [String]
+    @Binding var selectedItem: RecipeDetailView.SelectedItem?
+    @Binding var selectedDetail: String?
+    let feedbackGenerator: UIImpactFeedbackGenerator
+    let cellSize: CGFloat
+    let accentColorPreference: String
+    
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack {
+                Spacer()
+                GridCell(
+                    index: 0,
+                    ingredient: ingredients.count > 0 ? ingredients[0] : "",
+                    isSelected: selectedItem == .grid(index: 0),
+                    feedbackGenerator: feedbackGenerator,
+                    cellSize: cellSize,
+                    accentColorPreference: accentColorPreference
+                ) { selectedDetail = ingredients.count > 0 ? ingredients[0] : ""; selectedItem = .grid(index: 0) }
+                Spacer()
+            }
+            HStack {
+                Spacer()
+                Image(UIImage(named: "Furnace Fire") != nil ? "Furnace Fire" : "photo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: cellSize - 35, height: cellSize - 35)
+                    .frame(width: cellSize, height: cellSize)
+                    .accessibilityLabel("Furnace Fire slot")
+                    .accessibilityHint("Represents the furnace")
+                Spacer()
+            }
+            HStack {
+                Spacer()
+                GridCell(
+                    index: 1,
+                    ingredient: ingredients.count > 1 ? ingredients[1] : "",
+                    isSelected: selectedItem == .grid(index: 1),
+                    feedbackGenerator: feedbackGenerator,
+                    cellSize: cellSize,
+                    accentColorPreference: accentColorPreference
+                ) { selectedDetail = ingredients.count > 1 ? ingredients[1] : ""; selectedItem = .grid(index: 1) }
+                Spacer()
+            }
+        }
+    }
+}
+
+struct DefaultGridView: View {
+    let ingredients: [String]
+    @Binding var selectedItem: RecipeDetailView.SelectedItem?
+    @Binding var selectedDetail: String?
+    let feedbackGenerator: UIImpactFeedbackGenerator
+    let cellSize: CGFloat
+    let accentColorPreference: String
+    
+    var body: some View {
+        VStack(spacing: 6) {
+            ForEach(0..<3) { row in
+                HStack(spacing: 6) {
+                    ForEach(0..<3) { col in
+                        let index = row * 3 + col
+                        GridCell(
+                            index: index,
+                            ingredient: index < ingredients.count ? ingredients[index] : "",
+                            isSelected: selectedItem == .grid(index: index),
+                            feedbackGenerator: feedbackGenerator,
+                            cellSize: cellSize,
+                            accentColorPreference: accentColorPreference
+                        ) { selectedDetail = index < ingredients.count ? ingredients[index] : ""; selectedItem = .grid(index: index) }
+                    }
+                }
             }
         }
     }
@@ -351,65 +434,25 @@ struct GridView: View {
     var body: some View {
         VStack {
             HStack(alignment: .center, spacing: 16) {
-                switch true {
-                case recipe.imageremark == "Furnace":
-                    VStack(spacing: 6) {
-                        HStack {
-                            Spacer()
-                            GridCell(
-                                index: 0,
-                                ingredient: ingredients.count > 0 ? ingredients[0] : "",
-                                isSelected: selectedItem == .grid(index: 0),
-                                feedbackGenerator: feedbackGenerator,
-                                cellSize: horizontalSizeClass == .regular ? 80 : 70,
-                                accentColorPreference: accentColorPreference
-                            ) { selectedDetail = ingredients.count > 0 ? ingredients[0] : ""; selectedItem = .grid(index: 0) }
-                            Spacer()
-                        }
-                        HStack {
-                            Spacer()
-                            Image(UIImage(named: "Furnace Fire") != nil ? "Furnace Fire" : "photo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: horizontalSizeClass == .regular ? 45 : 40, height: horizontalSizeClass == .regular ? 45 : 40)
-                                .frame(width: horizontalSizeClass == .regular ? 80 : 70, height: horizontalSizeClass == .regular ? 80 : 70)
-                                .accessibilityLabel("Furnace Fire slot")
-                                .accessibilityHint("Represents the furnace in the crafting process")
-                            Spacer()
-                        }
-                        HStack {
-                            Spacer()
-                            GridCell(
-                                index: 1,
-                                ingredient: ingredients.count > 1 ? ingredients[1] : "",
-                                isSelected: selectedItem == .grid(index: 1),
-                                feedbackGenerator: feedbackGenerator,
-                                cellSize: horizontalSizeClass == .regular ? 80 : 70,
-                                accentColorPreference: accentColorPreference
-                            ) { selectedDetail = ingredients.count > 1 ? ingredients[1] : ""; selectedItem = .grid(index: 1) }
-                            Spacer()
-                        }
-                    }
+                if recipe.imageremark == "Furnace" {
+                    FurnaceGridView(
+                        ingredients: ingredients,
+                        selectedItem: $selectedItem,
+                        selectedDetail: $selectedDetail,
+                        feedbackGenerator: feedbackGenerator,
+                        cellSize: horizontalSizeClass == .regular ? 80 : 70,
+                        accentColorPreference: accentColorPreference
+                    )
                     .frame(width: craftingHeight, height: craftingHeight)
-                
-                default:
-                    VStack(spacing: 6) {
-                        ForEach(0..<3) { row in
-                            HStack(spacing: 6) {
-                                ForEach(0..<3) { col in
-                                    let index = row * 3 + col
-                                    GridCell(
-                                        index: index,
-                                        ingredient: index < ingredients.count ? ingredients[index] : "",
-                                        isSelected: selectedItem == .grid(index: index),
-                                        feedbackGenerator: feedbackGenerator,
-                                        cellSize: horizontalSizeClass == .regular ? 80 : 70,
-                                        accentColorPreference: accentColorPreference
-                                    ) { selectedDetail = index < ingredients.count ? ingredients[index] : ""; selectedItem = .grid(index: index) }
-                                }
-                            }
-                        }
-                    }
+                } else {
+                    DefaultGridView(
+                        ingredients: ingredients,
+                        selectedItem: $selectedItem,
+                        selectedDetail: $selectedDetail,
+                        feedbackGenerator: feedbackGenerator,
+                        cellSize: horizontalSizeClass == .regular ? 80 : 70,
+                        accentColorPreference: accentColorPreference
+                    )
                     .frame(width: craftingHeight, height: craftingHeight)
                 }
                 
@@ -446,8 +489,8 @@ struct GridView: View {
                                 .foregroundColor(.gray)
                         }
                     }
-                    .accessibilityLabel(recipe.imageremark ?? "Output: \(recipe.name)")
-                    .accessibilityHint("Tap to view details for \(recipe.name)")
+                    .accessibilityLabel("Output: \(recipe.name)")
+                    .accessibilityHint("Tap to view details")
                     .onTapGesture {
                         feedbackGenerator.impactOccurred()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
@@ -513,7 +556,7 @@ struct GridCell: View {
             }
         }
         .accessibilityLabel(!ingredient.isEmpty ? "Ingredient: \(ingredient)" : "Empty slot")
-        .accessibilityHint(!ingredient.isEmpty ? "Tap to view details for \(ingredient)" : "")
+        .accessibilityHint(!ingredient.isEmpty ? "Tap to view details" : "")
         .onTapGesture {
             guard !ingredient.isEmpty else { return }
             feedbackGenerator.impactOccurred()

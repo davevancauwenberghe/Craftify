@@ -30,7 +30,7 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("Need Help?").accessibilityAddTraits(.isHeader)) {
+                Section(header: Text("Need Help?")) {
                     NavigationLink(destination: ReportRecipeView()) {
                         buttonStyle(title: "Report Issue", systemImage: "envelope.fill")
                     }
@@ -38,7 +38,7 @@ struct MoreView: View {
                     .accessibilityHint("Navigate to report a missing recipe or an error in an existing recipe")
                 }
                 
-                Section(header: Text("About").accessibilityAddTraits(.isHeader)) {
+                Section(header: Text("About")) {
                     NavigationLink(destination: AboutView(accentColorPreference: accentColorPreference)) {
                         buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
                     }
@@ -53,7 +53,7 @@ struct MoreView: View {
                         .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
                 }
                 
-                Section(header: Text("Data Sync & Status").accessibilityAddTraits(.isHeader)) {
+                Section(header: Text("Data Sync & Status")) {
                     VStack(alignment: .leading, spacing: 8) {
                         // 1. Sync Recipes Button + Cooldown Message
                         VStack(spacing: 8) {
@@ -70,7 +70,6 @@ struct MoreView: View {
                                             .padding(.trailing, 8)
                                             .accessibilityLabel("Syncing")
                                             .accessibilityHint("Recipes are currently syncing")
-                                            .accessibilityValue("Syncing") // Added for VoiceOver
                                             .opacity(dataManager.isLoading ? 1 : 0)
                                             .animation(.easeInOut(duration: 0.3), value: dataManager.isLoading)
                                     } else {
@@ -103,7 +102,6 @@ struct MoreView: View {
                                     .foregroundColor(.secondary)
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .accessibilityLabel(message)
-                                    .accessibilityHint("Wait until the cooldown expires to sync again") // Added for VoiceOver
                             }
                         }
 
@@ -157,7 +155,7 @@ struct MoreView: View {
                         .accessibilityLabel("Last synced and recipes available: \(dataManager.syncStatus), \(dataManager.recipes.count) recipes available")
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Data Sync and Status: Sync Recipes button, \(dataManager.isConnected ? "Connected to the internet" : "No internet connection"), \(dataManager.syncStatus), \(dataManager.recipes.count) recipes available")
+                    .accessibilityLabel("Data Sync and Status: Sync Recipes button, \(dataManager.isConnected ? "Connected to the internet" : "No internet connection"), \(dataManager.syncStatus), \(dataManager.recipes.count) available")
                     .accessibilityHint("Manage recipe syncing, view network status, last sync time, and number of recipes available")
                 }
             }
@@ -176,8 +174,6 @@ struct MoreView: View {
                     message: Text(dataManager.errorMessage ?? "Unknown error"),
                     dismissButton: .default(Text("OK"))
                 )
-                .accessibilityLabel("Error alert") // Added for VoiceOver
-                .accessibilityHint("Dismiss to continue") // Added for VoiceOver
             }
             .onAppear {
                 dataManager.syncFavorites()
@@ -262,7 +258,7 @@ struct AboutView: View {
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
-        let build   = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "Version \(version) – Build \(build)"
     }
 
@@ -311,10 +307,10 @@ struct AboutView: View {
                     })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
-                        top:    horizontalSizeClass == .regular ? 12 : 8,
-                        leading:horizontalSizeClass == .regular ? 16 : 12,
+                        top: horizontalSizeClass == .regular ? 12 : 8,
+                        leading: horizontalSizeClass == .regular ? 16 : 12,
                         bottom: horizontalSizeClass == .regular ? 12 : 8,
-                        trailing:horizontalSizeClass == .regular ? 16 : 12
+                        trailing: horizontalSizeClass == .regular ? 16 : 12
                     ))
                     .accessibilityLabel("App Appearance")
                     .accessibilityHint("Customize the app's icon and appearance settings")
@@ -327,10 +323,10 @@ struct AboutView: View {
                     })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
-                        top:    horizontalSizeClass == .regular ? 12 : 8,
-                        leading:horizontalSizeClass == .regular ? 16 : 12,
+                        top: horizontalSizeClass == .regular ? 12 : 8,
+                        leading: horizontalSizeClass == .regular ? 16 : 12,
                         bottom: horizontalSizeClass == .regular ? 12 : 8,
-                        trailing:horizontalSizeClass == .regular ? 16 : 12
+                        trailing: horizontalSizeClass == .regular ? 16 : 12
                     ))
                     .accessibilityLabel("Release notes")
                     .accessibilityHint("View the release notes for Craftify")
@@ -376,7 +372,7 @@ struct AboutView: View {
         .navigationTitle("About Craftify")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .safeAreaInset(edge: .top)    { Color.clear.frame(height: 0) }
+        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
     }
 

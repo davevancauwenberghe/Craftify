@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ReleaseNotesView: View {
-    @EnvironmentObject var dataManager: DataManager // Added for manual syncing consistency
+    @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     
@@ -37,7 +37,8 @@ struct ReleaseNotesView: View {
                 }
                 .padding(.bottom, horizontalSizeClass == .regular ? 12 : 8)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("Craftify for Minecraft, \(appVersion). Stay updated with the latest improvements, fixes, and new features added to Craftify.")
+                .accessibilityLabel("Craftify for Minecraft")
+                .accessibilityValue("\(appVersion). Stay updated with the latest improvements, fixes, and new features.")
                 .accessibilityHint("Release notes overview")
             }
             .listRowBackground(Color(UIColor.systemBackground))
@@ -56,18 +57,13 @@ struct ReleaseNotesView: View {
                 }
             }
         }
-        .id(accentColorPreference) // Force redraw when accent color changes
+        .id(accentColorPreference)
         .listStyle(InsetGroupedListStyle())
         .navigationTitle("Release Notes")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
-        .onChange(of: dataManager.isLoading) { _, newValue in
-            if !newValue && dataManager.isManualSyncing {
-                // Placeholder for future DataManager dependencies
-            }
-        }
     }
 }
 
@@ -78,8 +74,10 @@ struct ReleaseNote {
 
 let releaseNotes: [ReleaseNote] = [
     ReleaseNote(version: "Version 1.0 - Build 76-87", changes: [
+        "Extensive Swift code rewriting and refactoring",
         "Privacy policy URL button added",
         "VoiceOver enhancements",
+        "UX improvements",
         "Image assets added"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 61-75", changes: [
@@ -102,7 +100,7 @@ let releaseNotes: [ReleaseNote] = [
     ]),
     ReleaseNote(version: "Version 1.0 - Build 47-53", changes: [
         "Alternate app icons added",
-        "SwiftUI optimalisations",
+        "SwiftUI optimisations",
         "Clipping views fixed on iPad",
         "Image assets added"
     ]),
@@ -129,7 +127,7 @@ let releaseNotes: [ReleaseNote] = [
     ReleaseNote(version: "Version 1.0 - Build 34", changes: [
         "MoreView reworked",
         "AboutView reworked",
-        "DataManager optimalisation",
+        "DataManager optimisation",
         "Improved CloudKit integration",
         "VoiceOver improvements"
     ]),

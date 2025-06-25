@@ -136,23 +136,28 @@ struct OnboardingView: View {
                 .font(titleFont)
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
+                .accessibilityLabel(title)
             
             Text(message)
                 .font(messageFont)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, cardHorizontalPadding)
+                .accessibilityLabel(message)
             
             if isLoading && errorMessage == nil {
                 ProgressView()
                     .progressViewStyle(.circular)
                     .tint(Color.userAccentColor)
+                    .accessibilityLabel("Loading recipes")
+                    .accessibilityHint("Please wait while the app fetches your recipes")
             } else if let error = errorMessage {
                 Text(error)
                     .font(messageFont)
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, cardHorizontalPadding)
+                    .accessibilityLabel("Error: \(error)")
                 
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -202,9 +207,7 @@ struct OnboardingView: View {
         .frame(maxWidth: cardMaxWidth, alignment: .center)
         .opacity(cardOpacity)
         .scaleEffect(cardScale)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title), \(message)\(errorMessage != nil ? ", Error: \(errorMessage!)" : isLoading ? ", Loading" : ", Complete")")
-        .accessibilityHint("\(errorMessage != nil ? "An error occurred. Tap to retry." : "Please wait while the app fetches your recipes.")")
+        .accessibilityElement(children: .contain)
     }
     
     private var optionsView: some View {
@@ -213,12 +216,15 @@ struct OnboardingView: View {
                 .font(titleFont)
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
+                .accessibilityLabel("Ready to Craft")
             
             Text("Your recipes are loaded. Would you like to see some crafting tips before you start?")
                 .font(messageFont)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, cardHorizontalPadding)
+                .accessibilityLabel("Your recipes are loaded")
+                .accessibilityHint("Choose to view crafting tips or start using the app")
             
             Button(action: {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -282,9 +288,7 @@ struct OnboardingView: View {
         .frame(maxWidth: cardMaxWidth, alignment: .center)
         .opacity(cardOpacity)
         .scaleEffect(cardScale)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Ready to Craft!, Your recipes are loaded. Would you like to see some crafting tips before you start?")
-        .accessibilityHint("Tap Show Tips to view crafting tips, or Start Crafting to begin using the app.")
+        .accessibilityElement(children: .contain)
     }
     
     private var tipsView: some View {
@@ -293,6 +297,7 @@ struct OnboardingView: View {
                 .font(titleFont)
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
+                .accessibilityLabel("Crafting Tips")
             
             TabView {
                 ForEach(craftingTips.indices, id: \.self) { index in
@@ -303,8 +308,9 @@ struct OnboardingView: View {
                         .padding(.horizontal, cardHorizontalPadding)
                         .padding(.vertical, 16)
                         .padding(.bottom, 30)
-                        .accessibilityLabel("Crafting Tip \(index + 1) of \(craftingTips.count), \(craftingTips[index])")
-                        .accessibilityHint("Swipe left or right to read more tips. \(index + 1) of \(craftingTips.count) tips.")
+                        .accessibilityLabel("Crafting Tip \(index + 1) of \(craftingTips.count)")
+                        .accessibilityValue(craftingTips[index])
+                        .accessibilityHint("Swipe left or right to read more tips")
                 }
             }
             .tabViewStyle(.page)
@@ -346,9 +352,7 @@ struct OnboardingView: View {
         .frame(maxWidth: cardMaxWidth, alignment: .center)
         .opacity(cardOpacity)
         .scaleEffect(cardScale)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Crafting Tips, Swipe to read tips, Tap Start Crafting to continue")
-        .accessibilityHint("Swipe left or right to read Minecraft crafting tips, then tap to start using the app.")
+        .accessibilityElement(children: .contain)
     }
     
     private func dismissWithAnimation() {
