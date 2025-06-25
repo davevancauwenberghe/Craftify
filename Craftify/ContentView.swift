@@ -14,10 +14,10 @@ struct ContentView: View {
     @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
-    @Binding var navigateToMyReports: Bool
-
+    
     var body: some View {
         ZStack {
             TabView(selection: $selectedTab) {
@@ -33,7 +33,7 @@ struct ContentView: View {
                     }
                     .tag(1)
                 
-                MoreView(navigateToMyReports: $navigateToMyReports)
+                MoreView()
                     .tabItem {
                         Label("More", systemImage: "ellipsis.circle")
                     }
@@ -66,11 +66,6 @@ struct ContentView: View {
         .onChange(of: dataManager.isLoading) { _, newValue in
             if !newValue && dataManager.isManualSyncing {
                 // View updates are handled reactively in child views
-            }
-        }
-        .onChange(of: navigateToMyReports) { _, newValue in
-            if newValue {
-                selectedTab = 2 // Switch to More tab
             }
         }
     }

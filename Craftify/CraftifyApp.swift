@@ -6,8 +6,6 @@
 //
 
 import SwiftUI
-import UserNotifications
-import CloudKit
 
 @main
 struct CraftifyApp: App {
@@ -16,13 +14,11 @@ struct CraftifyApp: App {
     @State private var showOnboarding: Bool = false
     @State private var onboardingOpacity: CGFloat = 1.0
     @State private var onboardingOffset: CGFloat = 0.0
-    @State private var navigateToMyReports: Bool = false
-    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
         WindowGroup {
             ZStack {
-                ContentView(navigateToMyReports: $navigateToMyReports)
+                ContentView()
                     .environmentObject(dataManager)
                     .opacity(showOnboarding ? 0.0 : 1.0)
                     .animation(.easeInOut(duration: 0.3), value: showOnboarding)
@@ -66,65 +62,6 @@ struct CraftifyApp: App {
                 }
                 print("CraftifyApp: DataManager initialized, isLoading: \(dataManager.isLoading)")
             }
-            .onChange(of: navigateToMyReports) { _, newValue in
-                if !newValue {
-                    // Reset navigation state after handling
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        navigateToMyReports = false
-                    }
-                }
-            }
         }
     }
-}
-
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-            if granted {
-                print("Notification authorization granted")
-                DispatchQueue.main.async {
-                    UIApplication.shared.registerForRemoteNotifications()
-                }
-            }
-            if let error = error {
-                print("Notification authorization error: \(error.localizedDescription)")
-            }
-        }
-        return true
-    }
-
-    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        print("Registered for remote notifications with token: \(deviceToken.map { String(format: "%02.2hhx", $0) }.joined())")
-    }
-
-    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("Failed to register for remote notifications: \(error.localizedDescription)")
-    }
-}
-
-class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
-    static let shared = NotificationDelegate()
-
-    private override init() {}
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // Show notification even when app is in foreground
-        completionHandler([.banner, .sound])
-    }
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        let userInfo = response.notification.request.content.userInfo
-        if let ckNotification = CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKQueryNotification,
-           ckNotification.recordID != nil {
-            print("Received CloudKit notification for record: \(ckNotification.recordID?.recordName ?? "unknown")")
-            NotificationCenter.default.post(name: .navigateToMyReports, object: nil)
-        }
-        completionHandler()
-    }
-}
-
-extension Notification.Name {
-    static let navigateToMyReports = Notification.Name("NavigateToMyReports")
 }
