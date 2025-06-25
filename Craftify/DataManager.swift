@@ -9,7 +9,6 @@ import Foundation
 import Combine
 import CloudKit
 import UIKit
-import UserNotifications
 import Network
 
 class DataManager: ObservableObject {
@@ -24,10 +23,9 @@ class DataManager: ObservableObject {
     @Published var isManualSyncing: Bool = false
     @Published var accessibilityAnnouncement: String? = nil
     @Published var searchText: String = ""
-    @Published var lastReportStatusFetchTime: Date?
-    @Published var lastRecipeFetch: Date?
+    @Published var lastReportStatusFetchTime: Date? = nil
+    @Published var lastRecipeFetch: Date? = nil
     @Published var isConnected: Bool = true
-    @Published var isPushRegistered: Bool = false
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudRecentSearchesKey = "recentSearches"
@@ -36,28 +34,30 @@ class DataManager: ObservableObject {
     private let recipeFetchInterval: TimeInterval = 60
     private let networkMonitor = NWPathMonitor()
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
+
     private let container = CKContainer(identifier: "iCloud.craftifydb")
-    private let publicDatabase = CKContainer(identifier: "iCloud.craftifydb").publicCloudDatabase
-    private let privateDatabase = CKContainer(identifier: "iCloud.craftifydb").privateCloudDatabase
+    private lazy var publicDatabase = container.publicCloudDatabase
+    private lazy var privateDatabase = container.privateCloudDatabase
 
     enum ErrorType: String {
-        case network = "Network issue, please check your connection and try again."
-        case permissions = "Permission denied, please enable iCloud access."
-        case dataCorruption = "Data error, please try refreshing."
+        case network            = "Network issue, please check your connection and try again."
+        case permissions        = "Permission denied, please enable iCloud access."
+        case dataCorruption     = "Data error, please try refreshing."
         case userIdentification = "Unable to identify user. Please ensure iCloud is enabled."
-        case missingFields = "Report data is incomplete or corrupted."
-        case unknown = "An unexpected error occurred."
+        case missingFields      = "Report data is incomplete or corrupted."
+        case unknown            = "An unexpected error occurred."
     }
 
     init() {
         NSUbiquitousKeyValueStore.default.synchronize()
 
         networkMonitor.pathUpdateHandler = { [weak self] path in
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                self?.isConnected = path.status == .satisfied
-                if !(self?.isConnected ?? true) {
-                    self?.errorMessage = "No internet connection. Please connect to sync data."
-                    self?.accessibilityAnnouncement = self?.errorMessage
+                self.isConnected = (path.status == .satisfied)
+                if !self.isConnected {
+                    self.errorMessage = "No internet connection. Please connect to sync data."
+                    self.accessibilityAnnouncement = self.errorMessage
                 }
             }
         }
@@ -69,7 +69,6 @@ class DataManager: ObservableObject {
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: NSUbiquitousKeyValueStore.default
         )
-
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(appWillEnterForeground),
@@ -79,9 +78,10 @@ class DataManager: ObservableObject {
 
         $errorMessage
             .sink { [weak self] message in
+                guard let self = self else { return }
                 if message != nil {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                        self?.errorMessage = nil
+                        self.errorMessage = nil
                     }
                 }
             }
@@ -89,11 +89,12 @@ class DataManager: ObservableObject {
 
         $cacheClearedMessage
             .sink { [weak self] message in
-                if let message = message {
-                    self?.accessibilityAnnouncement = message
+                guard let self = self else { return }
+                if let msg = message {
+                    self.accessibilityAnnouncement = msg
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                        self?.cacheClearedMessage = nil
-                        self?.accessibilityAnnouncement = nil
+                        self.cacheClearedMessage = nil
+                        self.accessibilityAnnouncement = nil
                     }
                 }
             }
@@ -101,19 +102,11 @@ class DataManager: ObservableObject {
 
         if let localRecipes = loadRecipesFromLocalCache() {
             print("Loaded \(localRecipes.count) recipes from local cache.")
-            self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
+            self.recipes = localRecipes.sorted { $0.name < $1.name }
             self.syncFavorites()
             self.syncRecentSearches()
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
-        }
-
-        // Check push notification registration status
-        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
-            DispatchQueue.main.async {
-                self?.isPushRegistered = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
-                print("Push notification status: \(settings.authorizationStatus.rawValue), isPushRegistered: \(self?.isPushRegistered ?? false)")
-            }
         }
     }
 
@@ -124,36 +117,43 @@ class DataManager: ObservableObject {
 
     @objc private func appWillEnterForeground() {
         NSUbiquitousKeyValueStore.default.synchronize()
-        syncFavorites()
-        syncRecentSearches()
+        self.syncFavorites()
+        self.syncRecentSearches()
+    }
+
+    @objc private func icloudDidChange() {
+        self.syncFavorites()
+        self.syncRecentSearches()
     }
 
     var syncStatus: String {
         if !isConnected {
             return "No internet connection"
-        } else if let lastUpdated = lastUpdated {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .short
-            formatter.timeStyle = .short
-            formatter.locale = Locale.current
-            formatter.timeZone = TimeZone.current
-            return "Last synced: \(formatter.string(from: lastUpdated))"
+        } else if let updated = lastUpdated {
+            let fmt = DateFormatter()
+            fmt.dateStyle = .short
+            fmt.timeStyle = .short
+            fmt.locale = .current
+            fmt.timeZone = .current
+            return "Last synced: \(fmt.string(from: updated))"
         } else if isLoading {
             return "Syncing recipes..."
-        } else if let errorMessage = errorMessage {
-            return "Sync failed: \(errorMessage)"
+        } else if let err = errorMessage {
+            return "Sync failed: \(err)"
         } else {
             return "Not synced"
         }
     }
 
+    // MARK: - Favorites
+
     func isFavorite(recipe: Recipe) -> Bool {
-        return favorites.contains { $0.id == recipe.id }
+        favorites.contains { $0.id == recipe.id }
     }
 
     func toggleFavorite(recipe: Recipe) {
-        if let index = favorites.firstIndex(where: { $0.id == recipe.id }) {
-            favorites.remove(at: index)
+        if let idx = favorites.firstIndex(where: { $0.id == recipe.id }) {
+            favorites.remove(at: idx)
         } else {
             favorites.append(recipe)
         }
@@ -161,54 +161,50 @@ class DataManager: ObservableObject {
     }
 
     func saveFavorites() {
-        let favoriteIDs = favorites.map { $0.id }
-        NSUbiquitousKeyValueStore.default.set(favoriteIDs, forKey: iCloudFavoritesKey)
+        let ids = favorites.map { $0.id }
+        NSUbiquitousKeyValueStore.default.set(ids, forKey: iCloudFavoritesKey)
         NSUbiquitousKeyValueStore.default.synchronize()
     }
 
     func syncFavorites() {
-        if let savedIDs = NSUbiquitousKeyValueStore.default.array(forKey: iCloudFavoritesKey) as? [Int] {
-            favorites = recipes.filter { savedIDs.contains($0.id) }
+        if let saved = NSUbiquitousKeyValueStore.default.array(forKey: iCloudFavoritesKey) as? [Int] {
+            favorites = recipes.filter { saved.contains($0.id) }
         }
     }
 
     func clearFavorites() {
-        favorites = []
-        NSUbiquitousKeyValueStore.default.set(favorites.map { $0.id }, forKey: iCloudFavoritesKey)
+        favorites.removeAll()
+        NSUbiquitousKeyValueStore.default.set([], forKey: iCloudFavoritesKey)
         NSUbiquitousKeyValueStore.default.synchronize()
-        print("Cleared favorite recipes: \(favorites)")
     }
+
+    // MARK: - Recent Searches
 
     func saveRecentSearch(_ recipe: Recipe) {
         recentSearchNames.removeAll { $0 == recipe.name }
         recentSearchNames.insert(recipe.name, at: 0)
         recentSearchNames = Array(recentSearchNames.prefix(10))
-        print("Updated recent search names: \(recentSearchNames)")
-        
         NSUbiquitousKeyValueStore.default.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
         NSUbiquitousKeyValueStore.default.synchronize()
-    }
-
-    func clearRecentSearches() {
-        recentSearchNames = []
-        NSUbiquitousKeyValueStore.default.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
-        NSUbiquitousKeyValueStore.default.synchronize()
-        print("Cleared recent search names: \(recentSearchNames)")
     }
 
     func syncRecentSearches() {
-        if let savedNames = NSUbiquitousKeyValueStore.default.array(forKey: iCloudRecentSearchesKey) as? [String] {
-            recentSearchNames = Array(savedNames.prefix(10)).filter { name in recipes.contains { $0.name == name } }
+        if let saved = NSUbiquitousKeyValueStore.default.array(forKey: iCloudRecentSearchesKey) as? [String] {
+            recentSearchNames = Array(saved.prefix(10))
+                .filter { name in recipes.contains { $0.name == name } }
         }
     }
 
-    @objc private func icloudDidChange() {
-        syncFavorites()
-        syncRecentSearches()
+    func clearRecentSearches() {
+        recentSearchNames.removeAll()
+        NSUbiquitousKeyValueStore.default.set([], forKey: iCloudRecentSearchesKey)
+        NSUbiquitousKeyValueStore.default.synchronize()
     }
 
+    // MARK: - Recipe Fetching
+
     func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
-        if !isConnected {
+        guard isConnected else {
             DispatchQueue.main.async {
                 self.errorMessage = "No internet connection. Please connect to sync recipes."
                 self.accessibilityAnnouncement = self.errorMessage
@@ -216,35 +212,31 @@ class DataManager: ObservableObject {
             }
             return
         }
-
-        if let lastFetch = lastRecipeFetch,
-           Date().timeIntervalSince(lastFetch) < recipeFetchInterval {
+        if let last = lastRecipeFetch,
+           Date().timeIntervalSince(last) < recipeFetchInterval {
             print("Skipping recipe fetch; last fetch was less than \(recipeFetchInterval) seconds ago.")
             completion()
             return
         }
-
         loadData(isManual: isManual, completion: completion)
     }
 
-    func loadData(isManual: Bool, completion: @escaping () -> Void) {
+    private func loadData(isManual: Bool, completion: @escaping () -> Void) {
         DispatchQueue.main.async {
             self.isLoading = true
-            if isManual {
-                self.isManualSyncing = true
-            }
+            if isManual { self.isManualSyncing = true }
             self.errorMessage = nil
         }
 
         let predicate = NSPredicate(value: true)
         let query = CKQuery(recordType: "Recipe", predicate: predicate)
-
         var fetchedRecipes: [Recipe] = []
 
-        func fetch(with queryOperation: CKQueryOperation, retryCount: Int = 0) {
-            queryOperation.resultsLimit = CKQueryOperation.maximumResults
+        func performFetch(_ operation: CKQueryOperation, retryCount: Int = 0) {
+            operation.resultsLimit = CKQueryOperation.maximumResults
 
-            queryOperation.recordMatchedBlock = { recordID, result in
+            operation.recordMatchedBlock = { [weak self] recordID, result in
+                guard let self = self else { return }
                 switch result {
                 case .success(let record):
                     if let recipe = self.convertRecordToRecipe(record) {
@@ -257,15 +249,16 @@ class DataManager: ObservableObject {
                 }
             }
 
-            queryOperation.queryResultBlock = { result in
+            operation.queryResultBlock = { [weak self] result in
+                guard let self = self else { return }
                 switch result {
                 case .success(let cursor):
                     if let cursor = cursor {
-                        let nextOperation = CKQueryOperation(cursor: cursor)
-                        fetch(with: nextOperation, retryCount: retryCount)
+                        let nextOp = CKQueryOperation(cursor: cursor)
+                        performFetch(nextOp, retryCount: retryCount)
                     } else {
                         DispatchQueue.main.async {
-                            self.recipes = fetchedRecipes.sorted(by: { $0.name < $1.name })
+                            self.recipes = fetchedRecipes.sorted { $0.name < $1.name }
                             self.syncFavorites()
                             self.syncRecentSearches()
                             self.saveRecipesToLocalCache(fetchedRecipes)
@@ -283,28 +276,21 @@ class DataManager: ObservableObject {
                         self.isLoading = false
                         self.isManualSyncing = false
                     }
-
                     if let ckError = error as? CKError, ckError.isRetryable, retryCount < 3 {
-                        DispatchQueue.main.async {
-                            self.isLoading = true
-                        }
+                        DispatchQueue.main.async { self.isLoading = true }
                         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
-                            let retryOperation = CKQueryOperation(query: query)
-                            fetch(with: retryOperation, retryCount: retryCount + 1)
+                            performFetch(CKQueryOperation(query: query), retryCount: retryCount + 1)
                         }
                     } else {
-                        DispatchQueue.main.async {
-                            completion()
-                        }
+                        DispatchQueue.main.async { completion() }
                     }
                 }
             }
 
-            publicDatabase.add(queryOperation)
+            self.publicDatabase.add(operation)
         }
 
-        let initialOperation = CKQueryOperation(query: query)
-        fetch(with: initialOperation)
+        performFetch(CKQueryOperation(query: query))
     }
 
     func loadDataAsync(isManual: Bool = false) async {
@@ -316,18 +302,20 @@ class DataManager: ObservableObject {
     }
 
     func isRecipeFetchOnCooldown() -> Bool {
-        if let lastFetch = lastRecipeFetch {
-            return Date().timeIntervalSince(lastFetch) < recipeFetchInterval
+        if let last = lastRecipeFetch {
+            return Date().timeIntervalSince(last) < recipeFetchInterval
         }
         return false
     }
 
     func isReportStatusFetchOnCooldown() -> Bool {
-        if let lastFetch = lastReportStatusFetchTime {
-            return Date().timeIntervalSince(lastFetch) < reportStatusFetchInterval
+        if let last = lastReportStatusFetchTime {
+            return Date().timeIntervalSince(last) < reportStatusFetchInterval
         }
         return false
     }
+
+    // MARK: - Report Management
 
     func submitRecipeReport(
         reportType: String,
@@ -341,7 +329,11 @@ class DataManager: ObservableObject {
             DispatchQueue.main.async {
                 self.errorMessage = "No internet connection. Please connect to submit a report."
                 self.accessibilityAnnouncement = self.errorMessage
-                completion(.failure(NSError(domain: "DataManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "No internet connection"])))
+                completion(.failure(NSError(
+                    domain: "DataManager",
+                    code: -2,
+                    userInfo: [NSLocalizedDescriptionKey: "No internet connection"]
+                )))
             }
             return
         }
@@ -349,32 +341,27 @@ class DataManager: ObservableObject {
         let record = CKRecord(recordType: "PublicRecipeReport")
         let localID = UUID().uuidString
 
-        record["localID"] = localID
-        record["reportType"] = reportType
-        record["recipeName"] = recipeName
-        record["category"] = category
-        record["recipeID"] = recipeID
-        record["description"] = description
-        record["timestamp"] = Date()
-        record["status"] = "Pending"
+        record["localID"]      = localID
+        record["reportType"]   = reportType
+        record["recipeName"]   = recipeName
+        record["category"]     = category
+        record["recipeID"]     = recipeID
+        record["description"]  = description
+        record["timestamp"]    = Date()
+        record["status"]       = "Pending"
 
-        publicDatabase.save(record) { record, error in
+        publicDatabase.save(record) { [weak self] saved, error in
+            guard let self = self else { return }
             DispatchQueue.main.async {
                 if let error = error {
-                    let errorType = self.errorType(for: error)
-                    self.errorMessage = "Failed to submit report: \(errorType.rawValue)"
+                    let type = self.errorType(for: error)
+                    self.errorMessage = "Failed to submit report: \(type.rawValue)"
                     self.accessibilityAnnouncement = self.errorMessage
                     completion(.failure(error))
-                } else if let savedRecord = record {
-                    if let creatorID = savedRecord["___createdBy"] as? CKRecord.Reference {
-                        print("Report created by: \(creatorID.recordID.recordName)")
-                    } else {
-                        print("Warning: ___createdBy field is nil for record \(savedRecord.recordID.recordName)")
-                    }
-
+                } else if let saved = saved {
                     let report = RecipeReport(
                         id: localID,
-                        recordID: savedRecord.recordID.recordName,
+                        recordID: saved.recordID.recordName,
                         localID: localID,
                         reportType: reportType,
                         recipeName: recipeName,
@@ -393,17 +380,21 @@ class DataManager: ObservableObject {
     }
 
     func fetchRecipeReports(completion: @escaping (Result<[RecipeReport], Error>) -> Void) {
-        if !isConnected {
+        guard isConnected else {
             DispatchQueue.main.async {
                 self.errorMessage = "No internet connection. Please connect to fetch reports."
                 self.accessibilityAnnouncement = self.errorMessage
-                completion(.failure(NSError(domain: "DataManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "No internet connection"])))
+                completion(.failure(NSError(
+                    domain: "DataManager",
+                    code: -2,
+                    userInfo: [NSLocalizedDescriptionKey: "No internet connection"]
+                )))
             }
             return
         }
 
-        if let lastFetch = lastReportStatusFetchTime,
-           Date().timeIntervalSince(lastFetch) < reportStatusFetchInterval {
+        if let last = lastReportStatusFetchTime,
+           Date().timeIntervalSince(last) < reportStatusFetchInterval {
             print("Skipping report fetch; last fetch was less than \(reportStatusFetchInterval) seconds ago.")
             completion(.success([]))
             return
@@ -411,7 +402,6 @@ class DataManager: ObservableObject {
 
         container.fetchUserRecordID { [weak self] userRecordID, error in
             guard let self = self else { return }
-
             if let error = error {
                 DispatchQueue.main.async {
                     self.errorMessage = "Failed to fetch user ID: \(error.localizedDescription)"
@@ -420,70 +410,64 @@ class DataManager: ObservableObject {
                 }
                 return
             }
-
             guard let userRecordID = userRecordID else {
                 DispatchQueue.main.async {
                     self.errorMessage = ErrorType.userIdentification.rawValue
                     self.accessibilityAnnouncement = self.errorMessage
-                    completion(.failure(NSError(domain: "DataManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "User record ID not found"])))
+                    completion(.failure(NSError(
+                        domain: "DataManager",
+                        code: -3,
+                        userInfo: [NSLocalizedDescriptionKey: "User record ID not found"]
+                    )))
                 }
                 return
             }
 
-            let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
-            let predicate = NSPredicate(format: "___createdBy == %@", userReference)
+            let predicate = NSPredicate(format: "creatorUserRecordID == %@", userRecordID)
             let query = CKQuery(recordType: "PublicRecipeReport", predicate: predicate)
+            var fetchedReports: [RecipeReport] = []
 
-            var fetchedReports = [RecipeReport]()
+            func performFetch(_ operation: CKQueryOperation) {
+                operation.resultsLimit = CKQueryOperation.maximumResults
 
-            func fetch(with queryOperation: CKQueryOperation) {
-                queryOperation.resultsLimit = CKQueryOperation.maximumResults
-
-                queryOperation.recordMatchedBlock = { recordID, result in
-                    switch result {
-                    case .success(let record):
-                        guard let localID = record["localID"] as? String,
-                              let reportType = record["reportType"] as? String,
-                              let recipeName = record["recipeName"] as? String,
-                              let category = record["category"] as? String,
-                              let description = record["description"] as? String,
-                              let timestamp = record["timestamp"] as? Date,
-                              let status = record["status"] as? String else {
-                            DispatchQueue.main.async {
-                                self.errorMessage = ErrorType.missingFields.rawValue
-                                self.accessibilityAnnouncement = self.errorMessage
-                            }
-                            return
-                        }
-                        let recipeID = record["recipeID"] as? Int
+                operation.recordMatchedBlock = { [weak self] _, result in
+                    guard let self = self else { return }
+                    if case .success(let record) = result,
+                       let localID    = record["localID"]    as? String,
+                       let type       = record["reportType"] as? String,
+                       let name       = record["recipeName"] as? String,
+                       let cat        = record["category"]   as? String,
+                       let desc       = record["description"]as? String,
+                       let ts         = record["timestamp"]  as? Date,
+                       let status     = record["status"]     as? String {
                         let report = RecipeReport(
                             id: localID,
-                            recordID: recordID.recordName,
+                            recordID: record.recordID.recordName,
                             localID: localID,
-                            reportType: reportType,
-                            recipeName: recipeName,
-                            category: category,
-                            recipeID: recipeID,
-                            description: description,
-                            timestamp: timestamp,
+                            reportType: type,
+                            recipeName: name,
+                            category: cat,
+                            recipeID: record["recipeID"] as? Int,
+                            description: desc,
+                            timestamp: ts,
                             status: status
                         )
                         fetchedReports.append(report)
-                    case .failure(let error):
+                    } else if case .failure(let error) = result {
                         DispatchQueue.main.async {
-                            self.errorMessage = "Error fetching report \(recordID.recordName): \(error.localizedDescription)"
+                            self.errorMessage = "Error fetching report: \(error.localizedDescription)"
                             self.accessibilityAnnouncement = self.errorMessage
                         }
                     }
                 }
 
-                queryOperation.queryResultBlock = { result in
+                operation.queryResultBlock = { [weak self] result in
+                    guard let self = self else { return }
                     DispatchQueue.main.async {
                         switch result {
                         case .success(let cursor):
                             if let cursor = cursor {
-                                let nextOperation = CKQueryOperation(cursor: cursor)
-                                fetch(with: nextOperation)
+                                performFetch(CKQueryOperation(cursor: cursor))
                             } else {
                                 self.lastReportStatusFetchTime = Date()
                                 completion(.success(fetchedReports))
@@ -496,11 +480,10 @@ class DataManager: ObservableObject {
                     }
                 }
 
-                self.publicDatabase.add(queryOperation)
+                self.publicDatabase.add(operation)
             }
 
-            let initialOperation = CKQueryOperation(query: query)
-            fetch(with: initialOperation)
+            performFetch(CKQueryOperation(query: query))
         }
     }
 
@@ -513,18 +496,15 @@ class DataManager: ObservableObject {
             }
             return
         }
-
-        guard let recordIDString = report.recordID else {
+        guard let rid = report.recordID else {
             self.accessibilityAnnouncement = "Report deleted successfully"
             completion(true)
             return
         }
-
-        let recordID = CKRecord.ID(recordName: recordIDString)
-
-        publicDatabase.delete(withRecordID: recordID) { _, error in
+        publicDatabase.delete(withRecordID: CKRecord.ID(recordName: rid)) { [weak self] _, error in
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                if let error = error as? CKError, error.code == .unknownItem {
+                if let ckError = error as? CKError, ckError.code == .unknownItem {
                     self.accessibilityAnnouncement = "Report deleted successfully"
                     completion(true)
                 } else if let error = error {
@@ -548,18 +528,15 @@ class DataManager: ObservableObject {
             }
             return
         }
-
-        let reportsWithRecordID = reports.filter { $0.recordID != nil }
-        guard !reportsWithRecordID.isEmpty else {
+        let toDelete = reports.compactMap { $0.recordID }.map { CKRecord.ID(recordName: $0) }
+        guard !toDelete.isEmpty else {
             self.accessibilityAnnouncement = "All reports deleted successfully"
             completion(true)
             return
         }
-
-        let recordIDs = reportsWithRecordID.compactMap { $0.recordID }.map { CKRecord.ID(recordName: $0) }
-        let operation = CKModifyRecordsOperation(recordsToSave: nil, recordIDsToDelete: recordIDs)
-
-        operation.modifyRecordsResultBlock = { result in
+        let operation = CKModifyRecordsOperation(recordsToSave: nil, recordIDsToDelete: toDelete)
+        operation.modifyRecordsResultBlock = { [weak self] result in
+            guard let self = self else { return }
             DispatchQueue.main.async {
                 switch result {
                 case .success:
@@ -572,14 +549,15 @@ class DataManager: ObservableObject {
                 }
             }
         }
-
         publicDatabase.add(operation)
     }
 
+    // MARK: - Cache
+
     func clearCache(completion: @escaping (Bool) -> Void) {
-        let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
+        let url = getCacheDirectory().appendingPathComponent(localCacheFileName())
         do {
-            try FileManager.default.removeItem(at: fileURL)
+            try FileManager.default.removeItem(at: url)
             DispatchQueue.main.async {
                 self.recipes = []
                 self.cacheClearedMessage = "Cache cleared successfully."
@@ -596,10 +574,10 @@ class DataManager: ObservableObject {
     }
 
     func clearAllData(completion: @escaping (Bool) -> Void) {
-        clearCache { cacheSuccess in
+        clearCache { [weak self] cacheSuccess in
+            guard let self = self else { return }
             self.clearFavorites()
             self.clearRecentSearches()
-            
             DispatchQueue.main.async {
                 if cacheSuccess {
                     self.cacheClearedMessage = "All data cleared successfully."
@@ -614,72 +592,56 @@ class DataManager: ObservableObject {
         }
     }
 
+    // MARK: - Local Cache Helpers
+
     private func localCacheFileName() -> String {
-        return "recipes.json"
+        "recipes.json"
     }
 
     private func loadRecipesFromLocalCache() -> [Recipe]? {
-        let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
-        guard let data = try? Data(contentsOf: fileURL) else {
-            return nil
-        }
+        let url = getCacheDirectory().appendingPathComponent(localCacheFileName())
+        guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode([Recipe].self, from: data)
     }
 
     private func saveRecipesToLocalCache(_ recipes: [Recipe]) {
-        let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
-        if let data = try? JSONEncoder().encode(recipes) {
-            do {
-                try data.write(to: fileURL)
-            } catch {
-                print("Error saving recipes to local cache: \(error.localizedDescription)")
-            }
-        }
+        let url = getCacheDirectory().appendingPathComponent(localCacheFileName())
+        guard let data = try? JSONEncoder().encode(recipes) else { return }
+        try? data.write(to: url)
     }
 
     private func getCacheDirectory() -> URL {
-        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
     private func convertRecordToRecipe(_ record: CKRecord) -> Recipe? {
-        guard let name = record["name"] as? String,
-              let image = record["image"] as? String,
-              let ingredients = record["ingredients"] as? [String],
-              let outputInt64 = record["output"] as? Int64,
-              let category = record["category"] as? String else {
+        guard
+            let name        = record["name"] as? String,
+            let image       = record["image"] as? String,
+            let ingredients = record["ingredients"] as? [String],
+            let outputInt   = record["output"] as? Int64,
+            let category    = record["category"] as? String
+        else {
             return nil
         }
 
-        let id = Int(record.recordID.recordName) ?? 0
-        let output = Int(outputInt64)
-        let imageremark = record["imageremark"] as? String
-        let remarks = record["remarks"] as? String
-        let alt0 = record["alternateIngredients"] as? [String]
-        let alt1 = record["alternateIngredients1"] as? [String]
-        let alt2 = record["alternateIngredients2"] as? [String]
-        let alt3 = record["alternateIngredients3"] as? [String]
-        let altOutput0 = (record["alternateOutput"] as? Int64).map(Int.init)
-        let altOutput1 = (record["alternateOutput1"] as? Int64).map(Int.init)
-        let altOutput2 = (record["alternateOutput2"] as? Int64).map(Int.init)
-        let altOutput3 = (record["alternateOutput3"] as? Int64).map(Int.init)
-
         return Recipe(
-            id: id,
+            id: Int(record.recordID.recordName) ?? 0,
             name: name,
             image: image,
             ingredients: ingredients,
-            alternateIngredients: alt0,
-            alternateIngredients1: alt1,
-            alternateIngredients2: alt2,
-            alternateIngredients3: alt3,
-            output: output,
-            alternateOutput: altOutput0,
-            alternateOutput1: altOutput1,
-            alternateOutput2: altOutput2,
-            alternateOutput3: altOutput3,
+            alternateIngredients:  record["alternateIngredients"]  as? [String],
+            alternateIngredients1: record["alternateIngredients1"] as? [String],
+            alternateIngredients2: record["alternateIngredients2"] as? [String],
+            alternateIngredients3: record["alternateIngredients3"] as? [String],
+            output: Int(outputInt),
+            alternateOutput:  (record["alternateOutput"]  as? Int64).map(Int.init),
+            alternateOutput1: (record["alternateOutput1"] as? Int64).map(Int.init),
+            alternateOutput2: (record["alternateOutput2"] as? Int64).map(Int.init),
+            alternateOutput3: (record["alternateOutput3"] as? Int64).map(Int.init),
             category: category,
-            imageremark: imageremark,
-            remarks: remarks
+            imageremark: record["imageremark"] as? String,
+            remarks:     record["remarks"]    as? String
         )
     }
 
@@ -700,399 +662,13 @@ class DataManager: ObservableObject {
     }
 
     var categories: [String] {
-        let uniqueCategories = Set(recipes.map { $0.category })
-        return Array(uniqueCategories).sorted()
+        Set(recipes.map { $0.category }).sorted()
     }
 
     var filteredRecipes: [Recipe] {
         recipes.filter { recipe in
-            let matchesCategory = selectedCategory == nil || recipe.category == selectedCategory
-            let matchesSearch = searchText.isEmpty || recipe.name.lowercased().contains(searchText.lowercased())
-            return matchesCategory && matchesSearch
-        }
-    }
-
-    func createReportStatusSubscription(completion: @escaping (Bool) -> Void) {
-        print("Starting createReportStatusSubscription")
-        print("Container identifier: \(container.containerIdentifier ?? "nil"), Database scope: Public")
-        guard isConnected else {
-            DispatchQueue.main.async {
-                self.errorMessage = "No internet connection. Please connect to enable notifications."
-                self.accessibilityAnnouncement = self.errorMessage
-                print("Subscription creation failed: No internet connection")
-                completion(false)
-            }
-            return
-        }
-
-        // Check notification permissions
-        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
-            guard let self else {
-                print("Subscription creation failed: Self deallocated")
-                completion(false)
-                return
-            }
-
-            DispatchQueue.main.async {
-                guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
-                    self.errorMessage = "Notification permissions not granted. Please enable notifications in Settings."
-                    self.accessibilityAnnouncement = self.errorMessage
-                    print("Subscription creation failed: Notification permissions not granted - \(settings.authorizationStatus.rawValue)")
-                    completion(false)
-                    return
-                }
-                print("Notification status: \(settings.authorizationStatus.rawValue)")
-
-                guard self.isPushRegistered else {
-                    self.errorMessage = "Push notifications not registered. Please try again later."
-                    self.accessibilityAnnouncement = self.errorMessage
-                    print("Subscription creation failed: Push notifications not registered")
-                    DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-                        self.createReportStatusSubscription(completion: completion)
-                    }
-                    return
-                }
-                print("Push notifications registered: \(self.isPushRegistered)")
-
-                // Check iCloud account status
-                self.container.accountStatus { status, error in
-                    DispatchQueue.main.async {
-                        guard status == .available else {
-                            let message = error?.localizedDescription ?? "Unable to sign in to iCloud. Please sign in to enable notifications."
-                            self.errorMessage = message
-                            self.accessibilityAnnouncement = message
-                            print("Subscription creation failed: iCloud account status \(status.rawValue), error: \(message)")
-                            completion(false)
-                            return
-                        }
-                        print("iCloud account status: Available")
-
-                        // Validate container and user
-                        self.container.fetchUserRecordID { userRecordID, error in
-                            if let error {
-                                DispatchQueue.main.async {
-                                    let errorType = self.errorType(for: error)
-                                    self.errorMessage = "Failed to fetch user ID: \(errorType.rawValue)"
-                                    self.accessibilityAnnouncement = self.errorMessage
-                                    print("Subscription creation failed: Fetch user ID error - \(errorType.rawValue)")
-                                    completion(false)
-                                }
-                                return
-                            }
-
-                            guard let userRecordID else {
-                                DispatchQueue.main.async {
-                                    self.errorMessage = ErrorType.userIdentification.rawValue
-                                    self.accessibilityAnnouncement = self.errorMessage
-                                    print("Subscription creation failed: User record ID not found")
-                                    completion(false)
-                                }
-                                return
-                            }
-                            print("User record ID: \(userRecordID.recordName)")
-
-                            let subscriptionID = "ReportStatusChanges_\(userRecordID.recordName)"
-                            print("Subscription ID: \(subscriptionID)")
-
-                            // Check for existing subscriptions
-                            self.publicDatabase.fetchAllSubscriptions { subscriptions, error in
-                                if let error {
-                                    DispatchQueue.main.async {
-                                        self.errorMessage = "Failed to fetch existing subscriptions: \(error.localizedDescription)"
-                                        self.accessibilityAnnouncement = self.errorMessage
-                                        print("Subscription fetch error: \(error.localizedDescription)")
-                                        completion(false)
-                                    }
-                                    return
-                                }
-
-                                if let subscriptions, subscriptions.contains(where: { $0.subscriptionID == subscriptionID }) {
-                                    DispatchQueue.main.async {
-                                        self.errorMessage = nil
-                                        self.accessibilityAnnouncement = "Notifications already enabled"
-                                        print("Subscription already exists: \(subscriptionID)")
-                                        completion(true)
-                                    }
-                                    return
-                                }
-                                print("No existing subscription found for: \(subscriptionID)")
-
-                                // Validate PublicRecipeReport schema and fields
-                                let predicate = NSPredicate(value: true)
-                                let query = CKQuery(recordType: "PublicRecipeReport", predicate: predicate)
-                                let operation = CKQueryOperation(query: query)
-                                operation.resultsLimit = 1
-                                operation.desiredKeys = ["recipeName", "status", "___createdBy"]
-
-                                operation.recordMatchedBlock = { _, result in
-                                    switch result {
-                                    case .success(let record):
-                                        let recipeNameValid = record["recipeName"] as? String != nil
-                                        let statusValid = record["status"] as? String != nil
-                                        let createdByValid = record["___createdBy"] as? CKRecord.Reference != nil
-                                        print("Schema validation: PublicRecipeReport exists with fields: recipeName=\(recipeNameValid ? "valid" : "invalid"), status=\(statusValid ? "valid" : "invalid"), ___createdBy=\(createdByValid ? "valid" : "invalid")")
-                                    case .failure(let error):
-                                        DispatchQueue.main.async {
-                                            self.errorMessage = "Schema validation failed: \(error.localizedDescription)"
-                                            self.accessibilityAnnouncement = self.errorMessage
-                                            print("Schema verification error: \(error.localizedDescription)")
-                                            completion(false)
-                                        }
-                                    }
-                                }
-
-                                operation.queryResultBlock = { result in
-                                    DispatchQueue.main.async {
-                                        switch result {
-                                        case .success:
-                                            print("Query for schema validation completed successfully")
-                                        case .failure(let error):
-                                            if let ckError = error as? CKError, ckError.code == .unknownItem {
-                                                self.errorMessage = "Report type not found. Please ensure the schema is deployed."
-                                                self.accessibilityAnnouncement = self.errorMessage
-                                                print("Schema verification failed: PublicRecipeReport not found - \(error.localizedDescription)")
-                                                completion(false)
-                                                return
-                                            }
-                                            self.errorMessage = "Failed to validate schema: \(error.localizedDescription)"
-                                            self.accessibilityAnnouncement = self.errorMessage
-                                            print("Schema verification error: \(error.localizedDescription)")
-                                            completion(false)
-                                            return
-                                        }
-
-                                        // Create new subscription
-                                        let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
-                                        let predicate = NSPredicate(format: "___createdBy == %@", userReference)
-                                        let subscriptionOptions: CKQuerySubscription.Options = [.firesOnRecordUpdate]
-                                        let subscription = CKQuerySubscription(
-                                            recordType: "PublicRecipeReport",
-                                            predicate: predicate,
-                                            subscriptionID: subscriptionID,
-                                            options: subscriptionOptions
-                                        )
-
-                                        let notificationInfo = CKSubscription.NotificationInfo()
-                                        notificationInfo.title = "Craftify Update"
-                                        notificationInfo.soundName = "default"
-                                        subscription.notificationInfo = notificationInfo
-
-                                        func saveSubscription(subscription: CKQuerySubscription, forcedRetry: Int = 0, attempt: Int = 0) {
-                                            if attempt == 1 {
-                                                // First fallback: Add alertBody
-                                                notificationInfo.alertBody = "Your report status has changed."
-                                            } else if attempt == 2 {
-                                                // Second fallback: Use status only
-                                                notificationInfo.desiredKeys = ["status"]
-                                                notificationInfo.alertBody = "Your report status is now %1$@!"
-                                            } else if attempt == 3 {
-                                                // Third fallback: Use recipeName and status
-                                                notificationInfo.desiredKeys = ["recipeName", "status"]
-                                                notificationInfo.alertBody = "Your report for %1$@ is now %2$@!"
-                                            } else if attempt == 4 {
-                                                // Fourth fallback: No notificationInfo
-                                                subscription.notificationInfo = nil
-                                            }
-
-                                            print("Attempting to save subscription (forcedRetry \(forcedRetry), attempt \(attempt)) with configuration: id=\(subscriptionID), recordType=\(subscription.recordType), predicate=\(predicate.predicateFormat), options=\(subscriptionOptions.rawValue), notificationInfo: title=\(notificationInfo.title ?? "nil"), alertBody=\(notificationInfo.alertBody ?? "nil"), desiredKeys=\(String(describing: notificationInfo.desiredKeys) ?? "nil")")
-
-                                            self.publicDatabase.save(subscription) { [weak self] savedSubscription, error in
-                                                guard let self else { return }
-                                                DispatchQueue.main.async {
-                                                    if let error = error as? CKError {
-                                                        let retryAfter = error.userInfo[CKErrorRetryAfterKey] as? Double ?? 5.0
-                                                        switch error.code {
-                                                        case .badDatabase:
-                                                            self.errorMessage = "Invalid CloudKit database."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save failed: Bad database - \(error.localizedDescription)")
-                                                            completion(false)
-                                                        case .permissionFailure, .notAuthenticated:
-                                                            self.errorMessage = "Please sign in to iCloud to enable notifications."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save failed: Permission failure - \(error.localizedDescription)")
-                                                            completion(false)
-                                                        case .networkFailure, .networkUnavailable:
-                                                            self.errorMessage = "Network error. Please check your connection and try again."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save failed: Network issue - \(error.localizedDescription)")
-                                                            completion(false)
-                                                        case .serverRejectedRequest:
-                                                            self.errorMessage = "Server rejected the request. Please try again later."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save failed: Server rejected - \(error.localizedDescription)")
-                                                            completion(false)
-                                                        case .quotaExceeded:
-                                                            self.errorMessage = "CloudKit subscription quota exceeded. Please contact support."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save failed: Quota exceeded - \(error.localizedDescription)")
-                                                            completion(false)
-                                                        case .badContainer:
-                                                            self.errorMessage = "Invalid CloudKit container. Check configuration."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save failed: Bad container - \(error.localizedDescription)")
-                                                            completion(false)
-                                                        case .unknownItem:
-                                                            self.errorMessage = "Report type not found. Please ensure the schema is deployed."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save failed: Unknown item - \(error.localizedDescription)")
-                                                            completion(false)
-                                                        case .partialFailure:
-                                                            if let partialErrors = error.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error],
-                                                               partialErrors.values.contains(where: { ($0 as? CKError)?.code == .serverRecordChanged }) {
-                                                                self.errorMessage = nil
-                                                                self.accessibilityAnnouncement = "Notifications already enabled"
-                                                                print("Subscription already exists (partial failure): \(subscriptionID)")
-                                                                completion(true)
-                                                                return
-                                                            }
-                                                            self.errorMessage = "Failed to enable notifications: Partial failure."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save failed: Partial failure - \(error.localizedDescription)")
-                                                            completion(false)
-                                                        case .invalidArguments:
-                                                            if attempt < 4 {
-                                                                print("Retrying subscription save (forcedRetry \(forcedRetry), attempt \(attempt + 1)) due to invalid arguments: \(error.localizedDescription)")
-                                                                print("Error userInfo: \(error.userInfo)")
-                                                                if let underlyingError = error.userInfo[NSUnderlyingErrorKey] as? Error {
-                                                                    print("Underlying error: \(underlyingError.localizedDescription)")
-                                                                }
-                                                                print("Retry after: \(retryAfter) seconds")
-                                                                DispatchQueue.global().asyncAfter(deadline: .now() + retryAfter) {
-                                                                    saveSubscription(subscription: subscription, forcedRetry: forcedRetry, attempt: attempt + 1)
-                                                                }
-                                                                return
-                                                            }
-                                                            // Fall through to forced retry
-                                                        default:
-                                                            self.errorMessage = "Failed to enable notifications: \(error.localizedDescription)"
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save failed: \(error.localizedDescription)")
-                                                            completion(false)
-                                                            return
-                                                        }
-
-                                                        // Forced retry for non-specific errors
-                                                        if forcedRetry < 3 {
-                                                            print("Forced retry subscription save (forcedRetry \(forcedRetry + 1), attempt \(attempt)) due to error: \(error.localizedDescription)")
-                                                            print("Retry after: \(retryAfter) seconds")
-                                                            DispatchQueue.global().asyncAfter(deadline: .now() + retryAfter) {
-                                                                saveSubscription(subscription: subscription, forcedRetry: forcedRetry + 1, attempt: attempt)
-                                                            }
-                                                            return
-                                                        }
-
-                                                        self.errorMessage = "Failed to enable notifications after retries: \(error.localizedDescription)"
-                                                        self.accessibilityAnnouncement = self.errorMessage
-                                                        print("Subscription save failed after \(forcedRetry) retries: \(error.localizedDescription)")
-                                                        completion(false)
-                                                        return
-                                                    } else if let error {
-                                                        self.errorMessage = "Failed to enable notifications: \(error.localizedDescription)"
-                                                        self.accessibilityAnnouncement = self.errorMessage
-                                                        print("Subscription save failed: \(error.localizedDescription)")
-                                                        completion(false)
-                                                        return
-                                                    }
-
-                                                    print("Subscription save succeeded: \(subscriptionID)")
-
-                                                    // Delayed verification to handle server propagation
-                                                    DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-                                                        self.publicDatabase.fetch(withSubscriptionID: subscriptionID) { fetchedSubscription, fetchError in
-                                                            DispatchQueue.main.async {
-                                                                if let fetchError {
-                                                                    self.errorMessage = "Failed to verify subscription: \(fetchError.localizedDescription)"
-                                                                    self.accessibilityAnnouncement = self.errorMessage
-                                                                    print("Subscription verification failed: \(fetchError.localizedDescription)")
-                                                                    completion(false)
-                                                                    return
-                                                                }
-
-                                                                guard let fetchedSubscription else {
-                                                                    self.errorMessage = "Subscription saved but not found in database."
-                                                                    self.accessibilityAnnouncement = self.errorMessage
-                                                                    print("Subscription verification failed: Subscription \(subscriptionID) not found")
-                                                                    completion(false)
-                                                                    return
-                                                                }
-
-                                                                print("Subscription verification succeeded: \(fetchedSubscription.subscriptionID), type: \(fetchedSubscription.subscriptionType)")
-                                                                self.errorMessage = nil
-                                                                self.accessibilityAnnouncement = "Notifications enabled successfully"
-                                                                completion(true)
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        saveSubscription(subscription: subscription)
-                                    }
-                                }
-
-                                self.publicDatabase.add(operation)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    func deleteReportStatusSubscription(completion: @escaping (Bool) -> Void) {
-        guard isConnected else {
-            DispatchQueue.main.async {
-                self.errorMessage = "No internet connection."
-                self.accessibilityAnnouncement = self.errorMessage
-                print("Subscription deletion failed: No internet connection")
-                completion(false)
-            }
-            return
-        }
-
-        container.fetchUserRecordID { [weak self] userRecordID, error in
-            guard let self else {
-                completion(false)
-                return
-            }
-
-            DispatchQueue.main.async {
-                if let error {
-                    self.errorMessage = "Failed to fetch user ID: \(error.localizedDescription)"
-                    self.accessibilityAnnouncement = self.errorMessage
-                    print("Subscription deletion failed: Fetch user ID error - \(error.localizedDescription)")
-                    completion(false)
-                    return
-                }
-
-                guard let userRecordID else {
-                    self.errorMessage = ErrorType.userIdentification.rawValue
-                    self.accessibilityAnnouncement = self.errorMessage
-                    print("Subscription deletion failed: User record ID not found")
-                    completion(false)
-                    return
-                }
-
-                let subscriptionID = "ReportStatusChanges_\(userRecordID.recordName)"
-
-                self.publicDatabase.delete(withSubscriptionID: subscriptionID) { _, error in
-                    DispatchQueue.main.async {
-                        if let error, (error as? CKError)?.code != .unknownItem {
-                            self.errorMessage = "Failed to disable notifications: \(error.localizedDescription)"
-                            self.accessibilityAnnouncement = self.errorMessage
-                            print("Subscription deletion failed: \(error.localizedDescription)")
-                            completion(false)
-                        } else {
-                            self.errorMessage = nil
-                            self.accessibilityAnnouncement = "Notifications disabled successfully"
-                            print("Subscription deleted successfully: \(subscriptionID)")
-                            completion(true)
-                        }
-                    }
-                }
-            }
+            (selectedCategory == nil || recipe.category == selectedCategory) &&
+            (searchText.isEmpty || recipe.name.contains(searchText.lowercased()))
         }
     }
 }

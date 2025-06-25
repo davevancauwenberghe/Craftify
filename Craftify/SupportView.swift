@@ -9,35 +9,20 @@ import SwiftUI
 
 struct SupportView: View {
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var notificationManager: NotificationManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var showClearDataAlert: Bool = false
-    @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = false
+    @State private var showClearDataAlert = false
+    @AppStorage("notificationsEnabled") private var notificationsEnabled = false
 
     var body: some View {
         List {
-            Section(header: Text("Support")) {
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    let supportEmail = "hello@davevancauwenberghe.be"
-                    if let url = URL(string: "mailto:\(supportEmail)") {
-                        UIApplication.shared.open(url)
-                    }
-                }) {
-                    buttonStyle(title: "Contact Support", systemImage: "envelope.fill")
-                }
-                .buttonStyle(.plain)
-                .listRowInsets(EdgeInsets(
-                    top: horizontalSizeClass == .regular ? 12 : 8,
-                    leading: horizontalSizeClass == .regular ? 16 : 12,
-                    bottom: horizontalSizeClass == .regular ? 12 : 8,
-                    trailing: horizontalSizeClass == .regular ? 16 : 12
-                ))
-                .accessibilityLabel("Contact Support")
-                .accessibilityHint("Opens the mail app to contact support")
+            // MARK: Support Section
+            Section("Support") {
+                contactSupportButton
 
                 #if os(iOS)
                 Toggle(isOn: $notificationsEnabled) {
-                    buttonStyle(title: "Report Status Notifications", systemImage: "bell.fill")
+                    ReportNotificationsLabel()
                 }
                 .listRowInsets(EdgeInsets(
                     top: horizontalSizeClass == .regular ? 12 : 8,
@@ -47,27 +32,18 @@ struct SupportView: View {
                 ))
                 .accessibilityLabel("Report Status Notifications")
                 .accessibilityHint("Toggle to enable or disable notifications for report status changes")
-                .onChange(of: notificationsEnabled) { _, enabled in
-                    if enabled {
-                        dataManager.createReportStatusSubscription { success in
-                            if !success {
-                                DispatchQueue.main.async {
-                                    notificationsEnabled = false
-                                }
-                            }
-                        }
-                    } else {
-                        dataManager.deleteReportStatusSubscription { _ in }
-                    }
+                .onChange(of: notificationsEnabled) { newValue in
+                    handleNotificationToggle(newValue)
                 }
                 #endif
             }
 
-            Section(header: Text("Data Management")) {
-                Button(action: {
+            // MARK: Data Management Section
+            Section("Data Management") {
+                Button {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     showClearDataAlert = true
-                }) {
+                } label: {
                     buttonStyle(title: "Clear All Data", systemImage: "trash.fill", foregroundColor: .red)
                 }
                 .buttonStyle(.plain)
@@ -89,16 +65,14 @@ struct SupportView: View {
                     .accessibilityLabel("Clear All Data Note")
                     .accessibilityHint("This will permanently delete all your favorites, recent searches, recipe reports, and the local recipe cache.")
 
-                Button(action: {
-                    print("Clear Cache tapped")
+                Button {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     dataManager.clearCache { success in
                         if !success {
                             dataManager.errorMessage = "Failed to clear cache. Please try again."
                         }
-                        print("Clear Cache completed, success: \(success)")
                     }
-                }) {
+                } label: {
                     buttonStyle(title: "Clear Cache", systemImage: "trash.fill", foregroundColor: .red)
                 }
                 .buttonStyle(.plain)
@@ -121,13 +95,14 @@ struct SupportView: View {
                     .accessibilityHint("This will permanently delete the local recipe cache, keeping iCloud data like favorites and recent searches.")
             }
 
-            Section(header: Text("Privacy")) {
-                Button(action: {
+            // MARK: Privacy Section
+            Section("Privacy") {
+                Button {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     if let url = URL(string: "https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/privacy-policy/") {
                         UIApplication.shared.open(url)
                     }
-                }) {
+                } label: {
                     buttonStyle(title: "View Privacy Policy Online", systemImage: "safari.fill")
                 }
                 .buttonStyle(.plain)
@@ -310,7 +285,7 @@ struct SupportView: View {
                     }
                     .frame(maxHeight: 300)
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Privacy Policy for Craftify, last updated 20 May 2025. Craftify does not collect personal information. We collect Favorites, Recent Searches, and Recipe Reports (stored in iCloud and CloudKit) for syncing across devices. We monitor network connectivity to manage syncing, but this data stays on your device and is not shared. Data is used only for app features like syncing, reporting, and notifications (if enabled), with no third-party sharing. We use CloudKit for recipes and reports but only see anonymized metadata. You can manage your data, including clearing everything and disabling notifications. Craftify is safe for kids under 13 and complies with COPPA, GDPR, and other laws. Contact us via the Contact Support button.")
+                    .accessibilityLabel("Full privacy policy text, last updated 20 May 2025.")
                 }
                 .padding(.vertical, 8)
             }
@@ -319,13 +294,8 @@ struct SupportView: View {
         .navigationTitle("Support & Privacy")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
-        .background(Color(UIColor.systemGroupedBackground))
         .alert(isPresented: $showClearDataAlert) {
-            DispatchQueue.main.async {
-                UINotificationFeedbackGenerator().notificationOccurred(.warning)
-            }
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
             return Alert(
                 title: Text("Clear All Data"),
                 message: Text("Are you sure? This will remove all your favorites, recent searches, recipe reports, and the local recipe cache. This action cannot be undone."),
@@ -341,7 +311,102 @@ struct SupportView: View {
         }
     }
 
-    private func buttonStyle(title: String, systemImage: String, foregroundColor: Color = Color.userAccentColor) -> some View {
+    // MARK: - Notification Handling
+    private func handleNotificationToggle(_ enabled: Bool) {
+        if enabled {
+            notificationManager.requestUserPermissions { granted in
+                if granted {
+                    notificationManager.registerForRemoteNotifications()
+                    dataManager.container.fetchUserRecordID { userRecordID, error in
+                        guard let userRecordID = userRecordID else {
+                            DispatchQueue.main.async {
+                                notificationsEnabled = false
+                                dataManager.errorMessage = "Failed to fetch user ID. Please sign in to iCloud."
+                            }
+                            return
+                        }
+                        notificationManager.createReportStatusSubscription(for: userRecordID) { result in
+                            DispatchQueue.main.async {
+                                switch result {
+                                case .success:
+                                    break // Subscription created successfully
+                                case .failure(let error):
+                                    notificationsEnabled = false
+                                    dataManager.errorMessage = "Failed to enable notifications: \(error.localizedDescription)"
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        notificationsEnabled = false
+                        dataManager.errorMessage = "Notification permissions not granted. Please enable in Settings."
+                    }
+                }
+            }
+        } else {
+            dataManager.container.fetchUserRecordID { userRecordID, error in
+                guard let userRecordID = userRecordID else {
+                    DispatchQueue.main.async {
+                        dataManager.errorMessage = "Failed to fetch user ID. Please sign in to iCloud."
+                    }
+                    return
+                }
+                notificationManager.deleteReportStatusSubscription(for: userRecordID) { result in
+                    DispatchQueue.main.async {
+                        if case .failure(let error) = result {
+                            dataManager.errorMessage = "Failed to disable notifications: \(error.localizedDescription)"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Subviews
+    private var contactSupportButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            let supportEmail = "hello@davevancauwenberghe.be"
+            if let url = URL(string: "mailto:\(supportEmail)") {
+                UIApplication.shared.open(url)
+            }
+        } label: {
+            buttonStyle(title: "Contact Support", systemImage: "envelope.fill")
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(
+            top: horizontalSizeClass == .regular ? 12 : 8,
+            leading: horizontalSizeClass == .regular ? 16 : 12,
+            bottom: horizontalSizeClass == .regular ? 12 : 8,
+            trailing: horizontalSizeClass == .regular ? 16 : 12
+        ))
+        .accessibilityLabel("Contact Support")
+        .accessibilityHint("Opens the mail app to contact support")
+    }
+
+    private struct ReportNotificationsLabel: View {
+        @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+        var body: some View {
+            HStack(spacing: 8) {
+                Image(systemName: "bell.fill")
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
+                Text("Report Status Notifications")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+        }
+    }
+
+    private func buttonStyle(
+        title: String,
+        systemImage: String,
+        foregroundColor: Color = Color.userAccentColor
+    ) -> some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
                 .font(.title2)
