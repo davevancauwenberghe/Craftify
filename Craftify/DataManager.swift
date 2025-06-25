@@ -33,7 +33,7 @@ class DataManager: ObservableObject {
     private let iCloudRecentSearchesKey = "recentSearches"
     private var cancellables = Set<AnyCancellable>()
     private let reportStatusFetchInterval: TimeInterval = 30
-    private let recipeFetchInterval: TimeInterval = 30
+    private let recipeFetchInterval: TimeInterval = 60
     private let networkMonitor = NWPathMonitor()
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
     private let container = CKContainer(identifier: "iCloud.craftifydb")
@@ -278,9 +278,8 @@ class DataManager: ObservableObject {
                     }
                 case .failure(let error):
                     DispatchQueue.main.async {
-                        let errorType = self.errorType(for: error)
-                        self.errorMessage = errorType.rawValue
-                        self.accessibilityAnnouncement = errorType.rawValue
+                        self.errorMessage = self.errorType(for: error).rawValue
+                        self.accessibilityAnnouncement = self.errorMessage
                         self.isLoading = false
                         self.isManualSyncing = false
                     }
@@ -684,7 +683,7 @@ class DataManager: ObservableObject {
         )
     }
 
-    private func errorType(for err: Swift.Error) -> ErrorType {
+    private func errorType(for err: Error) -> ErrorType {
         if let ckError = err as? CKError {
             switch ckError.code {
             case .networkFailure, .networkUnavailable, .serviceUnavailable, .requestRateLimited:
@@ -715,11 +714,12 @@ class DataManager: ObservableObject {
 
     func createReportStatusSubscription(completion: @escaping (Bool) -> Void) {
         print("Starting createReportStatusSubscription")
+        print("Container identifier: \(container.containerIdentifier ?? "nil"), Database scope: Public")
         guard isConnected else {
             DispatchQueue.main.async {
                 self.errorMessage = "No internet connection. Please connect to enable notifications."
                 self.accessibilityAnnouncement = self.errorMessage
-                print("Subscription failed: No internet connection")
+                print("Subscription creation failed: No internet connection")
                 completion(false)
             }
             return
@@ -727,8 +727,8 @@ class DataManager: ObservableObject {
 
         // Check notification permissions
         UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
-            guard let self = self else {
-                print("Subscription failed: Self deallocated")
+            guard let self else {
+                print("Subscription creation failed: Self deallocated")
                 completion(false)
                 return
             }
@@ -737,17 +737,17 @@ class DataManager: ObservableObject {
                 guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
                     self.errorMessage = "Notification permissions not granted. Please enable notifications in Settings."
                     self.accessibilityAnnouncement = self.errorMessage
-                    print("Subscription failed: Notification permissions not granted - \(settings.authorizationStatus.rawValue)")
+                    print("Subscription creation failed: Notification permissions not granted - \(settings.authorizationStatus.rawValue)")
                     completion(false)
                     return
                 }
-                print("Notification permissions: \(settings.authorizationStatus.rawValue)")
+                print("Notification status: \(settings.authorizationStatus.rawValue)")
 
                 guard self.isPushRegistered else {
                     self.errorMessage = "Push notifications not registered. Please try again later."
                     self.accessibilityAnnouncement = self.errorMessage
-                    print("Subscription failed: Push notifications not registered")
-                    DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
+                    print("Subscription creation failed: Push notifications not registered")
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
                         self.createReportStatusSubscription(completion: completion)
                     }
                     return
@@ -758,10 +758,10 @@ class DataManager: ObservableObject {
                 self.container.accountStatus { status, error in
                     DispatchQueue.main.async {
                         guard status == .available else {
-                            let message = error?.localizedDescription ?? "Please sign in to iCloud to enable notifications."
+                            let message = error?.localizedDescription ?? "Unable to sign in to iCloud. Please sign in to enable notifications."
                             self.errorMessage = message
                             self.accessibilityAnnouncement = message
-                            print("Subscription failed: iCloud account status \(status.rawValue), error: \(message)")
+                            print("Subscription creation failed: iCloud account status \(status.rawValue), error: \(message)")
                             completion(false)
                             return
                         }
@@ -769,22 +769,22 @@ class DataManager: ObservableObject {
 
                         // Validate container and user
                         self.container.fetchUserRecordID { userRecordID, error in
-                            if let error = error {
+                            if let error {
                                 DispatchQueue.main.async {
                                     let errorType = self.errorType(for: error)
                                     self.errorMessage = "Failed to fetch user ID: \(errorType.rawValue)"
                                     self.accessibilityAnnouncement = self.errorMessage
-                                    print("Subscription failed: Fetch user ID error - \(errorType.rawValue)")
+                                    print("Subscription creation failed: Fetch user ID error - \(errorType.rawValue)")
                                     completion(false)
                                 }
                                 return
                             }
 
-                            guard let userRecordID = userRecordID else {
+                            guard let userRecordID else {
                                 DispatchQueue.main.async {
                                     self.errorMessage = ErrorType.userIdentification.rawValue
                                     self.accessibilityAnnouncement = self.errorMessage
-                                    print("Subscription failed: User record ID not found")
+                                    print("Subscription creation failed: User record ID not found")
                                     completion(false)
                                 }
                                 return
@@ -796,7 +796,7 @@ class DataManager: ObservableObject {
 
                             // Check for existing subscriptions
                             self.publicDatabase.fetchAllSubscriptions { subscriptions, error in
-                                if let error = error {
+                                if let error {
                                     DispatchQueue.main.async {
                                         self.errorMessage = "Failed to fetch existing subscriptions: \(error.localizedDescription)"
                                         self.accessibilityAnnouncement = self.errorMessage
@@ -806,8 +806,7 @@ class DataManager: ObservableObject {
                                     return
                                 }
 
-                                if let subscriptions = subscriptions,
-                                   subscriptions.contains(where: { $0.subscriptionID == subscriptionID }) {
+                                if let subscriptions, subscriptions.contains(where: { $0.subscriptionID == subscriptionID }) {
                                     DispatchQueue.main.async {
                                         self.errorMessage = nil
                                         self.accessibilityAnnouncement = "Notifications already enabled"
@@ -836,7 +835,7 @@ class DataManager: ObservableObject {
                                         DispatchQueue.main.async {
                                             self.errorMessage = "Schema validation failed: \(error.localizedDescription)"
                                             self.accessibilityAnnouncement = self.errorMessage
-                                            print("Schema validation error: \(error.localizedDescription)")
+                                            print("Schema verification error: \(error.localizedDescription)")
                                             completion(false)
                                         }
                                     }
@@ -846,18 +845,18 @@ class DataManager: ObservableObject {
                                     DispatchQueue.main.async {
                                         switch result {
                                         case .success:
-                                            print("Schema validation: PublicRecipeReport query completed")
+                                            print("Query for schema validation completed successfully")
                                         case .failure(let error):
                                             if let ckError = error as? CKError, ckError.code == .unknownItem {
-                                                self.errorMessage = "Report type not found. Please ensure the database schema is correct."
+                                                self.errorMessage = "Report type not found. Please ensure the schema is deployed."
                                                 self.accessibilityAnnouncement = self.errorMessage
-                                                print("Schema validation failed: PublicRecipeReport not found - \(error.localizedDescription)")
+                                                print("Schema verification failed: PublicRecipeReport not found - \(error.localizedDescription)")
                                                 completion(false)
                                                 return
                                             }
                                             self.errorMessage = "Failed to validate schema: \(error.localizedDescription)"
                                             self.accessibilityAnnouncement = self.errorMessage
-                                            print("Schema validation error: \(error.localizedDescription)")
+                                            print("Schema verification error: \(error.localizedDescription)")
                                             completion(false)
                                             return
                                         }
@@ -865,11 +864,12 @@ class DataManager: ObservableObject {
                                         // Create new subscription
                                         let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
                                         let predicate = NSPredicate(format: "___createdBy == %@", userReference)
+                                        let subscriptionOptions: CKQuerySubscription.Options = [.firesOnRecordUpdate]
                                         let subscription = CKQuerySubscription(
                                             recordType: "PublicRecipeReport",
                                             predicate: predicate,
                                             subscriptionID: subscriptionID,
-                                            options: [.firesOnRecordUpdate]
+                                            options: subscriptionOptions
                                         )
 
                                         let notificationInfo = CKSubscription.NotificationInfo()
@@ -877,7 +877,7 @@ class DataManager: ObservableObject {
                                         notificationInfo.soundName = "default"
                                         subscription.notificationInfo = notificationInfo
 
-                                        func saveSubscription(retryCount: Int = 0, attempt: Int = 0) {
+                                        func saveSubscription(subscription: CKQuerySubscription, forcedRetry: Int = 0, attempt: Int = 0) {
                                             if attempt == 1 {
                                                 // First fallback: Add alertBody
                                                 notificationInfo.alertBody = "Your report status has changed."
@@ -889,124 +889,146 @@ class DataManager: ObservableObject {
                                                 // Third fallback: Use recipeName and status
                                                 notificationInfo.desiredKeys = ["recipeName", "status"]
                                                 notificationInfo.alertBody = "Your report for %1$@ is now %2$@!"
+                                            } else if attempt == 4 {
+                                                // Fourth fallback: No notificationInfo
+                                                subscription.notificationInfo = nil
                                             }
 
-                                            print("Attempting to save subscription (attempt \(attempt), retry \(retryCount)) with notificationInfo: title=\(notificationInfo.title ?? "nil"), alertBody=\(notificationInfo.alertBody ?? "nil"), desiredKeys=\(notificationInfo.desiredKeys?.description ?? "nil")")
+                                            print("Attempting to save subscription (forcedRetry \(forcedRetry), attempt \(attempt)) with configuration: id=\(subscriptionID), recordType=\(subscription.recordType), predicate=\(predicate.predicateFormat), options=\(subscriptionOptions.rawValue), notificationInfo: title=\(notificationInfo.title ?? "nil"), alertBody=\(notificationInfo.alertBody ?? "nil"), desiredKeys=\(String(describing: notificationInfo.desiredKeys) ?? "nil")")
 
-                                            self.publicDatabase.save(subscription) { savedSubscription, error in
+                                            self.publicDatabase.save(subscription) { [weak self] savedSubscription, error in
+                                                guard let self else { return }
                                                 DispatchQueue.main.async {
                                                     if let error = error as? CKError {
-                                                        let retryAfter = error.userInfo[CKErrorRetryAfterKey] as? Double ?? 3.0
+                                                        let retryAfter = error.userInfo[CKErrorRetryAfterKey] as? Double ?? 5.0
                                                         switch error.code {
                                                         case .badDatabase:
-                                                            self.errorMessage = "Invalid CloudKit database. Please check the container configuration."
+                                                            self.errorMessage = "Invalid CloudKit database."
                                                             self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: Bad database - \(error.localizedDescription)")
+                                                            print("Subscription save failed: Bad database - \(error.localizedDescription)")
+                                                            completion(false)
                                                         case .permissionFailure, .notAuthenticated:
                                                             self.errorMessage = "Please sign in to iCloud to enable notifications."
                                                             self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: Permission failure - \(error.localizedDescription)")
+                                                            print("Subscription save failed: Permission failure - \(error.localizedDescription)")
+                                                            completion(false)
                                                         case .networkFailure, .networkUnavailable:
-                                                            self.errorMessage = "Network error. Please check your internet connection and try again."
+                                                            self.errorMessage = "Network error. Please check your connection and try again."
                                                             self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: Network issue - \(error.localizedDescription)")
+                                                            print("Subscription save failed: Network issue - \(error.localizedDescription)")
+                                                            completion(false)
                                                         case .serverRejectedRequest:
                                                             self.errorMessage = "Server rejected the request. Please try again later."
                                                             self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: Server rejected - \(error.localizedDescription)")
+                                                            print("Subscription save failed: Server rejected - \(error.localizedDescription)")
+                                                            completion(false)
                                                         case .quotaExceeded:
                                                             self.errorMessage = "CloudKit subscription quota exceeded. Please contact support."
                                                             self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: Quota exceeded - \(error.localizedDescription)")
+                                                            print("Subscription save failed: Quota exceeded - \(error.localizedDescription)")
+                                                            completion(false)
                                                         case .badContainer:
-                                                            self.errorMessage = "Invalid CloudKit container. Check the iCloud.craftifydb configuration."
+                                                            self.errorMessage = "Invalid CloudKit container. Check configuration."
                                                             self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: Bad container - \(error.localizedDescription)")
+                                                            print("Subscription save failed: Bad container - \(error.localizedDescription)")
+                                                            completion(false)
                                                         case .unknownItem:
-                                                            self.errorMessage = "Report type not found. Please ensure the database schema is correct."
+                                                            self.errorMessage = "Report type not found. Please ensure the schema is deployed."
                                                             self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: Unknown item - \(error.localizedDescription)")
+                                                            print("Subscription save failed: Unknown item - \(error.localizedDescription)")
+                                                            completion(false)
                                                         case .partialFailure:
-                                                            if let serverError = error.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error],
-                                                               serverError.values.contains(where: { ($0 as? CKError)?.code == .serverRecordChanged }) {
+                                                            if let partialErrors = error.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error],
+                                                               partialErrors.values.contains(where: { ($0 as? CKError)?.code == .serverRecordChanged }) {
                                                                 self.errorMessage = nil
                                                                 self.accessibilityAnnouncement = "Notifications already enabled"
                                                                 print("Subscription already exists (partial failure): \(subscriptionID)")
                                                                 completion(true)
                                                                 return
                                                             }
-                                                            self.errorMessage = "Failed to enable notifications: Partial failure - \(error.localizedDescription)"
+                                                            self.errorMessage = "Failed to enable notifications: Partial failure."
                                                             self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: Partial failure - \(error.localizedDescription)")
+                                                            print("Subscription save failed: Partial failure - \(error.localizedDescription)")
                                                             completion(false)
-                                                            return
                                                         case .invalidArguments:
-                                                            if attempt < 3 && retryCount < 3 {
-                                                                print("Retrying subscription save (attempt \(attempt + 1), retry \(retryCount + 1)) due to invalid arguments: \(error.localizedDescription)")
+                                                            if attempt < 4 {
+                                                                print("Retrying subscription save (forcedRetry \(forcedRetry), attempt \(attempt + 1)) due to invalid arguments: \(error.localizedDescription)")
                                                                 print("Error userInfo: \(error.userInfo)")
                                                                 if let underlyingError = error.userInfo[NSUnderlyingErrorKey] as? Error {
                                                                     print("Underlying error: \(underlyingError.localizedDescription)")
                                                                 }
                                                                 print("Retry after: \(retryAfter) seconds")
                                                                 DispatchQueue.global().asyncAfter(deadline: .now() + retryAfter) {
-                                                                    saveSubscription(retryCount: retryCount + 1, attempt: attempt + 1)
+                                                                    saveSubscription(subscription: subscription, forcedRetry: forcedRetry, attempt: attempt + 1)
                                                                 }
                                                                 return
                                                             }
-                                                            self.errorMessage = "Failed to enable notifications: Invalid subscription configuration."
-                                                            self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: Invalid arguments - \(error.localizedDescription)")
-                                                            print("Error userInfo: \(error.userInfo)")
-                                                            if let underlyingError = error.userInfo[NSUnderlyingErrorKey] as? Error {
-                                                                print("Underlying error: \(underlyingError.localizedDescription)")
-                                                            }
-                                                            completion(false)
-                                                            return
+                                                            // Fall through to forced retry
                                                         default:
                                                             self.errorMessage = "Failed to enable notifications: \(error.localizedDescription)"
                                                             self.accessibilityAnnouncement = self.errorMessage
-                                                            print("Subscription save error: \(error.localizedDescription)")
+                                                            print("Subscription save failed: \(error.localizedDescription)")
                                                             completion(false)
                                                             return
                                                         }
-                                                    } else if let error = error {
+
+                                                        // Forced retry for non-specific errors
+                                                        if forcedRetry < 3 {
+                                                            print("Forced retry subscription save (forcedRetry \(forcedRetry + 1), attempt \(attempt)) due to error: \(error.localizedDescription)")
+                                                            print("Retry after: \(retryAfter) seconds")
+                                                            DispatchQueue.global().asyncAfter(deadline: .now() + retryAfter) {
+                                                                saveSubscription(subscription: subscription, forcedRetry: forcedRetry + 1, attempt: attempt)
+                                                            }
+                                                            return
+                                                        }
+
+                                                        self.errorMessage = "Failed to enable notifications after retries: \(error.localizedDescription)"
+                                                        self.accessibilityAnnouncement = self.errorMessage
+                                                        print("Subscription save failed after \(forcedRetry) retries: \(error.localizedDescription)")
+                                                        completion(false)
+                                                        return
+                                                    } else if let error {
                                                         self.errorMessage = "Failed to enable notifications: \(error.localizedDescription)"
                                                         self.accessibilityAnnouncement = self.errorMessage
-                                                        print("Subscription save error: \(error.localizedDescription)")
+                                                        print("Subscription save failed: \(error.localizedDescription)")
                                                         completion(false)
                                                         return
                                                     }
 
-                                                    // Verify subscription was saved
-                                                    self.publicDatabase.fetch(withSubscriptionID: subscriptionID) { fetchedSubscription, fetchError in
-                                                        DispatchQueue.main.async {
-                                                            if let fetchError = fetchError {
-                                                                self.errorMessage = "Failed to verify subscription: \(fetchError.localizedDescription)"
-                                                                self.accessibilityAnnouncement = self.errorMessage
-                                                                print("Subscription verification error: \(fetchError.localizedDescription)")
-                                                                completion(false)
-                                                                return
-                                                            }
+                                                    print("Subscription save succeeded: \(subscriptionID)")
 
-                                                            guard let fetchedSubscription = fetchedSubscription else {
-                                                                self.errorMessage = "Subscription saved but not found in database."
-                                                                self.accessibilityAnnouncement = self.errorMessage
-                                                                print("Subscription verification failed: Subscription \(subscriptionID) not found")
-                                                                completion(false)
-                                                                return
-                                                            }
+                                                    // Delayed verification to handle server propagation
+                                                    DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+                                                        self.publicDatabase.fetch(withSubscriptionID: subscriptionID) { fetchedSubscription, fetchError in
+                                                            DispatchQueue.main.async {
+                                                                if let fetchError {
+                                                                    self.errorMessage = "Failed to verify subscription: \(fetchError.localizedDescription)"
+                                                                    self.accessibilityAnnouncement = self.errorMessage
+                                                                    print("Subscription verification failed: \(fetchError.localizedDescription)")
+                                                                    completion(false)
+                                                                    return
+                                                                }
 
-                                                            print("Subscription verified: \(fetchedSubscription.subscriptionID), type: \(fetchedSubscription.subscriptionType)")
-                                                            self.errorMessage = nil
-                                                            self.accessibilityAnnouncement = "Notifications enabled successfully"
-                                                            completion(true)
+                                                                guard let fetchedSubscription else {
+                                                                    self.errorMessage = "Subscription saved but not found in database."
+                                                                    self.accessibilityAnnouncement = self.errorMessage
+                                                                    print("Subscription verification failed: Subscription \(subscriptionID) not found")
+                                                                    completion(false)
+                                                                    return
+                                                                }
+
+                                                                print("Subscription verification succeeded: \(fetchedSubscription.subscriptionID), type: \(fetchedSubscription.subscriptionType)")
+                                                                self.errorMessage = nil
+                                                                self.accessibilityAnnouncement = "Notifications enabled successfully"
+                                                                completion(true)
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
                                         }
 
-                                        saveSubscription()
+                                        saveSubscription(subscription: subscription)
                                     }
                                 }
 
@@ -1022,53 +1044,52 @@ class DataManager: ObservableObject {
     func deleteReportStatusSubscription(completion: @escaping (Bool) -> Void) {
         guard isConnected else {
             DispatchQueue.main.async {
-                self.errorMessage = "No internet connection. Please connect to disable notifications."
+                self.errorMessage = "No internet connection."
                 self.accessibilityAnnouncement = self.errorMessage
+                print("Subscription deletion failed: No internet connection")
                 completion(false)
             }
             return
         }
 
         container.fetchUserRecordID { [weak self] userRecordID, error in
-            guard let self = self else {
+            guard let self else {
                 completion(false)
                 return
             }
 
-            if let error = error {
-                DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                if let error {
                     self.errorMessage = "Failed to fetch user ID: \(error.localizedDescription)"
                     self.accessibilityAnnouncement = self.errorMessage
-                    print("Delete subscription failed: Fetch user ID error - \(error.localizedDescription)")
+                    print("Subscription deletion failed: Fetch user ID error - \(error.localizedDescription)")
                     completion(false)
+                    return
                 }
-                return
-            }
 
-            guard let userRecordID = userRecordID else {
-                DispatchQueue.main.async {
+                guard let userRecordID else {
                     self.errorMessage = ErrorType.userIdentification.rawValue
                     self.accessibilityAnnouncement = self.errorMessage
-                    print("Delete subscription failed: User record ID not found")
+                    print("Subscription deletion failed: User record ID not found")
                     completion(false)
+                    return
                 }
-                return
-            }
 
-            let subscriptionID = "ReportStatusChanges_\(userRecordID.recordName)"
+                let subscriptionID = "ReportStatusChanges_\(userRecordID.recordName)"
 
-            self.publicDatabase.delete(withSubscriptionID: subscriptionID) { _, error in
-                DispatchQueue.main.async {
-                    if let error = error, (error as? CKError)?.code != .unknownItem {
-                        self.errorMessage = "Failed to disable notifications: \(error.localizedDescription)"
-                        self.accessibilityAnnouncement = self.errorMessage
-                        print("Delete subscription error: \(error.localizedDescription)")
-                        completion(false)
-                    } else {
-                        self.errorMessage = nil
-                        self.accessibilityAnnouncement = "Notifications disabled successfully"
-                        print("Subscription deleted successfully: \(subscriptionID)")
-                        completion(true)
+                self.publicDatabase.delete(withSubscriptionID: subscriptionID) { _, error in
+                    DispatchQueue.main.async {
+                        if let error, (error as? CKError)?.code != .unknownItem {
+                            self.errorMessage = "Failed to disable notifications: \(error.localizedDescription)"
+                            self.accessibilityAnnouncement = self.errorMessage
+                            print("Subscription deletion failed: \(error.localizedDescription)")
+                            completion(false)
+                        } else {
+                            self.errorMessage = nil
+                            self.accessibilityAnnouncement = "Notifications disabled successfully"
+                            print("Subscription deleted successfully: \(subscriptionID)")
+                            completion(true)
+                        }
                     }
                 }
             }
@@ -1078,7 +1099,7 @@ class DataManager: ObservableObject {
 
 extension CKError {
     var isRetryable: Bool {
-        switch self.code {
+        switch code {
         case .networkFailure, .networkUnavailable, .serviceUnavailable, .requestRateLimited:
             return true
         default:
