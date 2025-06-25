@@ -30,7 +30,7 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("Need Help?")) {
+                Section(header: Text("Need Help?").accessibilityAddTraits(.isHeader)) {
                     NavigationLink(destination: ReportRecipeView()) {
                         buttonStyle(title: "Report Issue", systemImage: "envelope.fill")
                     }
@@ -38,7 +38,7 @@ struct MoreView: View {
                     .accessibilityHint("Navigate to report a missing recipe or an error in an existing recipe")
                 }
                 
-                Section(header: Text("About")) {
+                Section(header: Text("About").accessibilityAddTraits(.isHeader)) {
                     NavigationLink(destination: AboutView(accentColorPreference: accentColorPreference)) {
                         buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
                     }
@@ -53,7 +53,7 @@ struct MoreView: View {
                         .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
                 }
                 
-                Section(header: Text("Data Sync & Status")) {
+                Section(header: Text("Data Sync & Status").accessibilityAddTraits(.isHeader)) {
                     VStack(alignment: .leading, spacing: 8) {
                         // 1. Sync Recipes Button + Cooldown Message
                         VStack(spacing: 8) {
@@ -70,6 +70,7 @@ struct MoreView: View {
                                             .padding(.trailing, 8)
                                             .accessibilityLabel("Syncing")
                                             .accessibilityHint("Recipes are currently syncing")
+                                            .accessibilityValue("Syncing") // Added for VoiceOver
                                             .opacity(dataManager.isLoading ? 1 : 0)
                                             .animation(.easeInOut(duration: 0.3), value: dataManager.isLoading)
                                     } else {
@@ -102,6 +103,7 @@ struct MoreView: View {
                                     .foregroundColor(.secondary)
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .accessibilityLabel(message)
+                                    .accessibilityHint("Wait until the cooldown expires to sync again") // Added for VoiceOver
                             }
                         }
 
@@ -126,7 +128,7 @@ struct MoreView: View {
                                 Image(systemName: "clock")
                                     .font(.body)
                                     .foregroundColor(.gray)
-                                    .frame(width: 20) // Set a fixed width for the icon to ensure alignment
+                                    .frame(width: 20)
                                 Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -139,7 +141,7 @@ struct MoreView: View {
                                 Image(systemName: "list.bullet")
                                     .font(.body)
                                     .foregroundColor(.gray)
-                                    .frame(width: 20) // Set a fixed width for the icon to ensure alignment
+                                    .frame(width: 20)
                                 Text("\(dataManager.recipes.count) recipes available")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -174,6 +176,8 @@ struct MoreView: View {
                     message: Text(dataManager.errorMessage ?? "Unknown error"),
                     dismissButton: .default(Text("OK"))
                 )
+                .accessibilityLabel("Error alert") // Added for VoiceOver
+                .accessibilityHint("Dismiss to continue") // Added for VoiceOver
             }
             .onAppear {
                 dataManager.syncFavorites()

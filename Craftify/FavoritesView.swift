@@ -61,6 +61,7 @@ struct FavoritesView: View {
                         ProgressView()
                             .progressViewStyle(.circular)
                             .tint(Color.userAccentColor)
+                            .accessibilityValue("Loading") // Added for VoiceOver
                         Text("Loading Favorites…")
                             .font(.headline)
                             .foregroundColor(.secondary)
@@ -164,6 +165,7 @@ struct FavoritesView: View {
                                                 .padding(.vertical, 8)
                                                 .frame(maxWidth: .infinity, alignment: .leading)
                                                 .background(Color(.systemBackground))
+                                                .accessibilityAddTraits(.isHeader) // Added for VoiceOver
                                         }
                                     }
                                 }
@@ -210,6 +212,8 @@ struct FavoritesView: View {
                     message: Text(dataManager.errorMessage ?? "Unknown error"),
                     dismissButton: .default(Text("OK"))
                 )
+                .accessibilityLabel("Error alert") // Added for VoiceOver
+                .accessibilityHint("Dismiss to continue") // Added for VoiceOver
             }
         }
     }

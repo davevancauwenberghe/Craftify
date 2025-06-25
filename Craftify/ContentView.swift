@@ -26,24 +26,32 @@ struct ContentView: View {
                         Label("Recipes", systemImage: "square.grid.2x2")
                     }
                     .tag(0)
+                    .accessibilityLabel("Recipes tab")
+                    .accessibilityHint("View all recipes")
                 
                 FavoritesView()
                     .tabItem {
                         Label("Favorites", systemImage: "heart.fill")
                     }
                     .tag(1)
+                    .accessibilityLabel("Favorites tab")
+                    .accessibilityHint("View your favorite recipes")
                 
                 MoreView()
                     .tabItem {
                         Label("More", systemImage: "ellipsis.circle")
                     }
                     .tag(2)
+                    .accessibilityLabel("More tab")
+                    .accessibilityHint("Access additional settings and features")
                 
                 RecipeSearchView()
                     .tabItem {
                         Label("Search", systemImage: "magnifyingglass")
                     }
                     .tag(3)
+                    .accessibilityLabel("Search tab")
+                    .accessibilityHint("Search for recipes")
             }
             .accentColor(Color.userAccentColor)
             .preferredColorScheme(
@@ -95,6 +103,7 @@ struct RecipesTabView: View {
                         ProgressView()
                             .progressViewStyle(.circular)
                             .tint(Color.userAccentColor)
+                            .accessibilityValue("Loading") // Added for VoiceOver
                         Text("Loading Recipes…")
                             .font(.headline)
                             .foregroundColor(.secondary)

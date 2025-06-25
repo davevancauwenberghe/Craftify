@@ -77,9 +77,9 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 76-86", changes: [
-        "APN support added for report updates",
+    ReleaseNote(version: "Version 1.0 - Build 76-87", changes: [
         "Privacy policy URL button added",
+        "VoiceOver enhancements",
         "Image assets added"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 61-75", changes: [

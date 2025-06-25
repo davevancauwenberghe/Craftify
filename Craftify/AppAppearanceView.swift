@@ -30,7 +30,7 @@ struct AppAppearanceView: View {
     @State private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons
 
     private let appIcons: [AppIcon] = [
-        .init(id: nil,              name: "Craftify",     previewName: "AppIconPreview"),
+        .init(id: nil, name: "Craftify", previewName: "AppIconPreview"),
         .init(id: "AlternateIcon1", name: "Craftify Grass", previewName: "AlternateIcon1Preview"),
         .init(id: "AlternateIcon2", name: "Craftify Grid", previewName: "AlternateIcon2Preview")
     ]
@@ -66,6 +66,7 @@ struct AppAppearanceView: View {
                             Circle()
                                 .fill(option.color)
                                 .frame(width: 20, height: 20)
+                                .accessibilityLabel("\(option.name) color swatch") // Added for VoiceOver
                             Text(option.name)
                         }
                         .tag(option.id)

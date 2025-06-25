@@ -36,12 +36,12 @@ class DataManager: ObservableObject {
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
 
     enum ErrorType: String {
-        case network = "Network issue, please check your connection and try again."
+        case network = "Network issue, please try again later."
         case permissions = "Permission denied, please enable iCloud access."
         case dataCorruption = "Data error, please try refreshing."
         case userIdentification = "Unable to identify user. Please ensure iCloud is enabled."
         case missingFields = "Report data is incomplete or corrupted."
-        case unknown = "An unexpected error occurred."
+        case unknown = "An unexpected error occurred. Please try again later."
     }
 
     init() {
@@ -51,7 +51,7 @@ class DataManager: ObservableObject {
             DispatchQueue.main.async {
                 self?.isConnected = path.status == .satisfied
                 if !(self?.isConnected ?? true) {
-                    self?.errorMessage = "No internet connection. Please connect to sync data."
+                    self?.errorMessage = "No internet connection. Try again later."
                     self?.accessibilityAnnouncement = self?.errorMessage
                 }
             }
@@ -197,7 +197,7 @@ class DataManager: ObservableObject {
     func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
         if !isConnected {
             DispatchQueue.main.async {
-                self.errorMessage = "No internet connection. Please connect to sync recipes."
+                self.errorMessage = "No internet connection. Try again later."
                 self.accessibilityAnnouncement = self.errorMessage
                 completion()
             }
@@ -329,7 +329,7 @@ class DataManager: ObservableObject {
     ) {
         guard isConnected else {
             DispatchQueue.main.async {
-                self.errorMessage = "No internet connection. Please connect to submit a report."
+                self.errorMessage = "No internet connection. Try again later."
                 self.accessibilityAnnouncement = self.errorMessage
                 completion(.failure(NSError(domain: "DataManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "No internet connection"])))
             }
@@ -389,7 +389,7 @@ class DataManager: ObservableObject {
     func fetchRecipeReports(completion: @escaping (Result<[RecipeReport], Error>) -> Void) {
         if !isConnected {
             DispatchQueue.main.async {
-                self.errorMessage = "No internet connection. Please connect to fetch reports."
+                self.errorMessage = "No internet connection. Try again later."
                 self.accessibilityAnnouncement = self.errorMessage
                 completion(.failure(NSError(domain: "DataManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "No internet connection"])))
             }
@@ -509,7 +509,7 @@ class DataManager: ObservableObject {
     func deleteRecipeReport(_ report: RecipeReport, completion: @escaping (Bool) -> Void) {
         guard isConnected else {
             DispatchQueue.main.async {
-                self.errorMessage = "No internet connection. Please connect to delete the report."
+                self.errorMessage = "No internet connection. Try again later."
                 self.accessibilityAnnouncement = self.errorMessage
                 completion(false)
             }
@@ -547,7 +547,7 @@ class DataManager: ObservableObject {
     func deleteAllRecipeReports(reports: [RecipeReport], completion: @escaping (Bool) -> Void) {
         guard isConnected else {
             DispatchQueue.main.async {
-                self.errorMessage = "No internet connection. Please connect to delete reports."
+                self.errorMessage = "No internet connection. Try again later."
                 self.accessibilityAnnouncement = self.errorMessage
                 completion(false)
             }
