@@ -48,7 +48,7 @@ struct CraftifyApp: App {
                         horizontalSizeClass: UIDevice.current.userInterfaceIdiom == .pad ? .regular : .compact
                     )
                     .environmentObject(dataManager)
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(.container, edges: .top) // Adjusted to avoid tab bar interference
                     .opacity(onboardingOpacity)
                     .offset(y: onboardingOffset)
                     .zIndex(1)
