@@ -53,22 +53,20 @@ struct CommandsView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
+                    // Commands list
                     ForEach(filteredCommands) { cmd in
                         VStack(alignment: .leading, spacing: 6) {
-                            // Monospaced command label
                             Text("➜ \(cmd.name)")
                                 .font(.system(.body, design: .monospaced))
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
 
-                            // Description
                             Text(cmd.description)
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
 
-                            // Edition support + OP levels
                             HStack(spacing: 16) {
-                                // Bedrock
+                                // Bedrock support + OP level
                                 HStack(spacing: 4) {
                                     Image(systemName: cmd.worksInBedrock
                                           ? "checkmark.circle.fill"
@@ -97,10 +95,12 @@ struct CommandsView: View {
                                     }
                                 }
                                 .foregroundColor(
-                                    cmd.worksInBedrock ? Color.userAccentColor : .red
+                                    cmd.worksInBedrock
+                                        ? Color.userAccentColor
+                                        : .red
                                 )
 
-                                // Java
+                                // Java support + OP level
                                 HStack(spacing: 4) {
                                     Image(systemName: cmd.worksInJava
                                           ? "checkmark.circle.fill"
@@ -129,7 +129,9 @@ struct CommandsView: View {
                                     }
                                 }
                                 .foregroundColor(
-                                    cmd.worksInJava ? Color.userAccentColor : .red
+                                    cmd.worksInJava
+                                        ? Color.userAccentColor
+                                        : .red
                                 )
                             }
                         }
@@ -140,7 +142,6 @@ struct CommandsView: View {
                             bottom: horizontalSizeClass == .regular ? 12 : 8,
                             trailing: horizontalSizeClass == .regular ? 16 : 12
                         ))
-                        // context menu on long press
                         .contextMenu {
                             Button("Copy Command") {
                                 UIPasteboard.general.string = cmd.name
@@ -189,6 +190,9 @@ struct CommandsView: View {
                     }
                 }
                 .listStyle(InsetGroupedListStyle())
+                .refreshable {
+                    dataManager.fetchConsoleCommands()
+                }
                 .scrollContentBackground(.hidden)
                 .background(Color(UIColor.systemGroupedBackground))
                 .searchable(
@@ -200,15 +204,10 @@ struct CommandsView: View {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Menu {
                             ForEach(EditionFilter.allCases) { filter in
-                                Button(action: { editionFilter = filter }) {
-                                    HStack {
-                                        Text(filter.rawValue)
-                                        if filter == editionFilter {
-                                            Spacer()
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
+                                Button(filter.rawValue) {
+                                    editionFilter = filter
                                 }
+                                .foregroundColor(filter == editionFilter ? .userAccentColor : nil)
                             }
                         } label: {
                             Image(systemName: "line.3.horizontal.decrease.circle")
@@ -222,8 +221,9 @@ struct CommandsView: View {
                 .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
                 .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
                 .preferredColorScheme(
-                    colorSchemePreference == "system" ? nil :
-                        (colorSchemePreference == "light" ? .light : .dark)
+                    colorSchemePreference == "system"
+                        ? nil
+                        : (colorSchemePreference == "light" ? .light : .dark)
                 )
                 .accentColor(Color.userAccentColor)
                 .onAppear {
