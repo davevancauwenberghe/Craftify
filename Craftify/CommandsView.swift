@@ -17,9 +17,9 @@ struct CommandsView: View {
     @State private var editionFilter: EditionFilter = .all
 
     private enum EditionFilter: String, CaseIterable, Identifiable {
-        case all = "All"
-        case bedrock = "Bedrock"
-        case java = "Java"
+        case all     = "All Editions"
+        case bedrock = "Bedrock Edition"
+        case java    = "Java Edition"
         var id: String { rawValue }
     }
 
@@ -33,13 +33,12 @@ struct CommandsView: View {
                 }
             }
             .filter { cmd in
-                searchText.isEmpty ||
-                cmd.name.lowercased().contains(searchText.lowercased()) ||
-                cmd.description.lowercased().contains(searchText.lowercased())
+                searchText.isEmpty
+                    || cmd.name.localizedCaseInsensitiveContains(searchText)
+                    || cmd.description.localizedCaseInsensitiveContains(searchText)
             }
     }
-    
-    /// Maps an OP level (1–4) to a corresponding Color
+
     private func color(forOP level: Int64) -> Color {
         switch level {
         case 1: return .red
@@ -51,210 +50,174 @@ struct CommandsView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color(.systemGroupedBackground)
-                .ignoresSafeArea()
-
+        NavigationStack {
             ScrollViewReader { proxy in
-                NavigationStack {
-                    List {
-                        // Commands
-                        Section {
-                            ForEach(filteredCommands) { command in
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("➜ \(command.name)")
-                                        .font(.system(.body, design: .monospaced))
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.primary)
+                List {
+                    // Commands
+                    ForEach(filteredCommands) { cmd in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("➜ \(cmd.name)")
+                                .font(.system(.body, design: .monospaced))
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
 
-                                    Text(command.description)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                            Text(cmd.description)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
 
-                                    HStack(spacing: 16) {
-                                        // Bedrock badge + OP tag
-                                        HStack(spacing: 4) {
-                                            Image(systemName: command.worksInBedrock
-                                                  ? "checkmark.circle.fill"
-                                                  : "xmark.circle.fill")
-                                            Text("Bedrock")
-                                                .font(.caption)
-                                            if let lvl = command.opLevelBedrock {
-                                                Button {
-                                                    withAnimation {
-                                                        proxy.scrollTo("opExplanation", anchor: .top)
-                                                    }
-                                                } label: {
-                                                    Text("OP \(lvl)")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.secondary)
-                                                        .padding(.vertical, 2)
-                                                        .padding(.horizontal, 6)
-                                                        .background(
-                                                            Capsule()
-                                                                .fill(color(forOP: lvl).opacity(0.2))
-                                                        )
-                                                        .overlay(
-                                                            Capsule()
-                                                                .stroke(color(forOP: lvl), lineWidth: 1)
-                                                        )
+                            HStack(spacing: 16) {
+                                // Bedrock
+                                HStack(spacing: 4) {
+                                    Image(systemName: cmd.worksInBedrock
+                                          ? "checkmark.circle.fill"
+                                          : "xmark.circle.fill")
+                                    Text("Bedrock")
+                                        .font(.caption)
+                                    if let lvl = cmd.opLevelBedrock {
+                                        Text("OP \(lvl)")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .padding(.vertical, 2)
+                                            .padding(.horizontal, 6)
+                                            .background(
+                                                Capsule()
+                                                    .fill(color(forOP: lvl).opacity(0.2))
+                                            )
+                                            .overlay(
+                                                Capsule()
+                                                    .stroke(color(forOP: lvl), lineWidth: 1)
+                                            )
+                                            .onTapGesture {
+                                                withAnimation {
+                                                    proxy.scrollTo("opExplanation", anchor: .top)
                                                 }
-                                                .buttonStyle(.plain)
                                             }
-                                        }
-                                        .foregroundColor(
-                                            command.worksInBedrock
-                                                ? Color.userAccentColor
-                                                : .red
-                                        )
-
-                                        // Java badge + OP tag
-                                        HStack(spacing: 4) {
-                                            Image(systemName: command.worksInJava
-                                                  ? "checkmark.circle.fill"
-                                                  : "xmark.circle.fill")
-                                            Text("Java")
-                                                .font(.caption)
-                                            if let lvl = command.opLevelJava {
-                                                Button {
-                                                    withAnimation {
-                                                        proxy.scrollTo("opExplanation", anchor: .top)
-                                                    }
-                                                } label: {
-                                                    Text("OP \(lvl)")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.secondary)
-                                                        .padding(.vertical, 2)
-                                                        .padding(.horizontal, 6)
-                                                        .background(
-                                                            Capsule()
-                                                                .fill(color(forOP: lvl).opacity(0.2))
-                                                        )
-                                                        .overlay(
-                                                            Capsule()
-                                                                .stroke(color(forOP: lvl), lineWidth: 1)
-                                                        )
-                                                }
-                                                .buttonStyle(.plain)
-                                            }
-                                        }
-                                        .foregroundColor(
-                                            command.worksInJava
-                                                ? Color.userAccentColor
-                                                : .red
-                                        )
                                     }
                                 }
-                                .padding(.vertical, 8)
-                                .listRowBackground(Color(.systemBackground))
-                            }
-                        }
+                                .foregroundColor(
+                                    cmd.worksInBedrock ? Color.userAccentColor : .red
+                                )
 
-                        // OP explanation
-                        Section(header: Text("What is OP?").id("opExplanation")) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Effect levels are incremental, meaning level n+1 allows everything level n allows.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-
-                                Group {
-                                    Text("Java Edition")
-                                        .font(.headline)
-                                    Text("""
-                                    • Level 1 (moderator): Bypass spawn protection.  
-                                    • Level 2 (gamemaster): Use more commands & command blocks.  
-                                    • Level 3 (admin): Multiplayer management commands.  
-                                    • Level 4 (owner): All commands, including server management.
-                                    """)
+                                // Java
+                                HStack(spacing: 4) {
+                                    Image(systemName: cmd.worksInJava
+                                          ? "checkmark.circle.fill"
+                                          : "xmark.circle.fill")
+                                    Text("Java")
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                Group {
-                                    Text("Bedrock Edition")
-                                        .font(.headline)
-                                    Text("Levels inherit all commands from previous levels; use the corresponding level tag to indicate required OP level.")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                Divider()
-
-                                Group {
-                                    Text("Definition")
-                                        .font(.headline)
-
-                                    Text("Java Edition:")
-                                        .font(.subheadline)
-                                    Text("Permission levels: 0 (all), 1 (moderator), 2 (gamemaster), 3 (admin), 4 (owner).")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text("""
-                                    • Command blocks & functions: level 2  
-                                    • Server console: level 4  
-                                    • Singleplayer/LAN owner with cheats: level 4  
-                                    • Otherwise: level 0
-                                    """)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                Group {
-                                    Text("Bedrock Edition:")
-                                        .font(.subheadline)
-                                    Text("Permission levels: 0 (Any/Normal), 1 (Operator), 2 (Admin), 3 (Host/Automation), 4 (Owner).")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text("""
-                                    • Command blocks & scripts: level 1  
-                                    • Server console: level 4  
-                                    • Dedicated server OP: default level 1  
-                                    • LAN OP with cheats: level 3  
-                                    • Otherwise: level 0
-                                    """)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                Text("Note: Bedrock’s UI permission roles (Visitor/Member/Operator/Custom) differ from command OP levels; only 'Operator Commands' toggles affect command permissions.")
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.vertical, 8)
-                            .listRowBackground(Color(.systemBackground))
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
-                    .searchable(text: $searchText,
-                                placement: .navigationBarDrawer(displayMode: .always),
-                                prompt: "Search commands…")
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Menu {
-                                ForEach(EditionFilter.allCases) { filter in
-                                    Button(filter.rawValue) {
-                                        editionFilter = filter
+                                    if let lvl = cmd.opLevelJava {
+                                        Text("OP \(lvl)")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .padding(.vertical, 2)
+                                            .padding(.horizontal, 6)
+                                            .background(
+                                                Capsule()
+                                                    .fill(color(forOP: lvl).opacity(0.2))
+                                            )
+                                            .overlay(
+                                                Capsule()
+                                                    .stroke(color(forOP: lvl), lineWidth: 1)
+                                            )
+                                            .onTapGesture {
+                                                withAnimation {
+                                                    proxy.scrollTo("opExplanation", anchor: .top)
+                                                }
+                                            }
                                     }
                                 }
-                            } label: {
-                                Image(systemName: "line.3.horizontal.decrease.circle")
-                                    .imageScale(.large)
+                                .foregroundColor(
+                                    cmd.worksInJava ? Color.userAccentColor : .red
+                                )
                             }
-                            .accessibilityLabel("Filter commands by edition")
-                            .accessibilityHint("Choose All, Bedrock, or Java")
                         }
+                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                        .listRowInsets(EdgeInsets(
+                            top: horizontalSizeClass == .regular ? 12 : 8,
+                            leading: horizontalSizeClass == .regular ? 16 : 12,
+                            bottom: horizontalSizeClass == .regular ? 12 : 8,
+                            trailing: horizontalSizeClass == .regular ? 16 : 12
+                        ))
                     }
-                    .navigationTitle("Console Commands")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .preferredColorScheme(
-                        colorSchemePreference == "system" ? nil :
-                            (colorSchemePreference == "light" ? .light : .dark)
-                    )
-                    .accentColor(Color.userAccentColor)
-                    .onAppear {
-                        dataManager.fetchConsoleCommands()
+
+                    // OP Levels explanation
+                    Section(header: Text("OP Levels").id("opExplanation")) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Higher OP levels include all permissions of the lower ones.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+
+                            // Bedrock summary
+                            Text("Bedrock Edition")
+                                .font(.headline)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("• 1: Operator – Basic commands & command blocks")
+                                Text("• 2: Admin – Server commands")
+                                Text("• 3: Host – World & automation management")
+                                Text("• 4: Owner – Full server control")
+                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                            // Java summary
+                            Text("Java Edition")
+                                .font(.headline)
+                                .padding(.top, 4)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("• 0: All – Basic commands")
+                                Text("• 1: Moderator – Bypass spawn protection")
+                                Text("• 2: GameMaster – Command blocks & extra commands")
+                                Text("• 3: Admin – Multiplayer management")
+                                Text("• 4: Owner – Full server control")
+                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                        .listRowInsets(EdgeInsets(
+                            top: horizontalSizeClass == .regular ? 12 : 8,
+                            leading: horizontalSizeClass == .regular ? 16 : 12,
+                            bottom: horizontalSizeClass == .regular ? 12 : 8,
+                            trailing: horizontalSizeClass == .regular ? 16 : 12
+                        ))
                     }
+                }
+                .listStyle(InsetGroupedListStyle())
+                .scrollContentBackground(.hidden)
+                .background(Color(UIColor.systemGroupedBackground))
+                .searchable(
+                    text: $searchText,
+                    placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "Search commands…"
+                )
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Menu {
+                            ForEach(EditionFilter.allCases) { filter in
+                                Button(filter.rawValue) {
+                                    editionFilter = filter
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .imageScale(.large)
+                        }
+                        .accessibilityLabel("Filter commands by edition")
+                        .accessibilityHint("Choose All Editions, Bedrock Edition, or Java Edition")
+                    }
+                }
+                .navigationTitle("Console Commands")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+                .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
+                .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
+                .preferredColorScheme(
+                    colorSchemePreference == "system" ? nil :
+                        (colorSchemePreference == "light" ? .light : .dark)
+                )
+                .accentColor(Color.userAccentColor)
+                .onAppear {
+                    dataManager.fetchConsoleCommands()
                 }
             }
         }
