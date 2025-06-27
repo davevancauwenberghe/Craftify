@@ -8,10 +8,22 @@
 import SwiftUI
 import Combine
 import CloudKit
+import UIKit
+
+// Applies the frosted‐glass only on iOS 17 for the tab bar
+private struct iOS17TabBarBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            return content
+        } else {
+            return content.toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        }
+    }
+}
 
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @AppStorage("colorSchemePreference") var colorSchemePreference: String = "system"
+    @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -20,18 +32,22 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            // Solid background so the TabView isn’t transparent
+            // 1) solid base so the TabView never floats transparent
             Color(.systemBackground)
                 .ignoresSafeArea()
 
+            // 2) your TabView
             TabView(selection: $selectedTab) {
-                RecipesTabView(navigationPath: $navigationPath, accentColorPreference: accentColorPreference)
-                    .tabItem {
-                        Label("Recipes", systemImage: "square.grid.2x2")
-                    }
-                    .tag(0)
-                    .accessibilityLabel("Recipes tab")
-                    .accessibilityHint("View all recipes")
+                RecipesTabView(
+                    navigationPath: $navigationPath,
+                    accentColorPreference: accentColorPreference
+                )
+                .tabItem {
+                    Label("Recipes", systemImage: "square.grid.2x2")
+                }
+                .tag(0)
+                .accessibilityLabel("Recipes tab")
+                .accessibilityHint("View all recipes")
 
                 FavoritesView()
                     .tabItem {
@@ -51,7 +67,13 @@ struct ContentView: View {
 
                 RecipeSearchView()
                     .tabItem {
-                        Label("Search", systemImage: "magnifyingglass")
+                        // on iPadOS 18+, show icon-only
+                        if UIDevice.current.userInterfaceIdiom == .pad,
+                           #available(iOS 18.0, *) {
+                            Image(systemName: "magnifyingglass")
+                        } else {
+                            Label("Search", systemImage: "magnifyingglass")
+                        }
                     }
                     .tag(3)
                     .accessibilityLabel("Search tab")
@@ -62,10 +84,9 @@ struct ContentView: View {
                 colorSchemePreference == "system" ? nil :
                     (colorSchemePreference == "light" ? .light : .dark)
             )
-            // Frosted-glass behind the tab bar on iOS 17
-            .toolbarBackground(.ultraThinMaterial, for: .tabBar)
             .ignoresSafeArea(edges: .bottom)
 
+            // 3) manual-sync overlay
             if dataManager.isManualSyncing {
                 SyncOverlayView(
                     horizontalSizeClass: horizontalSizeClass,
@@ -75,6 +96,11 @@ struct ContentView: View {
                 .animation(.easeInOut(duration: 0.3), value: dataManager.isManualSyncing)
             }
         }
+        // ────────────────────────────────────────────────────────────
+        // 4) nav-bar material on all OS, tab-bar only on iOS 17
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .modifier(iOS17TabBarBackground())
+        // ────────────────────────────────────────────────────────────
         .onChange(of: selectedTab) { _, newValue in
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             UIAccessibility.post(
@@ -95,7 +121,7 @@ struct ContentView: View {
     }
 }
 
-// MARK: –––––––––––––––––––––––––––––––––––––––––––––––
+// MARK: ––––––––––––––––––––––––––––––––––––––––––––––––––
 
 struct RecipesTabView: View {
     @EnvironmentObject private var dataManager: DataManager
@@ -107,7 +133,6 @@ struct RecipesTabView: View {
         NavigationStack(path: $navigationPath) {
             ZStack {
                 if dataManager.isLoading && dataManager.recipes.isEmpty {
-                    // Inline loading placeholder (no undefined types)
                     VStack(spacing: 12) {
                         ProgressView()
                             .progressViewStyle(.circular)
@@ -127,12 +152,9 @@ struct RecipesTabView: View {
                     )
                     .navigationTitle("Craftify")
                     .navigationBarTitleDisplayMode(.large)
-                    .toolbar(.visible, for: .navigationBar)
                 }
             }
         }
-        // Nav‐bar blur stays scoped to this stack
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
     }
 }
 

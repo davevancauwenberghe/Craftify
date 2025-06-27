@@ -6,9 +6,19 @@
 //
 
 import SwiftUI
+import UIKit
 
 @main
 struct CraftifyApp: App {
+    init() {
+        if #available(iOS 17.0, *) {
+            let tabBarAppearance = UITabBarAppearance()
+            tabBarAppearance.configureWithDefaultBackground()
+            UITabBar.appearance().standardAppearance = tabBarAppearance
+            UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
+        }
+    }
+
     @StateObject private var dataManager = DataManager()
     @AppStorage("hasLaunchedBefore") private var hasLaunchedBefore: Bool = false
     @State private var showOnboarding: Bool = false
@@ -22,7 +32,7 @@ struct CraftifyApp: App {
                     .environmentObject(dataManager)
                     .opacity(showOnboarding ? 0.0 : 1.0)
                     .animation(.easeInOut(duration: 0.3), value: showOnboarding)
-                
+
                 if showOnboarding {
                     OnboardingView(
                         title: "Welcome to Craftify!",
@@ -48,7 +58,7 @@ struct CraftifyApp: App {
                         horizontalSizeClass: UIDevice.current.userInterfaceIdiom == .pad ? .regular : .compact
                     )
                     .environmentObject(dataManager)
-                    .ignoresSafeArea(.container, edges: .top) // Adjusted to avoid tab bar interference
+                    .ignoresSafeArea(.container, edges: .top)
                     .opacity(onboardingOpacity)
                     .offset(y: onboardingOffset)
                     .zIndex(1)
