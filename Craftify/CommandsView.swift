@@ -53,18 +53,20 @@ struct CommandsView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
-                    // Commands
                     ForEach(filteredCommands) { cmd in
                         VStack(alignment: .leading, spacing: 6) {
+                            // Monospaced command label
                             Text("➜ \(cmd.name)")
                                 .font(.system(.body, design: .monospaced))
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
 
+                            // Description
                             Text(cmd.description)
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
 
+                            // Edition support + OP levels
                             HStack(spacing: 16) {
                                 // Bedrock
                                 HStack(spacing: 4) {
@@ -138,6 +140,12 @@ struct CommandsView: View {
                             bottom: horizontalSizeClass == .regular ? 12 : 8,
                             trailing: horizontalSizeClass == .regular ? 16 : 12
                         ))
+                        // context menu on long press
+                        .contextMenu {
+                            Button("Copy Command") {
+                                UIPasteboard.general.string = cmd.name
+                            }
+                        }
                     }
 
                     // OP Levels explanation
@@ -147,7 +155,6 @@ struct CommandsView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
 
-                            // Bedrock summary
                             Text("Bedrock Edition")
                                 .font(.headline)
                             VStack(alignment: .leading, spacing: 4) {
@@ -159,7 +166,6 @@ struct CommandsView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
 
-                            // Java summary
                             Text("Java Edition")
                                 .font(.headline)
                                 .padding(.top, 4)
@@ -194,16 +200,20 @@ struct CommandsView: View {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Menu {
                             ForEach(EditionFilter.allCases) { filter in
-                                Button(filter.rawValue) {
-                                    editionFilter = filter
+                                Button(action: { editionFilter = filter }) {
+                                    HStack {
+                                        Text(filter.rawValue)
+                                        if filter == editionFilter {
+                                            Spacer()
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
                                 }
                             }
                         } label: {
                             Image(systemName: "line.3.horizontal.decrease.circle")
                                 .imageScale(.large)
                         }
-                        .accessibilityLabel("Filter commands by edition")
-                        .accessibilityHint("Choose All Editions, Bedrock Edition, or Java Edition")
                     }
                 }
                 .navigationTitle("Console Commands")
