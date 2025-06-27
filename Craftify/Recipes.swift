@@ -118,13 +118,15 @@ struct RecipeReport: Identifiable, Codable {
     }
 
     init?(from record: CKRecord) {
-        guard let localID = record["localID"] as? String,
-              let reportType = record["reportType"] as? String,
-              let recipeName = record["recipeName"] as? String,
-              let category = record["category"] as? String,
-              let description = record["description"] as? String,
-              let timestamp = record["timestamp"] as? Date,
-              let status = record["status"] as? String else {
+        guard
+            let localID = record["localID"] as? String,
+            let reportType = record["reportType"] as? String,
+            let recipeName = record["recipeName"] as? String,
+            let category = record["category"] as? String,
+            let description = record["description"] as? String,
+            let timestamp = record["timestamp"] as? Date,
+            let status = record["status"] as? String
+        else {
             return nil
         }
 
@@ -138,5 +140,68 @@ struct RecipeReport: Identifiable, Codable {
         self.description = description
         self.timestamp = timestamp
         self.status = status
+    }
+}
+
+struct ConsoleCommand: Identifiable, Codable, Equatable {
+    /// CloudKit recordName
+    let id: String
+
+    /// fields
+    let name: String
+    let description: String
+    let worksInBedrock: Bool
+    let worksInJava: Bool
+
+    /// optional OP levels
+    let opLevelBedrock: Int64?
+    let opLevelJava: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description, worksInBedrock, worksInJava, opLevelBedrock, opLevelJava
+    }
+
+    /// Designated initializer
+    init(
+        id: String = UUID().uuidString,
+        name: String,
+        description: String,
+        worksInBedrock: Bool,
+        worksInJava: Bool,
+        opLevelBedrock: Int64? = nil,
+        opLevelJava: Int64? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.worksInBedrock = worksInBedrock
+        self.worksInJava = worksInJava
+        self.opLevelBedrock = opLevelBedrock
+        self.opLevelJava = opLevelJava
+    }
+
+    /// Initialize from a CKRecord
+    init?(from record: CKRecord) {
+        guard
+            let name = record["name"] as? String,
+            let desc = record["description"] as? String
+        else {
+            return nil
+        }
+
+        self.id = record.recordID.recordName
+        self.name = name
+        self.description = desc
+
+        // Booleans stored as INT64
+        let bedrockValue = record["worksInBedrock"] as? Int64 ?? 0
+        self.worksInBedrock = (bedrockValue == 1)
+
+        let javaValue = record["worksInJava"] as? Int64 ?? 0
+        self.worksInJava = (javaValue == 1)
+
+        // Optional OP levels
+        self.opLevelBedrock = record["opLevelBedrock"] as? Int64
+        self.opLevelJava = record["opLevelJava"] as? Int64
     }
 }

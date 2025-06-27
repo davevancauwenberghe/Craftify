@@ -27,6 +27,9 @@ class DataManager: ObservableObject {
     @Published var lastRecipeFetch: Date?
     @Published var isConnected: Bool = true
 
+    // ─── NEW: Console commands storage ──────────────────────────────────────────
+    @Published var consoleCommands: [ConsoleCommand] = []
+
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudRecentSearchesKey = "recentSearches"
     private var cancellables = Set<AnyCancellable>()
@@ -102,6 +105,9 @@ class DataManager: ObservableObject {
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
         }
+
+        // ─── NEW: load console commands on startup ───────────────────────────────
+        fetchConsoleCommands()
     }
 
     deinit {
@@ -171,7 +177,7 @@ class DataManager: ObservableObject {
         recentSearchNames.insert(recipe.name, at: 0)
         recentSearchNames = Array(recentSearchNames.prefix(10))
         print("Updated recent search names: \(recentSearchNames)")
-        
+
         NSUbiquitousKeyValueStore.default.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
         NSUbiquitousKeyValueStore.default.synchronize()
     }
@@ -185,7 +191,9 @@ class DataManager: ObservableObject {
 
     func syncRecentSearches() {
         if let savedNames = NSUbiquitousKeyValueStore.default.array(forKey: iCloudRecentSearchesKey) as? [String] {
-            recentSearchNames = Array(savedNames.prefix(10)).filter { name in recipes.contains { $0.name == name } }
+            recentSearchNames = Array(savedNames.prefix(10)).filter { name in
+                recipes.contains { $0.name == name }
+            }
         }
     }
 
@@ -214,12 +222,10 @@ class DataManager: ObservableObject {
         loadData(isManual: isManual, completion: completion)
     }
 
-    func loadData(isManual: Bool, completion: @escaping () -> Void) {
+    func loadData(isManual: Bool = false, completion: @escaping () -> Void) {
         DispatchQueue.main.async {
             self.isLoading = true
-            if isManual {
-                self.isManualSyncing = true
-            }
+            if isManual { self.isManualSyncing = true }
             self.errorMessage = nil
         }
 
@@ -250,8 +256,8 @@ class DataManager: ObservableObject {
                 switch result {
                 case .success(let cursor):
                     if let cursor = cursor {
-                        let nextOperation = CKQueryOperation(cursor: cursor)
-                        fetch(with: nextOperation, retryCount: retryCount)
+                        let nextOp = CKQueryOperation(cursor: cursor)
+                        fetch(with: nextOp, retryCount: retryCount)
                     } else {
                         DispatchQueue.main.async {
                             self.recipes = fetchedRecipes.sorted(by: { $0.name < $1.name })
@@ -273,19 +279,14 @@ class DataManager: ObservableObject {
                         self.isLoading = false
                         self.isManualSyncing = false
                     }
-
                     if let ckError = error as? CKError, ckError.isRetryable, retryCount < 3 {
-                        DispatchQueue.main.async {
-                            self.isLoading = true
-                        }
+                        DispatchQueue.main.async { self.isLoading = true }
                         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
-                            let retryOperation = CKQueryOperation(query: query)
-                            fetch(with: retryOperation, retryCount: retryCount + 1)
+                            let retryOp = CKQueryOperation(query: query)
+                            fetch(with: retryOp, retryCount: retryCount + 1)
                         }
                     } else {
-                        DispatchQueue.main.async {
-                            completion()
-                        }
+                        DispatchQueue.main.async { completion() }
                     }
                 }
             }
@@ -293,8 +294,8 @@ class DataManager: ObservableObject {
             publicDatabase.add(queryOperation)
         }
 
-        let initialOperation = CKQueryOperation(query: query)
-        fetch(with: initialOperation)
+        let initialOp = CKQueryOperation(query: query)
+        fetch(with: initialOp)
     }
 
     func loadDataAsync(isManual: Bool = false) async {
@@ -358,13 +359,9 @@ class DataManager: ObservableObject {
                     self.accessibilityAnnouncement = self.errorMessage
                     completion(.failure(error))
                 } else if let savedRecord = record {
-                    // Log the ___createdBy field to debug
                     if let creatorID = savedRecord["___createdBy"] as? CKRecord.Reference {
                         print("Report created by: \(creatorID.recordID.recordName)")
-                    } else {
-                        print("Warning: ___createdBy field is nil for record \(savedRecord.recordID.recordName)")
                     }
-
                     let report = RecipeReport(
                         id: localID,
                         recordID: savedRecord.recordID.recordName,
@@ -378,7 +375,6 @@ class DataManager: ObservableObject {
                         status: "Pending"
                     )
                     self.accessibilityAnnouncement = "Report submitted successfully"
-                    // Reset the report fetch cooldown to ensure immediate fetching
                     self.lastReportStatusFetchTime = nil
                     completion(.success(report))
                 }
@@ -391,7 +387,11 @@ class DataManager: ObservableObject {
             DispatchQueue.main.async {
                 self.errorMessage = "No internet connection. Try again later."
                 self.accessibilityAnnouncement = self.errorMessage
-                completion(.failure(NSError(domain: "DataManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "No internet connection"])))
+                completion(.failure(NSError(
+                    domain: "DataManager",
+                    code: -2,
+                    userInfo: [NSLocalizedDescriptionKey: "No internet connection"]
+                )))
             }
             return
         }
@@ -406,7 +406,6 @@ class DataManager: ObservableObject {
         let container = CKContainer(identifier: "iCloud.craftifydb")
         let publicDatabase = container.publicCloudDatabase
 
-        // Fetch the current user's record ID
         container.fetchUserRecordID { [weak self] userRecordID, error in
             guard let self = self else { return }
 
@@ -419,36 +418,40 @@ class DataManager: ObservableObject {
                 }
                 return
             }
-
             guard let userRecordID = userRecordID else {
                 DispatchQueue.main.async {
                     self.errorMessage = ErrorType.userIdentification.rawValue
                     self.accessibilityAnnouncement = self.errorMessage
-                    completion(.failure(NSError(domain: "DataManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "User record ID not found"])))
+                    completion(.failure(NSError(
+                        domain: "DataManager",
+                        code: -3,
+                        userInfo: [NSLocalizedDescriptionKey: "User record ID not found"]
+                    )))
                 }
                 return
             }
 
-            // Filter reports by the current user's ___createdBy field
             let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
             let predicate = NSPredicate(format: "___createdBy == %@", userReference)
             let query = CKQuery(recordType: "PublicRecipeReport", predicate: predicate)
 
-            var fetchedReports = [RecipeReport]()
+            var fetchedReports: [RecipeReport] = []
 
-            func fetch(with queryOperation: CKQueryOperation) {
-                queryOperation.resultsLimit = CKQueryOperation.maximumResults
+            func fetch(with op: CKQueryOperation) {
+                op.resultsLimit = CKQueryOperation.maximumResults
 
-                queryOperation.recordMatchedBlock = { recordID, result in
+                op.recordMatchedBlock = { recordID, result in
                     switch result {
                     case .success(let record):
-                        guard let localID = record["localID"] as? String,
-                              let reportType = record["reportType"] as? String,
-                              let recipeName = record["recipeName"] as? String,
-                              let category = record["category"] as? String,
-                              let description = record["description"] as? String,
-                              let timestamp = record["timestamp"] as? Date,
-                              let status = record["status"] as? String else {
+                        guard
+                            let localID = record["localID"] as? String,
+                            let reportType = record["reportType"] as? String,
+                            let recipeName = record["recipeName"] as? String,
+                            let category = record["category"] as? String,
+                            let description = record["description"] as? String,
+                            let timestamp = record["timestamp"] as? Date,
+                            let status = record["status"] as? String
+                        else {
                             DispatchQueue.main.async {
                                 self.errorMessage = ErrorType.missingFields.rawValue
                                 self.accessibilityAnnouncement = self.errorMessage
@@ -469,6 +472,7 @@ class DataManager: ObservableObject {
                             status: status
                         )
                         fetchedReports.append(report)
+
                     case .failure(let error):
                         DispatchQueue.main.async {
                             let errorType = self.errorType(for: error)
@@ -478,17 +482,18 @@ class DataManager: ObservableObject {
                     }
                 }
 
-                queryOperation.queryResultBlock = { result in
+                op.queryResultBlock = { result in
                     DispatchQueue.main.async {
                         switch result {
                         case .success(let cursor):
                             if let cursor = cursor {
-                                let nextOperation = CKQueryOperation(cursor: cursor)
-                                fetch(with: nextOperation)
+                                let nextOp = CKQueryOperation(cursor: cursor)
+                                fetch(with: nextOp)
                             } else {
                                 self.lastReportStatusFetchTime = Date()
                                 completion(.success(fetchedReports))
                             }
+
                         case .failure(let error):
                             let errorType = self.errorType(for: error)
                             self.errorMessage = "Failed to fetch reports: \(errorType.rawValue)"
@@ -498,13 +503,15 @@ class DataManager: ObservableObject {
                     }
                 }
 
-                publicDatabase.add(queryOperation)
+                publicDatabase.add(op)
             }
 
-            let initialOperation = CKQueryOperation(query: query)
-            fetch(with: initialOperation)
+            // Use the predicate-based query here:
+            let initialOp = CKQueryOperation(query: query)
+            fetch(with: initialOp)
         }
     }
+
 
     func deleteRecipeReport(_ report: RecipeReport, completion: @escaping (Bool) -> Void) {
         guard isConnected else {
@@ -561,8 +568,6 @@ class DataManager: ObservableObject {
             return
         }
 
-        let container = CKContainer(identifier: "iCloud.craftifydb")
-        let publicDatabase = container.publicCloudDatabase
         let recordIDs = reportsWithRecordID.compactMap { $0.recordID }.map { CKRecord.ID(recordName: $0) }
         let operation = CKModifyRecordsOperation(recordsToSave: nil, recordIDsToDelete: recordIDs)
 
@@ -581,7 +586,7 @@ class DataManager: ObservableObject {
             }
         }
 
-        publicDatabase.add(operation)
+        CKContainer(identifier: "iCloud.craftifydb").publicCloudDatabase.add(operation)
     }
 
     func clearCache(completion: @escaping (Bool) -> Void) {
@@ -607,7 +612,7 @@ class DataManager: ObservableObject {
         clearCache { cacheSuccess in
             self.clearFavorites()
             self.clearRecentSearches()
-            
+
             DispatchQueue.main.async {
                 if cacheSuccess {
                     self.cacheClearedMessage = "All data cleared successfully."
@@ -689,6 +694,71 @@ class DataManager: ObservableObject {
             imageremark: imageremark,
             remarks: remarks
         )
+    }
+
+    // MARK: ──────────────────── ConsoleCommand Fetch ──────────────────────────
+
+    /// Fetch all ConsoleCommand records from CloudKit.
+    func fetchConsoleCommands(completion: @escaping () -> Void = {}) {
+        if !isConnected {
+            DispatchQueue.main.async {
+                self.errorMessage = ErrorType.network.rawValue
+                self.accessibilityAnnouncement = self.errorMessage
+                completion()
+            }
+            return
+        }
+
+        let container = CKContainer(identifier: "iCloud.craftifydb")
+        let publicDB = container.publicCloudDatabase
+        let query = CKQuery(recordType: "ConsoleCommand", predicate: NSPredicate(value: true))
+        var fetched: [ConsoleCommand] = []
+
+        let operation = CKQueryOperation(query: query)
+        operation.resultsLimit = CKQueryOperation.maximumResults
+
+        operation.recordMatchedBlock = { recordID, result in
+            switch result {
+            case .success(let record):
+                if let cmd = self.convertRecordToConsoleCommand(record) {
+                    fetched.append(cmd)
+                }
+            case .failure(let error):
+                DispatchQueue.main.async {
+                    self.errorMessage = "Error fetching command \(recordID.recordName): \(error.localizedDescription)"
+                    self.accessibilityAnnouncement = self.errorMessage
+                }
+            }
+        }
+
+        operation.queryResultBlock = { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let cursor):
+                    if let cursor = cursor {
+                        let nextOp = CKQueryOperation(cursor: cursor)
+                        nextOp.recordMatchedBlock = operation.recordMatchedBlock
+                        nextOp.queryResultBlock = operation.queryResultBlock
+                        publicDB.add(nextOp)
+                    } else {
+                        self.consoleCommands = fetched.sorted { $0.name < $1.name }
+                        completion()
+                    }
+                case .failure(let error):
+                    let type = self.errorType(for: error)
+                    self.errorMessage = type.rawValue
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion()
+                }
+            }
+        }
+
+        publicDB.add(operation)
+    }
+
+    /// Convert a CKRecord into a ConsoleCommand model.
+    private func convertRecordToConsoleCommand(_ record: CKRecord) -> ConsoleCommand? {
+        return ConsoleCommand(from: record)
     }
 
     private func errorType(for err: Swift.Error) -> ErrorType {

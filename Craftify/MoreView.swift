@@ -36,6 +36,13 @@ struct MoreView: View {
                     }
                     .accessibilityLabel("Report Issue")
                     .accessibilityHint("Navigate to report a missing recipe or an error in an existing recipe")
+                    
+                    // ─── New Console Commands link ─────────────────────────────
+                    NavigationLink(destination: CommandsView()) {
+                        buttonStyle(title: "Console Commands", systemImage: "terminal.fill")
+                    }
+                    .accessibilityLabel("Console Commands")
+                    .accessibilityHint("Navigate to view in-game console commands")
                 }
                 
                 Section(header: Text("About")) {
@@ -58,7 +65,6 @@ struct MoreView: View {
                         // 1. Sync Recipes Button + Cooldown Message
                         VStack(spacing: 8) {
                             Button(action: {
-                                print("Sync Recipes tapped")
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 fetchRecipes(isUserInitiated: true)
                             }) {
@@ -120,7 +126,7 @@ struct MoreView: View {
                         .accessibilityLabel(dataManager.isConnected ? "Connected to the internet" : "No internet connection")
                         .accessibilityHint(dataManager.isConnected ? "Your device is connected to the internet" : "Please connect to the internet to sync recipes")
 
-                        // 3 & 4. Last Synced + Recipes Available (Grouped Together)
+                        // 3 & 4. Last Synced + Recipes Available
                         VStack(spacing: 0) {
                             HStack {
                                 Image(systemName: "clock")
@@ -153,6 +159,7 @@ struct MoreView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Last synced and recipes available: \(dataManager.syncStatus), \(dataManager.recipes.count) recipes available")
+                        .accessibilityHint("Manage recipe syncing, view network status, last sync time, and number of recipes available")
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Data Sync and Status: Sync Recipes button, \(dataManager.isConnected ? "Connected to the internet" : "No internet connection"), \(dataManager.syncStatus), \(dataManager.recipes.count) available")
@@ -163,8 +170,8 @@ struct MoreView: View {
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
-            .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
+            .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
+            .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
             .alert(isPresented: Binding(
                 get: { dataManager.errorMessage != nil },
                 set: { if !$0 { dataManager.errorMessage = nil } }
