@@ -204,15 +204,24 @@ struct CommandsView: View {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Menu {
                             ForEach(EditionFilter.allCases) { filter in
-                                Button(filter.rawValue) {
+                                Button(action: {
                                     editionFilter = filter
+                                }) {
+                                    HStack {
+                                        Text(filter.rawValue)
+                                        if filter == editionFilter {
+                                            Spacer()
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
                                 }
-                                .foregroundColor(filter == editionFilter ? .userAccentColor : nil)
                             }
                         } label: {
                             Image(systemName: "line.3.horizontal.decrease.circle")
                                 .imageScale(.large)
                         }
+                        .accessibilityLabel("Filter commands by edition")
+                        .accessibilityHint("Choose All Editions, Bedrock Edition, or Java Edition")
                     }
                 }
                 .navigationTitle("Console Commands")
