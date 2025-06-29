@@ -1,7 +1,5 @@
 # Craftify for Minecraft
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/D1D61H811L)
-
 ## Crafting recipes for Minecraft
 
 Craftify is a sleek iOS app designed for Minecraft players to browse, search, and manage crafting recipes with ease. Built with SwiftUI and CloudKit, Craftify offers a seamless experience for discovering recipes, saving favorites, and personalizing the app with alternate icons—all optimized for accessibility and performance.
@@ -30,3 +28,7 @@ Craftify is the ultimate companion app for Minecraft enthusiasts looking to mast
 - **Light/Dark Mode**: Seamlessly adapts to your device’s appearance settings.
 - **CloudKit Syncing**: Keep your favorites in sync across all your devices.
 - **Haptic Feedback**: Enjoy tactile feedback for a more engaging experience.
+
+#### Disclaimer
+
+Craftify for Minecraft ("Craftify") is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.
