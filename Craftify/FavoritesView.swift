@@ -40,14 +40,38 @@ struct FavoritesSection: View {
     var body: some View {
         ForEach(filteredFavorites.keys.sorted(), id: \.self) { letter in
             Section {
-                ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
-                    NavigationLink {
-                        RecipeDetailView(recipe: recipe, navigationPath: navigationPath)
-                    } label: {
-                        RecipeCell(recipe: recipe, isCraftifyPick: false)
+                if horizontalSizeClass == .regular {
+                    // iPad: Two-column grid
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: 16),
+                            GridItem(.flexible(), spacing: 16)
+                        ],
+                        alignment: .leading,
+                        spacing: 16
+                    ) {
+                        ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
+                            NavigationLink {
+                                RecipeDetailView(recipe: recipe, navigationPath: navigationPath)
+                            } label: {
+                                RecipeCell(recipe: recipe, isCraftifyPick: false)
+                            }
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .contentShape(Rectangle())
+                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                } else {
+                    // iPhone: Single-column stack
+                    ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
+                        NavigationLink {
+                            RecipeDetailView(recipe: recipe, navigationPath: navigationPath)
+                        } label: {
+                            RecipeCell(recipe: recipe, isCraftifyPick: false)
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                    }
                 }
             } header: {
                 Text(letter)

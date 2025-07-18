@@ -10,7 +10,7 @@ import Combine
 import CloudKit
 import UIKit
 
-// Applies the frosted‐glass only on iOS 17 for the tab bar
+// Applies the frosted-glass only on iOS 17 for the tab bar
 private struct iOS17TabBarBackground: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
@@ -307,14 +307,38 @@ struct RecipeListView: View {
 
                 ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
                     Section {
-                        ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
-                            NavigationLink {
-                                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                            } label: {
-                                RecipeCell(recipe: recipe, isCraftifyPick: false)
+                        if horizontalSizeClass == .regular {
+                            // iPad: Two-column grid
+                            LazyVGrid(
+                                columns: [
+                                    GridItem(.flexible(), spacing: 16),
+                                    GridItem(.flexible(), spacing: 16)
+                                ],
+                                alignment: .leading,
+                                spacing: 16
+                            ) {
+                                ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
+                                    NavigationLink {
+                                        RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                    } label: {
+                                        RecipeCell(recipe: recipe, isCraftifyPick: false)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .contentShape(Rectangle())
+                                }
                             }
-                            .buttonStyle(.plain)
-                            .contentShape(Rectangle())
+                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                        } else {
+                            // iPhone: Single-column stack
+                            ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
+                                NavigationLink {
+                                    RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                                } label: {
+                                    RecipeCell(recipe: recipe, isCraftifyPick: false)
+                                }
+                                .buttonStyle(.plain)
+                                .contentShape(Rectangle())
+                            }
                         }
                     } header: {
                         Text(letter)

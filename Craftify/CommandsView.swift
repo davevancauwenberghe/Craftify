@@ -53,7 +53,6 @@ struct CommandsView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
-                    // Commands list
                     ForEach(filteredCommands) { cmd in
                         VStack(alignment: .leading, spacing: 6) {
                             Text("➜ \(cmd.name)")
@@ -66,7 +65,6 @@ struct CommandsView: View {
                                 .foregroundColor(.secondary)
 
                             HStack(spacing: 16) {
-                                // Bedrock support + OP level
                                 HStack(spacing: 4) {
                                     Image(systemName: cmd.worksInBedrock
                                           ? "checkmark.circle.fill"
@@ -99,8 +97,6 @@ struct CommandsView: View {
                                         ? Color.userAccentColor
                                         : .red
                                 )
-
-                                // Java support + OP level
                                 HStack(spacing: 4) {
                                     Image(systemName: cmd.worksInJava
                                           ? "checkmark.circle.fill"
@@ -149,7 +145,6 @@ struct CommandsView: View {
                         }
                     }
 
-                    // OP Levels explanation
                     Section(header: Text("OP Levels").id("opExplanation")) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Higher OP levels include all permissions of the lower ones.")

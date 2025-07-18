@@ -26,8 +26,6 @@ class DataManager: ObservableObject {
     @Published var lastReportStatusFetchTime: Date?
     @Published var lastRecipeFetch: Date?
     @Published var isConnected: Bool = true
-
-    // ─── NEW: Console commands storage ──────────────────────────────────────────
     @Published var consoleCommands: [ConsoleCommand] = []
 
     private let iCloudFavoritesKey = "favoriteRecipes"
@@ -106,7 +104,6 @@ class DataManager: ObservableObject {
             print("No local cache found; will fetch from CloudKit on first view load.")
         }
 
-        // ─── NEW: load console commands on startup ───────────────────────────────
         fetchConsoleCommands()
     }
 
@@ -506,7 +503,6 @@ class DataManager: ObservableObject {
                 publicDatabase.add(op)
             }
 
-            // Use the predicate-based query here:
             let initialOp = CKQueryOperation(query: query)
             fetch(with: initialOp)
         }
@@ -696,9 +692,6 @@ class DataManager: ObservableObject {
         )
     }
 
-    // MARK: ──────────────────── ConsoleCommand Fetch ──────────────────────────
-
-    /// Fetch all ConsoleCommand records from CloudKit.
     func fetchConsoleCommands(completion: @escaping () -> Void = {}) {
         if !isConnected {
             DispatchQueue.main.async {
@@ -756,7 +749,6 @@ class DataManager: ObservableObject {
         publicDB.add(operation)
     }
 
-    /// Convert a CKRecord into a ConsoleCommand model.
     private func convertRecordToConsoleCommand(_ record: CKRecord) -> ConsoleCommand? {
         return ConsoleCommand(from: record)
     }
