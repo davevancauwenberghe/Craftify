@@ -23,11 +23,16 @@ private struct AccentColorOption: Identifiable {
 struct AppAppearanceView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass: UserInterfaceSizeClass?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("selectedAppIcon") private var selectedAppIcon: String?
     @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var errorMessage: String?
     @State private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 44
+    @ScaledMetric(relativeTo: .body) private var swatchSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var spacing: CGFloat = 12
 
     private let appIcons: [AppIcon] = [
         .init(id: nil, name: "Craftify", previewName: "AppIconPreview"),
@@ -65,9 +70,10 @@ struct AppAppearanceView: View {
                         HStack {
                             Circle()
                                 .fill(option.color)
-                                .frame(width: 20, height: 20)
-                                .accessibilityLabel("\(option.name) color swatch") // Added for VoiceOver
+                                .frame(width: swatchSize, height: swatchSize)
+                                .accessibilityLabel("\(option.name) color swatch")
                             Text(option.name)
+                                .font(.body)
                         }
                         .tag(option.id)
                     }
@@ -82,17 +88,17 @@ struct AppAppearanceView: View {
                         Button {
                             changeIcon(to: icon.id)
                         } label: {
-                            HStack(spacing: 12) {
+                            HStack(spacing: spacing) {
                                 if let uiImage = UIImage(named: icon.previewName) {
                                     Image(uiImage: uiImage)
                                         .resizable()
                                         .scaledToFit()
-                                        .frame(width: 44, height: 44)
+                                        .frame(width: iconSize, height: iconSize)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                 } else {
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(Color.secondary.opacity(0.2))
-                                        .frame(width: 44, height: 44)
+                                        .frame(width: iconSize, height: iconSize)
                                 }
 
                                 Text(icon.name)
@@ -106,7 +112,7 @@ struct AppAppearanceView: View {
                                         .foregroundColor(Color.userAccentColor)
                                 }
                             }
-                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                            .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical)
                         }
                         .accessibilityLabel("Select \(icon.name) icon")
                         .accessibilityHint(selectedAppIcon == icon.id ? "Currently selected" : "Double tap to select this icon")
@@ -117,7 +123,7 @@ struct AppAppearanceView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .minimumScaleFactor(0.8)
-                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical)
                         .accessibilityLabel("Alternate icons not available")
                         .accessibilityHint("Check back later for new icon options")
                 }
@@ -149,17 +155,18 @@ struct AppAppearanceView: View {
             colorSchemePreference == "system" ? nil :
             (colorSchemePreference == "light" ? .light : .dark)
         )
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 
-    private func changeIcon(to iconName: String?) {
+    private func changeIcon(to: String?) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        UIApplication.shared.setAlternateIconName(iconName) { error in
+        UIApplication.shared.setAlternateIconName(to) { error in
             DispatchQueue.main.async {
                 if let err = error {
                     errorMessage = "Failed to change icon: \(err.localizedDescription)"
                 } else {
-                    selectedAppIcon = iconName
-                    UIAccessibility.post(notification: .announcement, argument: "App icon changed to \(appIcons.first(where: { $0.id == iconName })?.name ?? "Default")")
+                    selectedAppIcon = to
+                    UIAccessibility.post(notification: .announcement, argument: "App icon changed to \(appIcons.first(where: { $0.id == to })?.name ?? "Default")")
                 }
             }
         }

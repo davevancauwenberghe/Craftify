@@ -12,6 +12,7 @@ import CloudKit
 struct RecipeSearchView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var searchText = ""
     @State private var isSearchActive = false
@@ -206,9 +207,9 @@ struct RecipeSearchView: View {
                                             .font(.system(size: 48))
                                             .foregroundColor(Color.userAccentColor.opacity(0.8))
                                         Text("No Favorite Recipes")
-                                            .font(.title2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.primary)
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.primary)
                                         Text("You haven't favorited any recipes yet.\nAdd some favorites or switch to All recipes.")
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
@@ -308,6 +309,7 @@ struct RecipeSearchView: View {
                 dataManager.fetchRecipes(isManual: false)
                 updateFilteredRecipes()
             }
+            .dynamicTypeSize(.xSmall ... .accessibility5)
         }
     }
 }
@@ -317,6 +319,7 @@ struct RecentSearchItem: View {
     let recipe: Recipe
     let accentColorPreference: String
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var body: some View {
         HStack(spacing: 12) {
@@ -345,6 +348,7 @@ struct RecentSearchItem: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(recipe.name) recent search")
         .accessibilityHint("Navigates to the detailed view of \(recipe.name)")
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -354,6 +358,7 @@ struct RecentSearchesList: View {
     @Binding var navigationPath: NavigationPath
     let accentColorPreference: String
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var body: some View {
         LazyVStack(spacing: 0) {
@@ -374,5 +379,6 @@ struct RecentSearchesList: View {
         .background(Color(.systemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }

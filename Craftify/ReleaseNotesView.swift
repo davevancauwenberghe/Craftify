@@ -10,7 +10,12 @@ import SwiftUI
 struct ReleaseNotesView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var sectionSpacing: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var listRowPaddingVertical: CGFloat = 8
     
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -21,21 +26,26 @@ struct ReleaseNotesView: View {
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: horizontalSizeClass == .regular ? 12 : 8) {
+                VStack(alignment: .leading, spacing: horizontalSizeClass == .regular ? sectionSpacing * 1.5 : sectionSpacing) {
                     Text("Craftify for Minecraft")
                         .font(horizontalSizeClass == .regular ? .title : .largeTitle)
                         .fontWeight(.bold)
+                        .minimumScaleFactor(0.6)
                     
                     Text(appVersion)
                         .font(horizontalSizeClass == .regular ? .title3 : .headline)
                         .foregroundColor(Color.userAccentColor)
+                        .minimumScaleFactor(0.6)
                     
                     Text("Stay updated with the latest improvements, fixes, and new features added to Craftify.")
                         .font(horizontalSizeClass == .regular ? .body : .subheadline)
                         .foregroundColor(.primary)
-                        .padding(.top, 4)
+                        .padding(.top, paddingVertical * 0.5)
+                        .minimumScaleFactor(0.6)
                 }
-                .padding(.bottom, horizontalSizeClass == .regular ? 12 : 8)
+                .padding(.bottom, paddingVertical)
+                .padding(.horizontal, horizontalSizeClass == .regular ? min(paddingHorizontal * 1.5, 24) : paddingHorizontal)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Craftify for Minecraft")
                 .accessibilityValue("\(appVersion). Stay updated with the latest improvements, fixes, and new features.")
@@ -51,7 +61,7 @@ struct ReleaseNotesView: View {
                         Text("• \(change)")
                             .font(horizontalSizeClass == .regular ? .subheadline : .footnote)
                             .foregroundColor(.primary)
-                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                            .padding(.vertical, horizontalSizeClass == .regular ? listRowPaddingVertical * 1.5 : listRowPaddingVertical)
                             .accessibilityLabel(change)
                     }
                 }
@@ -64,6 +74,7 @@ struct ReleaseNotesView: View {
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
