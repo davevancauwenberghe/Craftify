@@ -37,7 +37,6 @@ struct MoreView: View {
                     .accessibilityLabel("Report Issue")
                     .accessibilityHint("Navigate to report a missing recipe or an error in an existing recipe")
                     
-                    // ─── New Console Commands link ─────────────────────────────
                     NavigationLink(destination: CommandsView()) {
                         buttonStyle(title: "Console Commands", systemImage: "terminal.fill")
                     }
@@ -261,6 +260,7 @@ struct MoreView: View {
 
 struct AboutView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let accentColorPreference: String
 
     private var appVersion: String {
@@ -270,9 +270,26 @@ struct AboutView: View {
     }
 
     var body: some View {
+        let headerText: some View = Text("Craftify for Minecraft")
+            .font(horizontalSizeClass == .regular ? .title : .largeTitle)
+            .fontWeight(.bold)
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.6)
+        
+        let versionText: some View = Text(appVersion)
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+            .minimumScaleFactor(0.6)
+        
+        let descriptionText: some View = Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
+            .font(horizontalSizeClass == .regular ? .body : .subheadline)
+            .foregroundColor(.primary)
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.6)
+        
         VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
             VStack(spacing: 8) {
-                Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage(systemName: "app.fill")!)
+                Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage(systemName: "minecraft.crafting_table")!)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
@@ -284,22 +301,14 @@ struct AboutView: View {
                     .shadow(radius: 2, x: 0, y: 1)
                     .accessibilityLabel("Craftify app icon")
                     .accessibilityAddTraits(.isImage)
-
-                Text("Craftify for Minecraft")
-                    .font(horizontalSizeClass == .regular ? .title : .largeTitle)
-                    .fontWeight(.bold)
-                    .multilineTextAlignment(.center)
-
-                Text(appVersion)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-
-                Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
-                    .font(horizontalSizeClass == .regular ? .body : .subheadline)
-                    .multilineTextAlignment(.center)
+                
+                headerText
+                versionText
+                descriptionText
                     .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
             }
             .padding(.top, horizontalSizeClass == .regular ? 16 : 12)
+            .frame(maxWidth: .infinity, alignment: .center)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
             .accessibilityHint("About the Craftify app and its purpose")
@@ -323,7 +332,7 @@ struct AboutView: View {
                     .accessibilityHint("Customize the app's icon and appearance settings")
 
                     NavigationLink(destination: ReleaseNotesView()) {
-                        buttonStyle(title: "Release notes", systemImage: "doc.text.fill")
+                        buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -335,20 +344,21 @@ struct AboutView: View {
                         bottom: horizontalSizeClass == .regular ? 12 : 8,
                         trailing: horizontalSizeClass == .regular ? 16 : 12
                     ))
-                    .accessibilityLabel("Release notes")
+                    .accessibilityLabel("Release Notes")
                     .accessibilityHint("View the release notes for Craftify")
                 }
             }
             .listStyle(InsetGroupedListStyle())
-            .scrollDisabled(true)
             .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
 
             NavigationLink(destination: SupportView()) {
                 HStack {
                     Image(systemName: "envelope.fill")
+                        .font(.title2)
                     Text("Support & Privacy")
                         .font(horizontalSizeClass == .regular ? .title3 : .headline)
                         .bold()
+                        .minimumScaleFactor(0.6)
                 }
                 .id(accentColorPreference)
                 .frame(maxWidth: .infinity)
@@ -367,13 +377,14 @@ struct AboutView: View {
                 .font(horizontalSizeClass == .regular ? .callout : .footnote)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.6)
                 .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                 .accessibilityLabel("Disclaimer")
                 .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
 
             Spacer()
         }
-        .padding(horizontalSizeClass == .regular ? 12 : 8)
+        .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
         .frame(maxWidth: .infinity)
         .background(Color(UIColor.systemGroupedBackground))
         .navigationTitle("About Craftify")
@@ -381,6 +392,7 @@ struct AboutView: View {
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 
     private func buttonStyle(title: String, systemImage: String) -> some View {
@@ -391,6 +403,7 @@ struct AboutView: View {
             Text(title)
                 .font(.headline)
                 .foregroundColor(.primary)
+                .minimumScaleFactor(0.6)
             Spacer()
         }
         .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)

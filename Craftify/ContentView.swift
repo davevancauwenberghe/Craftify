@@ -26,6 +26,7 @@ struct ContentView: View {
     @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
@@ -108,6 +109,7 @@ struct ContentView: View {
                 argument: "Selected tab: \(tabName(for: newValue))"
             )
         }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 
     private func tabName(for tag: Int) -> String {
@@ -155,6 +157,7 @@ struct RecipesTabView: View {
                 }
             }
         }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -215,6 +218,7 @@ struct CategoryView: View {
         .onChange(of: selectedCategory) { _, _ in
             updateFilteredRecipes()
         }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -223,6 +227,8 @@ struct CategoryFilterBar: View {
     let categories: [String]
     let horizontalSizeClass: UserInterfaceSizeClass?
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @ScaledMetric(relativeTo: .body) private var buttonPaddingHorizontal: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var buttonPaddingVertical: CGFloat = 8
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -232,9 +238,10 @@ struct CategoryFilterBar: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } label: {
                     Text("All")
+                        .font(.body)
                         .fontWeight(.bold)
-                        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
+                        .padding(.vertical, buttonPaddingVertical)
                         .background(selectedCategory == nil ? Color.userAccentColor : Color.gray.opacity(0.2))
                         .foregroundColor(.white)
                         .cornerRadius(10)
@@ -248,9 +255,10 @@ struct CategoryFilterBar: View {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     } label: {
                         Text(category)
+                            .font(.body)
                             .fontWeight(.bold)
-                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
+                            .padding(.vertical, buttonPaddingVertical)
                             .background(selectedCategory == category ? Color.userAccentColor : Color.gray.opacity(0.2))
                             .foregroundColor(.white)
                             .cornerRadius(10)
@@ -260,10 +268,11 @@ struct CategoryFilterBar: View {
                 }
             }
             .id(accentColorPreference)
-            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
+            .padding(.vertical, buttonPaddingVertical)
         }
         .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -274,6 +283,9 @@ struct RecipeListView: View {
     @Binding var navigationPath: NavigationPath
     let horizontalSizeClass: UserInterfaceSizeClass?
     let accentColorPreference: String
+    @ScaledMetric(relativeTo: .body) private var gridSpacing: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
 
     var body: some View {
         ScrollView {
@@ -282,7 +294,7 @@ struct RecipeListView: View {
                     Section {
                         if isCraftifyPicksExpanded {
                             ScrollView(.horizontal, showsIndicators: false) {
-                                LazyHStack(spacing: 8) {
+                                LazyHStack(spacing: gridSpacing) {
                                     ForEach(recommendedRecipes, id: \.name) { recipe in
                                         NavigationLink {
                                             RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
@@ -293,8 +305,8 @@ struct RecipeListView: View {
                                         .contentShape(Rectangle())
                                     }
                                 }
-                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                .padding(.vertical, 8)
+                                .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
+                                .padding(.vertical, paddingVertical)
                             }
                         }
                     } header: {
@@ -311,11 +323,11 @@ struct RecipeListView: View {
                             // iPad: Two-column grid
                             LazyVGrid(
                                 columns: [
-                                    GridItem(.flexible(), spacing: 16),
-                                    GridItem(.flexible(), spacing: 16)
+                                    GridItem(.flexible(), spacing: gridSpacing),
+                                    GridItem(.flexible(), spacing: gridSpacing)
                                 ],
                                 alignment: .leading,
-                                spacing: 16
+                                spacing: gridSpacing
                             ) {
                                 ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
                                     NavigationLink {
@@ -327,7 +339,7 @@ struct RecipeListView: View {
                                     .contentShape(Rectangle())
                                 }
                             }
-                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
                         } else {
                             // iPhone: Single-column stack
                             ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
@@ -344,8 +356,8 @@ struct RecipeListView: View {
                         Text(letter)
                             .font(.headline)
                             .fontWeight(.bold)
-                            .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
+                            .padding(.vertical, paddingVertical)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color(.systemBackground))
                     }
@@ -355,6 +367,7 @@ struct RecipeListView: View {
         .id(accentColorPreference)
         .scrollContentBackground(.hidden)
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -362,6 +375,12 @@ struct RecipeCell: View {
     let recipe: Recipe
     let isCraftifyPick: Bool
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @ScaledMetric(relativeTo: .body) private var imageSizeRegular: CGFloat = 80
+    @ScaledMetric(relativeTo: .body) private var imageSizeCompact: CGFloat = 64
+    @ScaledMetric(relativeTo: .body) private var imageSizePickRegular: CGFloat = 96
+    @ScaledMetric(relativeTo: .body) private var imageSizePickCompact: CGFloat = 72
+    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 10
 
     var body: some View {
         HStack(spacing: 12) {
@@ -370,11 +389,11 @@ struct RecipeCell: View {
                 .scaledToFit()
                 .frame(
                     width: isCraftifyPick
-                        ? (horizontalSizeClass == .regular ? 96 : 72)
-                        : (horizontalSizeClass == .regular ? 80 : 64),
+                        ? (horizontalSizeClass == .regular ? imageSizePickRegular : imageSizePickCompact)
+                        : (horizontalSizeClass == .regular ? imageSizeRegular : imageSizeCompact),
                     height: isCraftifyPick
-                        ? (horizontalSizeClass == .regular ? 96 : 72)
-                        : (horizontalSizeClass == .regular ? 80 : 64)
+                        ? (horizontalSizeClass == .regular ? imageSizePickRegular : imageSizePickCompact)
+                        : (horizontalSizeClass == .regular ? imageSizeRegular : imageSizeCompact)
                 )
                 .cornerRadius(8)
                 .padding(4)
@@ -400,10 +419,10 @@ struct RecipeCell: View {
             Image(systemName: "chevron.right")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.gray)
-                .padding(.trailing, horizontalSizeClass == .regular ? 12 : 8)
+                .padding(.trailing, horizontalSizeClass == .regular ? paddingHorizontal * 0.75 : paddingHorizontal * 0.5)
         }
-        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal : paddingHorizontal * 0.75)
+        .padding(.vertical, paddingVertical)
         .background(
             LinearGradient(
                 colors: [Color.userAccentColor.opacity(0.05), Color.gray.opacity(0.025)],
@@ -421,11 +440,12 @@ struct RecipeCell: View {
                         : StrokeStyle(lineWidth: 1, dash: [4, 4])
                 )
         )
-        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+        .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(recipe.name), \(recipe.category.isEmpty ? "recipe" : "\(recipe.category) recipe")")
         .accessibilityHint("Navigates to the detailed view of \(recipe.name)")
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -434,6 +454,10 @@ struct CraftifyPicksHeader: View {
     var accentColorPreference: String
     var toggle: () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var headerHeightRegular: CGFloat = 44
+    @ScaledMetric(relativeTo: .body) private var headerHeightCompact: CGFloat = 36
 
     var body: some View {
         HStack(spacing: 8) {
@@ -458,9 +482,10 @@ struct CraftifyPicksHeader: View {
 
             Spacer()
         }
-        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
+        .padding(.vertical, paddingVertical)
         .background(Color(.systemBackground))
-        .frame(height: horizontalSizeClass == .regular ? 44 : 36)
+        .frame(height: horizontalSizeClass == .regular ? headerHeightRegular : headerHeightCompact)
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }

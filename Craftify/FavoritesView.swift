@@ -10,10 +10,15 @@ import Combine
 import CloudKit
 
 struct EmptyFavoritesView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 36
+    @ScaledMetric(relativeTo: .body) private var spacing: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var padding: CGFloat = 16
+
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: spacing) {
             Image(systemName: "heart.slash")
-                .font(.largeTitle)
+                .font(.system(size: iconSize))
                 .foregroundColor(.gray)
             
             Text("No favorite recipes")
@@ -24,11 +29,12 @@ struct EmptyFavoritesView: View {
                 .font(.headline)
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
-                .padding(.horizontal)
+                .padding(.horizontal, padding)
         }
-        .padding()
+        .padding(padding)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("No favorite recipes, You haven't added any favorite recipes yet. Explore recipes and tap the heart to mark them as favorites.")
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -36,7 +42,11 @@ struct FavoritesSection: View {
     let filteredFavorites: [String: [Recipe]]
     let navigationPath: Binding<NavigationPath>
     let horizontalSizeClass: UserInterfaceSizeClass?
-    
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var gridSpacing: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
+
     var body: some View {
         ForEach(filteredFavorites.keys.sorted(), id: \.self) { letter in
             Section {
@@ -44,11 +54,11 @@ struct FavoritesSection: View {
                     // iPad: Two-column grid
                     LazyVGrid(
                         columns: [
-                            GridItem(.flexible(), spacing: 16),
-                            GridItem(.flexible(), spacing: 16)
+                            GridItem(.flexible(), spacing: gridSpacing),
+                            GridItem(.flexible(), spacing: gridSpacing)
                         ],
                         alignment: .leading,
-                        spacing: 16
+                        spacing: gridSpacing
                     ) {
                         ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
                             NavigationLink {
@@ -60,7 +70,7 @@ struct FavoritesSection: View {
                             .contentShape(Rectangle())
                         }
                     }
-                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                    .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
                 } else {
                     // iPhone: Single-column stack
                     ForEach(filteredFavorites[letter] ?? [], id: \.name) { recipe in
@@ -77,24 +87,29 @@ struct FavoritesSection: View {
                 Text(letter)
                     .font(.headline)
                     .fontWeight(.bold)
-                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
+                    .padding(.vertical, paddingVertical)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.systemBackground))
             }
         }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
 struct FavoritesView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var navigationPath = NavigationPath()
     @State private var recommendedRecipes: [Recipe] = []
     @State private var selectedCategory: String? = nil
     @State private var isCraftifyPicksExpanded = true
     @State private var filteredFavorites: [String: [Recipe]] = [:]
+    @ScaledMetric(relativeTo: .body) private var buttonPaddingHorizontal: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var buttonPaddingVertical: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var hStackSpacing: CGFloat = 8
     
     private var favoriteCategories: [String] {
         Array(Set(dataManager.favorites.compactMap { $0.category.isEmpty ? nil : $0.category })).sorted()
@@ -130,15 +145,16 @@ struct FavoritesView: View {
                         } else {
                             if !favoriteCategories.isEmpty {
                                 ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
+                                    HStack(spacing: hStackSpacing) {
                                         Button {
                                             selectedCategory = nil
                                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                         } label: {
                                             Text("All")
+                                                .font(.body)
                                                 .fontWeight(.bold)
-                                                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                                .padding(.vertical, 8)
+                                                .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
+                                                .padding(.vertical, buttonPaddingVertical)
                                                 .background(selectedCategory == nil ? Color.userAccentColor : Color.gray.opacity(0.2))
                                                 .foregroundColor(.white)
                                                 .cornerRadius(10)
@@ -152,9 +168,10 @@ struct FavoritesView: View {
                                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                             } label: {
                                                 Text(category)
+                                                    .font(.body)
                                                     .fontWeight(.bold)
-                                                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                                    .padding(.vertical, 8)
+                                                    .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
+                                                    .padding(.vertical, buttonPaddingVertical)
                                                     .background(selectedCategory == category ? Color.userAccentColor : Color.gray.opacity(0.2))
                                                     .foregroundColor(.white)
                                                     .cornerRadius(10)
@@ -164,8 +181,8 @@ struct FavoritesView: View {
                                         }
                                     }
                                     .id(accentColorPreference)
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
+                                    .padding(.vertical, buttonPaddingVertical)
                                 }
                                 .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
                             }
@@ -176,7 +193,7 @@ struct FavoritesView: View {
                                         Section {
                                             if isCraftifyPicksExpanded {
                                                 ScrollView(.horizontal, showsIndicators: false) {
-                                                    LazyHStack(spacing: 8) {
+                                                    LazyHStack(spacing: hStackSpacing) {
                                                         ForEach(recommendedRecipes, id: \.name) { recipe in
                                                             NavigationLink {
                                                                 RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
@@ -187,8 +204,8 @@ struct FavoritesView: View {
                                                             .contentShape(Rectangle())
                                                         }
                                                     }
-                                                    .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                                                    .padding(.vertical, 8)
+                                                    .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
+                                                    .padding(.vertical, buttonPaddingVertical)
                                                 }
                                             }
                                         } header: {
@@ -248,6 +265,7 @@ struct FavoritesView: View {
                     dismissButton: .default(Text("OK"))
                 )
             }
+            .dynamicTypeSize(.xSmall ... .accessibility5)
         }
     }
 }

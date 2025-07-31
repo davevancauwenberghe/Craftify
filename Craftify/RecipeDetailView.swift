@@ -12,6 +12,7 @@ struct RecipeDetailView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let recipe: Recipe
     @Binding var navigationPath: NavigationPath
     @State private var selectedDetail: String?
@@ -68,7 +69,7 @@ struct RecipeDetailView: View {
         if recipe.alternateIngredients2 != nil {
             outputs.append(recipe.alternateOutput2 ?? recipe.output)
         }
-        if recipe.alternateIngredients3 != nil {
+        if let alt3 = recipe.alternateIngredients3, !alt3.isEmpty {
             outputs.append(recipe.alternateOutput3 ?? recipe.output)
         }
         return outputs
@@ -86,6 +87,7 @@ struct RecipeDetailView: View {
                             .foregroundColor(.secondary)
                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                             .padding(.top, 8)
+                            .frame(maxWidth: .infinity, alignment: .center)
                             .accessibilityLabel("No alternate crafting options")
                     }
                     
@@ -313,6 +315,7 @@ struct RecipeDetailView: View {
                     dataManager.syncFavorites()
                 }
             }
+            .dynamicTypeSize(.xSmall ... .accessibility5)
         }
         .navigationTitle(recipe.name)
         .navigationBarTitleDisplayMode(.large)
@@ -348,6 +351,7 @@ struct FurnaceGridView: View {
     let feedbackGenerator: UIImpactFeedbackGenerator
     let cellSize: CGFloat
     let accentColorPreference: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var body: some View {
         VStack(spacing: 6) {
@@ -387,6 +391,7 @@ struct FurnaceGridView: View {
                 Spacer()
             }
         }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -397,6 +402,7 @@ struct DefaultGridView: View {
     let feedbackGenerator: UIImpactFeedbackGenerator
     let cellSize: CGFloat
     let accentColorPreference: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var body: some View {
         VStack(spacing: 6) {
@@ -416,6 +422,7 @@ struct DefaultGridView: View {
                 }
             }
         }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -430,6 +437,7 @@ struct GridView: View {
     let accentColorPreference: String
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var body: some View {
         VStack {
@@ -514,6 +522,7 @@ struct GridView: View {
         .onAppear {
             feedbackGenerator.prepare()
         }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
 
@@ -525,6 +534,7 @@ struct GridCell: View {
     let cellSize: CGFloat
     let accentColorPreference: String
     let onTap: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var body: some View {
         ZStack {
@@ -564,5 +574,6 @@ struct GridCell: View {
                 onTap()
             }
         }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }

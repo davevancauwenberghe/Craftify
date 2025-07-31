@@ -10,6 +10,7 @@ import SwiftUI
 struct SupportView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var showClearDataAlert: Bool = false
     @State private var showErrorAlert: Bool = false
     @State private var errorMessage: String?
@@ -17,7 +18,7 @@ struct SupportView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("Support")) {
+                Section(header: Text("Support").font(.headline).minimumScaleFactor(0.6)) {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         let supportEmail = "hello@davevancauwenberghe.be"
@@ -38,7 +39,7 @@ struct SupportView: View {
                     .accessibilityHint("Opens the mail app to contact support")
                 }
 
-                Section(header: Text("Data Management")) {
+                Section(header: Text("Data Management").font(.headline).minimumScaleFactor(0.6)) {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         UINotificationFeedbackGenerator().notificationOccurred(.warning)
@@ -60,6 +61,7 @@ struct SupportView: View {
                         .font(horizontalSizeClass == .regular ? .body : .subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.leading)
+                        .minimumScaleFactor(0.6)
                         .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                         .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
                         .accessibilityLabel("Clear All Data Note")
@@ -90,13 +92,14 @@ struct SupportView: View {
                         .font(horizontalSizeClass == .regular ? .body : .subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.leading)
+                        .minimumScaleFactor(0.6)
                         .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                         .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
                         .accessibilityLabel("Clear Cache Note")
                         .accessibilityHint("This will permanently delete the local recipe cache, keeping iCloud data like favorites and recent searches.")
                 }
 
-                Section(header: Text("Privacy")) {
+                Section(header: Text("Privacy").font(.headline).minimumScaleFactor(0.6)) {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         if let url = URL(string: "https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/privacy-policy/") {
@@ -149,6 +152,7 @@ struct SupportView: View {
                     secondaryButton: .cancel()
                 )
             }
+            .dynamicTypeSize(.xSmall ... .accessibility5)
         }
         .navigationViewStyle(.stack)
     }
@@ -161,6 +165,7 @@ struct SupportView: View {
             Text(title)
                 .font(.headline)
                 .foregroundColor(.primary)
+                .minimumScaleFactor(0.6)
             Spacer()
         }
         .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
@@ -169,31 +174,37 @@ struct SupportView: View {
 
 struct PrivacyPolicyContent: View {
     let horizontalSizeClass: UserInterfaceSizeClass?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Privacy Policy")
                 .font(.title2)
                 .fontWeight(.bold)
+                .minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
 
             Text("Last updated: 20 May 2025")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+                .minimumScaleFactor(0.6)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Craftify for Minecraft (\"Craftify\") is developed by Dave Van Cauwenberghe, an individual developer. This Privacy Policy explains how Craftify handles your data. We are committed to protecting your privacy and do not collect any personal information.")
                         .font(.body)
+                        .minimumScaleFactor(0.6)
 
                     Group {
                         Text("1. Data We Collect")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
                         Text("Craftify collects minimal data to provide its features, none of which identifies you:")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Favorites: Recipe IDs when you mark a recipe as a favorite, stored in iCloud to sync across your devices.")
@@ -202,16 +213,19 @@ struct PrivacyPolicyContent: View {
                             Text("• Local Recipe Cache: Recipes are cached on your device for offline access but contain no personal data.")
                         }
                         .font(.body)
+                        .minimumScaleFactor(0.6)
                     }
 
                     Group {
                         Text("2. How We Use Your Data")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
                         Text("We use this data only to make Craftify work:")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Support the Favorites and Recent Searches features by storing data in iCloud.")
@@ -220,16 +234,19 @@ struct PrivacyPolicyContent: View {
                             Text("• Let you view and manage your reports in the \"My Reports\" section using CloudKit sync.")
                         }
                         .font(.body)
+                        .minimumScaleFactor(0.6)
                     }
 
                     Group {
                         Text("3. Data Storage and Security")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
                         Text("Your data is stored securely:")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Favorites and Recent Searches: Stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
@@ -237,43 +254,52 @@ struct PrivacyPolicyContent: View {
                             Text("• Local Recipe Cache: Stored on your device with no personal information.")
                         }
                         .font(.body)
+                        .minimumScaleFactor(0.6)
                     }
 
                     Group {
                         Text("4. Data Sharing")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
                         Text("Craftify does not share your data with third parties. The app uses no third-party dependencies, and all data stays in your iCloud account or in a private CloudKit database (for Recipe Reports, accessible only to you).")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
                     }
 
                     Group {
                         Text("5. Usage Data")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
                         Text("Craftify does not collect personalized usage data. We use Apple’s CloudKit to fetch recipes and manage reports in our CloudKit database. The CloudKit Console provides only anonymized metadata, like device model (e.g., iPhone 15) or iOS version, which is not linked to you or your Apple ID. This is used solely to monitor app performance and compatibility.")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
 
                         Text("Network Connectivity Monitoring:")
                             .font(.subheadline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
 
                         Text("Craftify monitors your device’s network connectivity status (e.g., Wi-Fi, cellular, or offline) to enhance your experience. This allows us to disable syncing when you’re offline, show connection status in the app, and auto-retry syncing when you reconnect. We do not collect or store any network data, and this information is used only locally on your device to manage app features. It is not shared with us or any third parties.")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
                     }
 
                     Group {
                         Text("6. Your Control Over Your Data")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
                         Text("You can manage your data in Craftify:")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Favorites: Untoggle the heart icon to remove a recipe from Favorites.")
@@ -283,55 +309,67 @@ struct PrivacyPolicyContent: View {
                             Text("• Recipe Reports: In the \"My Reports\" section of \"Report Issue\", you can view and delete your reports, which also removes them from CloudKit.")
                         }
                         .font(.body)
+                        .minimumScaleFactor(0.6)
 
                         Text("After clearing all data, nothing remains in the app, iCloud, or CloudKit tied to you.")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
                     }
 
                     Group {
                         Text("7. Children’s Privacy")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
                         Text("Craftify is rated 4+ and suitable for young children. We do not collect personally identifiable information from children under 13, in compliance with the Children’s Online Privacy Protection Act (COPPA, 16 CFR Part 312) in the U.S., the General Data Protection Regulation (GDPR, Regulation (EU) 2016/679) in the EU, and other applicable laws worldwide.")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
 
                         Text("Under GDPR Article 8, processing personal data of children under 16 (or lower, depending on the EU country) requires parental consent if based on consent. Craftify does not collect personal data as defined by GDPR, and our data processing is based on legitimate interests for app functionality, not consent, so parental consent is not required.")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
 
                         Text("Parents or guardians can manage a child’s data by:")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Using the \"Clear All Data\" button in the Support & Privacy section to remove all data from local storage, iCloud, and CloudKit.")
                         }
                         .font(.body)
+                        .minimumScaleFactor(0.6)
                     }
 
                     Group {
                         Text("8. Changes to This Policy")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
                         Text("We may update this policy if Craftify changes. Check the \"Last Updated\" date for the latest version.")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
                     }
 
                     Group {
                         Text("9. Contact Us")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
                         Text("For questions, contact us through the \"Contact Support\" button.")
                             .font(.body)
+                            .minimumScaleFactor(0.6)
                     }
 
                     Text("Thank you for using Craftify!")
                         .font(.body)
                         .fontWeight(.bold)
+                        .minimumScaleFactor(0.6)
                 }
                 .padding(.vertical, 8)
             }
@@ -341,5 +379,6 @@ struct PrivacyPolicyContent: View {
             .accessibilityValue("Last updated 20 May 2025. Craftify does not collect personal information. Data includes Favorites, Recent Searches, and Recipe Reports stored in iCloud and CloudKit for syncing. Network connectivity is monitored locally to manage syncing, not shared. Data is used for app features, with no third-party sharing. Anonymized CloudKit metadata is used for performance. You can clear all data. Craftify is safe for kids under 13, complying with COPPA and GDPR.")
         }
         .padding(.vertical, 8)
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }

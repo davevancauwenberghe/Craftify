@@ -12,9 +12,13 @@ struct CommandsView: View {
     @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var searchText: String = ""
     @State private var editionFilter: EditionFilter = .all
+    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var spacingLarge: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var spacingSmall: CGFloat = 4
 
     private enum EditionFilter: String, CaseIterable, Identifiable {
         case all     = "All Editions"
@@ -54,7 +58,7 @@ struct CommandsView: View {
             ScrollViewReader { proxy in
                 List {
                     ForEach(filteredCommands) { cmd in
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: spacingSmall) {
                             Text("➜ \(cmd.name)")
                                 .font(.system(.body, design: .monospaced))
                                 .fontWeight(.bold)
@@ -64,8 +68,8 @@ struct CommandsView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
 
-                            HStack(spacing: 16) {
-                                HStack(spacing: 4) {
+                            HStack(spacing: spacingLarge) {
+                                HStack(spacing: spacingSmall) {
                                     Image(systemName: cmd.worksInBedrock
                                           ? "checkmark.circle.fill"
                                           : "xmark.circle.fill")
@@ -90,14 +94,17 @@ struct CommandsView: View {
                                                     proxy.scrollTo("opExplanation", anchor: .top)
                                                 }
                                             }
-                                    }
+                                        }
                                 }
                                 .foregroundColor(
                                     cmd.worksInBedrock
                                         ? Color.userAccentColor
                                         : .red
                                 )
-                                HStack(spacing: 4) {
+                                .accessibilityLabel("Bedrock Edition \(cmd.worksInBedrock ? "supported" : "not supported")\(cmd.worksInBedrock && cmd.opLevelBedrock != nil ? ", requires OP level \(cmd.opLevelBedrock!)" : "")")
+                                .accessibilityHint(cmd.worksInBedrock ? "Double tap OP level to see explanation" : "")
+
+                                HStack(spacing: spacingSmall) {
                                     Image(systemName: cmd.worksInJava
                                           ? "checkmark.circle.fill"
                                           : "xmark.circle.fill")
@@ -122,38 +129,43 @@ struct CommandsView: View {
                                                     proxy.scrollTo("opExplanation", anchor: .top)
                                                 }
                                             }
-                                    }
+                                        }
                                 }
                                 .foregroundColor(
                                     cmd.worksInJava
                                         ? Color.userAccentColor
                                         : .red
                                 )
+                                .accessibilityLabel("Java Edition \(cmd.worksInJava ? "supported" : "not supported")\(cmd.worksInJava && cmd.opLevelJava != nil ? ", requires OP level \(cmd.opLevelJava!)" : "")")
+                                .accessibilityHint(cmd.worksInJava ? "Double tap OP level to see explanation" : "")
                             }
                         }
-                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical)
                         .listRowInsets(EdgeInsets(
-                            top: horizontalSizeClass == .regular ? 12 : 8,
-                            leading: horizontalSizeClass == .regular ? 16 : 12,
-                            bottom: horizontalSizeClass == .regular ? 12 : 8,
-                            trailing: horizontalSizeClass == .regular ? 16 : 12
+                            top: horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical,
+                            leading: horizontalSizeClass == .regular ? paddingHorizontal * 1.33 : paddingHorizontal,
+                            bottom: horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical,
+                            trailing: horizontalSizeClass == .regular ? paddingHorizontal * 1.33 : paddingHorizontal
                         ))
                         .contextMenu {
                             Button("Copy Command") {
                                 UIPasteboard.general.string = cmd.name
                             }
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Command: \(cmd.name), \(cmd.description)")
+                        .accessibilityHint("Double tap to copy the command")
                     }
 
                     Section(header: Text("OP Levels").id("opExplanation")) {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: spacingSmall) {
                             Text("Higher OP levels include all permissions of the lower ones.")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
 
                             Text("Bedrock Edition")
                                 .font(.headline)
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: spacingSmall) {
                                 Text("• 1: Operator – Basic commands & command blocks")
                                 Text("• 2: Admin – Server commands")
                                 Text("• 3: Host – World & automation management")
@@ -164,8 +176,8 @@ struct CommandsView: View {
 
                             Text("Java Edition")
                                 .font(.headline)
-                                .padding(.top, 4)
-                            VStack(alignment: .leading, spacing: 4) {
+                                .padding(.top, spacingSmall)
+                            VStack(alignment: .leading, spacing: spacingSmall) {
                                 Text("• 0: All – Basic commands")
                                 Text("• 1: Moderator – Bypass spawn protection")
                                 Text("• 2: GameMaster – Command blocks & extra commands")
@@ -175,13 +187,15 @@ struct CommandsView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         }
-                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+                        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical)
                         .listRowInsets(EdgeInsets(
-                            top: horizontalSizeClass == .regular ? 12 : 8,
-                            leading: horizontalSizeClass == .regular ? 16 : 12,
-                            bottom: horizontalSizeClass == .regular ? 12 : 8,
-                            trailing: horizontalSizeClass == .regular ? 16 : 12
+                            top: horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical,
+                            leading: horizontalSizeClass == .regular ? paddingHorizontal * 1.33 : paddingHorizontal,
+                            bottom: horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical,
+                            trailing: horizontalSizeClass == .regular ? paddingHorizontal * 1.33 : paddingHorizontal
                         ))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("OP Levels explanation: Higher OP levels include all permissions of the lower ones. Bedrock Edition: 1 Operator, basic commands and command blocks; 2 Admin, server commands; 3 Host, world and automation management; 4 Owner, full server control. Java Edition: 0 All, basic commands; 1 Moderator, bypass spawn protection; 2 GameMaster, command blocks and extra commands; 3 Admin, multiplayer management; 4 Owner, full server control.")
                     }
                 }
                 .listStyle(InsetGroupedListStyle())
@@ -233,6 +247,7 @@ struct CommandsView: View {
                 .onAppear {
                     dataManager.fetchConsoleCommands()
                 }
+                .dynamicTypeSize(.xSmall ... .accessibility5)
             }
         }
     }
