@@ -10,6 +10,7 @@ import SwiftUI
 struct SyncOverlayView: View {
     let horizontalSizeClass: UserInterfaceSizeClass?
     let message: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     private var cardHorizontalPadding: CGFloat {
         horizontalSizeClass == .regular ? 40 : 24
@@ -26,6 +27,7 @@ struct SyncOverlayView: View {
                 Text(message)
                     .font(.headline)
                     .foregroundColor(.white)
+                    .minimumScaleFactor(0.6)
             }
             .padding()
             .background(
@@ -39,6 +41,7 @@ struct SyncOverlayView: View {
             .accessibilityValue("Syncing in progress")
             .accessibilityHint("Please wait while the data is being synced")
             .accessibilityAddTraits(.isModal)
+            .dynamicTypeSize(.xSmall ... .accessibility5)
         }
     }
 }

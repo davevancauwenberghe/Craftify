@@ -12,16 +12,11 @@ import CloudKit
 struct MoreView: View {
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var cooldownMessage: String? = nil
     @State private var remainingCooldownTime: Int = 0
     @State private var cooldownTimer: Timer? = nil
     @State private var attemptedSyncWhileOffline: Bool = false
-    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var spacing: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var buttonHeight: CGFloat = 44
 
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
@@ -59,15 +54,15 @@ struct MoreView: View {
                     Text("Craftify for Minecraft is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.")
                         .font(horizontalSizeClass == .regular ? .callout : .footnote)
                         .foregroundColor(.secondary)
-                        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical)
+                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
                         .accessibilityLabel("Disclaimer")
                         .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
                 }
                 
                 Section(header: Text("Data Sync & Status")) {
-                    VStack(alignment: .leading, spacing: spacing) {
+                    VStack(alignment: .leading, spacing: 8) {
                         // 1. Sync Recipes Button + Cooldown Message
-                        VStack(spacing: spacing) {
+                        VStack(spacing: 8) {
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 fetchRecipes(isUserInitiated: true)
@@ -77,14 +72,14 @@ struct MoreView: View {
                                         ProgressView()
                                             .progressViewStyle(.circular)
                                             .tint(Color.userAccentColor)
-                                            .padding(.trailing, spacing)
+                                            .padding(.trailing, 8)
                                             .accessibilityLabel("Syncing")
                                             .accessibilityHint("Recipes are currently syncing")
                                             .opacity(dataManager.isLoading ? 1 : 0)
                                             .animation(.easeInOut(duration: 0.3), value: dataManager.isLoading)
                                     } else {
                                         Image(systemName: "arrow.clockwise")
-                                            .font(.system(size: spacing * 1.5))
+                                            .font(.title2)
                                             .foregroundColor(dataManager.isConnected ? Color.userAccentColor : Color.gray)
                                     }
                                     Text("Sync Recipes")
@@ -94,9 +89,9 @@ struct MoreView: View {
                                     Spacer()
                                 }
                                 .id(accentColorPreference)
-                                .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.33 : paddingHorizontal)
-                                .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical : paddingVertical * 0.75)
-                                .frame(maxWidth: .infinity, minHeight: buttonHeight)
+                                .padding(horizontalSizeClass == .regular ? 16 : 12)
+                                .padding(.vertical, horizontalSizeClass == .regular ? 8 : 6)
+                                .frame(maxWidth: .infinity, minHeight: 44)
                                 .background(Color.gray.opacity(dataManager.isConnected ? 0.1 : 0.05))
                                 .cornerRadius(10)
                             }
@@ -118,48 +113,48 @@ struct MoreView: View {
                         // 2. Network Status
                         HStack {
                             Image(systemName: dataManager.isConnected ? "wifi" : "wifi.slash")
-                                .font(.system(size: spacing * 1.5))
+                                .font(.body)
                                 .foregroundColor(dataManager.isConnected ? .green : .red)
                             Text(dataManager.isConnected ? "Connected to the Internet" : "No Internet Connection")
                                 .font(.caption)
                                 .foregroundColor(dataManager.isConnected ? .green : .red)
                             Spacer()
                         }
-                        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 0.5 : paddingVertical * 0.25)
+                        .padding(.vertical, horizontalSizeClass == .regular ? 4 : 2)
                         .accessibilityElement()
                         .accessibilityLabel(dataManager.isConnected ? "Connected to the internet" : "No internet connection")
                         .accessibilityHint(dataManager.isConnected ? "Your device is connected to the internet" : "Please connect to the internet to sync recipes")
 
                         // 3 & 4. Last Synced + Recipes Available
-                        VStack(spacing: spacing) {
+                        VStack(spacing: 0) {
                             HStack {
                                 Image(systemName: "clock")
-                                    .font(.system(size: spacing * 1.5))
+                                    .font(.body)
                                     .foregroundColor(.gray)
-                                    .frame(width: spacing * 1.5)
+                                    .frame(width: 20)
                                 Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()
                             }
-                            .padding(.vertical, spacing * 0.25)
+                            .padding(.vertical, 2)
                             .accessibilityLabel(dataManager.syncStatus)
 
                             HStack {
                                 Image(systemName: "list.bullet")
-                                    .font(.system(size: spacing * 1.5))
+                                    .font(.body)
                                     .foregroundColor(.gray)
-                                    .frame(width: spacing * 1.5)
+                                    .frame(width: 20)
                                 Text("\(dataManager.recipes.count) recipes available")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()
                             }
-                            .padding(.vertical, spacing * 0.25)
+                            .padding(.vertical, 2)
                             .accessibilityLabel("\(dataManager.recipes.count) recipes available")
                             .accessibilityHint("Number of recipes currently available in the app")
                         }
-                        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 0.5 : paddingVertical * 0.25)
+                        .padding(.vertical, horizontalSizeClass == .regular ? 4 : 2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Last synced and recipes available: \(dataManager.syncStatus), \(dataManager.recipes.count) recipes available")
@@ -208,7 +203,6 @@ struct MoreView: View {
                 cooldownMessage = nil
                 remainingCooldownTime = 0
             }
-            .dynamicTypeSize(.xSmall ... .accessibility5)
         }
     }
     
@@ -251,29 +245,23 @@ struct MoreView: View {
     }
     
     private func buttonStyle(title: String, systemImage: String) -> some View {
-        HStack(spacing: spacing) {
+        HStack(spacing: 8) {
             Image(systemName: systemImage)
-                .font(.system(size: spacing * 1.5))
+                .font(.title2)
                 .foregroundColor(Color.userAccentColor)
             Text(title)
                 .font(.headline)
                 .foregroundColor(.primary)
             Spacer()
         }
-        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical)
+        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
     }
 }
 
 struct AboutView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 80
-    @ScaledMetric(relativeTo: .body) private var spacing: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var buttonWidth: CGFloat = 300
-    @ScaledMetric(relativeTo: .body) private var listRowPadding: CGFloat = 8
+    let accentColorPreference: String
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -282,137 +270,142 @@ struct AboutView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: horizontalSizeClass == .regular ? spacing * 1.25 : spacing) {
-                    VStack(spacing: spacing * 0.5) {
-                        Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage(systemName: "square.grid.3x3.fill")!)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: min(iconSize, 120), height: min(iconSize, 120))
-                            .clipShape(RoundedRectangle(cornerRadius: 18))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                            )
-                            .shadow(radius: 2, x: 0, y: 1)
-                            .accessibilityLabel("Craftify app icon")
-                            .accessibilityAddTraits(.isImage)
-
-                        Text("Craftify for Minecraft")
-                            .font(horizontalSizeClass == .regular ? .title : .largeTitle)
-                            .fontWeight(.bold)
-                            .minimumScaleFactor(0.6)
-                            .multilineTextAlignment(.center)
-
-                        Text(appVersion)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .minimumScaleFactor(0.6)
-
-                        Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
-                            .font(horizontalSizeClass == .regular ? .body : .subheadline)
-                            .foregroundColor(.primary)
-                            .multilineTextAlignment(.center)
-                            .minimumScaleFactor(0.6)
-                            .padding(.horizontal, horizontalSizeClass == .regular ? min(paddingHorizontal * 1.5, 24) : paddingHorizontal)
-                    }
-                    .padding(.top, horizontalSizeClass == .regular ? paddingVertical * 1.33 : paddingVertical)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
-                    .accessibilityHint("About the Craftify app and its purpose")
-
-                    List {
-                        Section {
-                            NavigationLink(destination: AppAppearanceView()) {
-                                buttonStyle(title: "App Appearance", systemImage: "app.badge.fill")
-                            }
-                            .simultaneousGesture(TapGesture().onEnded {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            })
-                            .buttonStyle(.plain)
-                            .listRowInsets(EdgeInsets(
-                                top: listRowPadding,
-                                leading: horizontalSizeClass == .regular ? min(listRowPadding * 1.33, 16) : listRowPadding,
-                                bottom: listRowPadding,
-                                trailing: horizontalSizeClass == .regular ? min(listRowPadding * 1.33, 16) : listRowPadding
-                            ))
-                            .accessibilityLabel("App Appearance")
-                            .accessibilityHint("Customize the app's icon and appearance settings")
-
-                            NavigationLink(destination: ReleaseNotesView()) {
-                                buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
-                            }
-                            .simultaneousGesture(TapGesture().onEnded {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            })
-                            .buttonStyle(.plain)
-                            .listRowInsets(EdgeInsets(
-                                top: listRowPadding,
-                                leading: horizontalSizeClass == .regular ? min(listRowPadding * 1.33, 16) : listRowPadding,
-                                bottom: listRowPadding,
-                                trailing: horizontalSizeClass == .regular ? min(listRowPadding * 1.33, 16) : listRowPadding
-                            ))
-                            .accessibilityLabel("Release Notes")
-                            .accessibilityHint("View the release notes for Craftify")
-                        }
-                    }
-                    .listStyle(InsetGroupedListStyle())
-                    .padding(.horizontal, horizontalSizeClass == .regular ? min(paddingHorizontal * 1.5, 24) : paddingHorizontal)
-
-                    NavigationLink(destination: SupportView()) {
-                        HStack {
-                            Image(systemName: "envelope.fill")
-                                .font(.system(size: min(listRowPadding * 1.5, 18)))
-                            Text("Support & Privacy")
-                                .font(horizontalSizeClass == .regular ? .title3 : .headline)
-                                .bold()
-                        }
-                        .id(accentColorPreference)
-                        .frame(maxWidth: min(buttonWidth, 400))
-                        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.33 : paddingVertical)
-                        .padding(.horizontal, horizontalSizeClass == .regular ? min(paddingHorizontal * 2, 32) : min(padingHorizontal * 1.5, 24))
-                        .background(Color.userAccentColor)
-                        .foregroundColor(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
-                    .accessibilityLabel("Support and Privacy")
-                    .accessibilityHint("Navigate to support and privacy options")
-
-                    Text("Craftify for Minecraft is not an official Minecraft product; it is not approved or associated with Mojang or Microsoft.")
-                        .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .minimumScaleFactor(0.6)
-                        .padding(.horizontal, horizontalSizeClass == .regular ? min(paddingHorizontal * 1.5, 24) : paddingHorizontal)
-                        .padding(.bottom, paddingVertical)
-                        .accessibilityLabel("Disclaimer")
-                        .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
-                }
-                .padding(.horizontal, horizontalSizeClass == .regular ? min(paddingHorizontal * 1.5, 24) : paddingHorizontal)
-                .frame(maxWidth: .infinity, alignment: .center)
+        let headerText: some View = Text("Craftify for Minecraft")
+            .font(horizontalSizeClass == .regular ? .title : .largeTitle)
+            .fontWeight(.bold)
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.6)
+        
+        let versionText: some View = Text(appVersion)
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+            .minimumScaleFactor(0.6)
+        
+        let descriptionText: some View = Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
+            .font(horizontalSizeClass == .regular ? .body : .subheadline)
+            .foregroundColor(.primary)
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.6)
+        
+        VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
+            VStack(spacing: 8) {
+                Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage(systemName: "minecraft.crafting_table")!)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
+                    .shadow(radius: 2, x: 0, y: 1)
+                    .accessibilityLabel("Craftify app icon")
+                    .accessibilityAddTraits(.isImage)
+                
+                headerText
+                versionText
+                descriptionText
+                    .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
             }
-            .background(Color(UIColor.systemGroupedBackground))
-            .navigationTitle("About Craftify")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-            .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
-            .dynamicTypeSize(.xSmall ... .accessibility5)
+            .padding(.top, horizontalSizeClass == .regular ? 16 : 12)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
+            .accessibilityHint("About the Craftify app and its purpose")
+
+            List {
+                Section {
+                    NavigationLink(destination: AppAppearanceView()) {
+                        buttonStyle(title: "App Appearance", systemImage: "app.badge.fill")
+                    }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    })
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(
+                        top: horizontalSizeClass == .regular ? 12 : 8,
+                        leading: horizontalSizeClass == .regular ? 16 : 12,
+                        bottom: horizontalSizeClass == .regular ? 12 : 8,
+                        trailing: horizontalSizeClass == .regular ? 16 : 12
+                    ))
+                    .accessibilityLabel("App Appearance")
+                    .accessibilityHint("Customize the app's icon and appearance settings")
+
+                    NavigationLink(destination: ReleaseNotesView()) {
+                        buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
+                    }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    })
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(
+                        top: horizontalSizeClass == .regular ? 12 : 8,
+                        leading: horizontalSizeClass == .regular ? 16 : 12,
+                        bottom: horizontalSizeClass == .regular ? 12 : 8,
+                        trailing: horizontalSizeClass == .regular ? 16 : 12
+                    ))
+                    .accessibilityLabel("Release Notes")
+                    .accessibilityHint("View the release notes for Craftify")
+                }
+            }
+            .listStyle(InsetGroupedListStyle())
+            .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
+
+            NavigationLink(destination: SupportView()) {
+                HStack {
+                    Image(systemName: "envelope.fill")
+                        .font(.title2)
+                    Text("Support & Privacy")
+                        .font(horizontalSizeClass == .regular ? .title3 : .headline)
+                        .bold()
+                        .minimumScaleFactor(0.6)
+                }
+                .id(accentColorPreference)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
+                .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
+                .background(Color.userAccentColor)
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+            .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
+            .padding(.bottom, 8)
+            .accessibilityLabel("Support and Privacy")
+            .accessibilityHint("Navigate to support and privacy options")
+
+            Text("Craftify for Minecraft is not an official Minecraft product; it is not approved or associated with Mojang or Microsoft.")
+                .font(horizontalSizeClass == .regular ? .callout : .footnote)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.6)
+                .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
+                .accessibilityLabel("Disclaimer")
+                .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
+
+            Spacer()
         }
+        .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
+        .frame(maxWidth: .infinity)
+        .background(Color(UIColor.systemGroupedBackground))
+        .navigationTitle("About Craftify")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
+        .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 
     private func buttonStyle(title: String, systemImage: String) -> some View {
-        HStack(spacing: spacing) {
+        HStack(spacing: 8) {
             Image(systemName: systemImage)
-                .font(.system(size: min(listRowPadding * 1.5, 18)))
+                .font(.title2)
                 .foregroundColor(Color.userAccentColor)
             Text(title)
                 .font(.headline)
                 .foregroundColor(.primary)
+                .minimumScaleFactor(0.6)
             Spacer()
         }
-        .padding(.vertical, listRowPadding)
+        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
     }
 }

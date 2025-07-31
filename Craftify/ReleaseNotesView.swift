@@ -84,7 +84,11 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 90-96", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 96", changes: [
+        "User text size prefrences added",
+        "OnboardingView refinements"
+    ]),
+    ReleaseNote(version: "Version 1.0 - Build 90-95", changes: [
         "New feature: Server commands",
         "Two-column layout on iPadOS",
         "Tab bar on iOS/iPadOS 17 fixed",
