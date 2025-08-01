@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "Bleach.png",
+      "filename" : "Rabbit Hide.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "Bleach 1.png",
+      "filename" : "Rabbit Hide 1.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "Bleach 2.png",
+      "filename" : "Rabbit Hide 2.png",
       "idiom" : "universal",
       "scale" : "3x"
     }
