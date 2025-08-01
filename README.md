@@ -8,6 +8,7 @@ Craftify is a sleek iOS app designed for Minecraft players to browse, search, an
 
 ## Badges
 
+[![Craftify iOS CI](https://github.com/davevancauwenberghe/Craftify/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/davevancauwenberghe/Craftify/actions/workflows/ios.yml)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)
 ![iOS](https://img.shields.io/badge/iOS-17.0+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
