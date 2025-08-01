@@ -1,0 +1,94 @@
+# -------------------------
+# Node / JavaScript
+# -------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+# Lockfiles: keep package-lock.json committed for deterministic installs
+
+# Build output / temp
+dist/
+build/
+coverage/
+*.tgz
+
+# Environment and secrets
+.env
+.env.*.local
+
+# -------------------------
+# Docker
+# -------------------------
+# local override; Dockerfile itself should be committed
+docker-compose.override.yml
+
+# -------------------------
+# macOS / Windows
+# -------------------------
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# Editors / IDEs
+# -------------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# -------------------------
+# CodeQL
+# -------------------------
+.codeql/
+
+# -------------------------
+# Xcode / Swift / iOS
+# -------------------------
+## User settings (ephemeral UI state)
+**/xcuserdata/
+*.xcuserstate
+
+## Obj-C / Swift specific
+*.hmap
+
+## App packaging
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+## Swift Package Manager
+.build/
+# Uncomment if you want to avoid checking in SPM artifacts (evaluate per project)
+# .swiftpm
+# Packages/
+# Package.pins
+# Package.resolved
+# *.xcodeproj
+# *.xcworkspace
+
+## CocoaPods (see notes; optional to commit Pods/)
+# Pods/
+
+## Carthage
+Carthage/Build/
+# Carthage/Checkouts/    # optionally ignore source of dependencies
+
+## fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# -------------------------
+# Misc / other
+# -------------------------
+# User-specific or transient
+*.log
+**/xcuserdata/
+*.xcuserstate
