@@ -10,7 +10,8 @@ import Testing
 import SwiftUI
 
 struct CraftifyTests {
-    @Test func testDynamicTypeSettings() async throws {
+    @MainActor
+    @Test func testDynamicTypeSettings() throws {
         // Create a test environment with AppStorage mock
         let userDefaults = UserDefaults(suiteName: "testCraftify")!
         userDefaults.removePersistentDomain(forName: "testCraftify")

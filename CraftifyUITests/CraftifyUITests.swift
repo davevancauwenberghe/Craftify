@@ -5,39 +5,34 @@
 //  Created by Dave Van Cauwenberghe on 07/02/2025.
 //
 
+import Testing
 import XCTest
+@testable import Craftify
 
-final class CraftifyUITests: XCTestCase {
-
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
-        continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
-
+struct CraftifyUITests {
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    @Test func testTextSizePickerInContentView() throws {
+        // Launch the app
         let app = XCUIApplication()
         app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-    }
-
-    @MainActor
-    func testLaunchPerformance() throws {
-        if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 7.0, *) {
-            // This measures how long it takes to launch your application.
-            measure(metrics: [XCTApplicationLaunchMetric()]) {
-                XCUIApplication().launch()
-            }
-        }
+        
+        // Navigate to App Appearance (assumes "More" tab in ContentView)
+        #expect(app.tabBars.buttons["More"].exists, "More tab should exist")
+        app.tabBars.buttons["More"].tap()
+        
+        // Navigate to App Appearance view
+        #expect(app.tables.cells.staticTexts["App Appearance"].exists, "App Appearance cell should exist")
+        app.tables.cells.staticTexts["App Appearance"].tap()
+        
+        // Enable Custom Text Size toggle
+        #expect(app.tables.cells.switches["Custom Text Size"].exists, "Custom Text Size toggle should exist")
+        app.tables.cells.switches["Custom Text Size"].tap()
+        
+        // Verify scroll picker appears
+        #expect(app.pickers["Text Size Picker"].exists, "Text Size Picker should be visible")
+        
+        // Select Extra Large
+        app.pickers["Text Size Picker"].pickerWheels.element.adjust(toPickerWheelValue: "Extra Large")
+        #expect(app.pickers["Text Size Picker"].pickerWheels.element.value as? String == "Extra Large", "Picker should select Extra Large")
     }
 }
