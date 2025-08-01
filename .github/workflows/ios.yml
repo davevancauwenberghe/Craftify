@@ -55,5 +55,24 @@ jobs:
             -project "Craftify.xcodeproj" \
             -destination "$DESTINATION" \
             -enableSwiftTesting \
+            -testProductsPath "CraftifyTests" \
+            -testProductsPath "CraftifyUITests" \
+            -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO | xcpretty
           echo "Tests completed successfully"
+
+      - name: Archive Code Coverage
+        if: always()
+        run: |
+          xcrun xccov view --report --only-covered-files \
+            $(find DerivedData -name "*.xcresult" -type d) \
+            > coverage.txt
+          echo "Coverage report generated"
+        continue-on-error: true
+
+      - name: Upload Coverage Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: coverage.txt
