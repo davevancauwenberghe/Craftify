@@ -59,9 +59,10 @@ jobs:
             FILE_TYPE="workspace"
             FILE_TO_BUILD="Craftify.xcworkspace"
           fi
-          xcodebuild test-without-building \
+          xcodebuild test \
             -scheme "$SCHEME" \
             -"$FILE_TYPE" "$FILE_TO_BUILD" \
             -destination "$DESTINATION" \
+            -enableSwiftTesting \
             CODE_SIGNING_ALLOWED=NO | xcpretty
           echo "Tests completed successfully"
