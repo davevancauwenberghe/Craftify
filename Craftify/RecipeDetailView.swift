@@ -13,6 +13,8 @@ struct RecipeDetailView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let recipe: Recipe
     @Binding var navigationPath: NavigationPath
     @State private var selectedDetail: String?
@@ -22,6 +24,8 @@ struct RecipeDetailView: View {
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
     @State private var ingredientSets: [[String]] = []
     @State private var outputs: [Int] = []
+    @State private var animateRemark: Bool = false
+    @State private var animateBorder: Bool = false
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     
     private var craftingHeight: CGFloat { horizontalSizeClass == .regular ? 240 : 222 }
@@ -246,11 +250,16 @@ struct RecipeDetailView: View {
                                         .frame(width: horizontalSizeClass == .regular ? 45 : 40, height: horizontalSizeClass == .regular ? 45 : 40)
                                         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
                                         .overlay(
-                                            selectedItem == .imageremark
-                                            ? RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.userAccentColor, lineWidth: 2)
-                                                .shadow(radius: 4)
-                                            : nil
+                                            ZStack {
+                                                if selectedItem == .imageremark {
+                                                    RoundedRectangle(cornerRadius: 8)
+                                                        .stroke(Color.userAccentColor, lineWidth: 2)
+                                                        .shadow(radius: 4)
+                                                } else {
+                                                    RoundedRectangle(cornerRadius: 8)
+                                                        .stroke(Color.userAccentColor.opacity(animateBorder ? 1.0 : 0.0), lineWidth: 2)
+                                                }
+                                            }
                                         )
                                     if UIImage(named: imageRemark) != nil {
                                         Image(imageRemark)
@@ -265,6 +274,7 @@ struct RecipeDetailView: View {
                                             .foregroundColor(.gray)
                                     }
                                 }
+                                .scaleEffect(animateRemark ? 1.15 : 1.0)
                                 .accessibilityLabel("Remark image")
                                 .accessibilityHint("Tap to view remarks")
                                 .onTapGesture {
@@ -272,6 +282,17 @@ struct RecipeDetailView: View {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                         selectedDetail = imageRemark
                                         selectedItem = .imageremark
+                                    }
+                                }
+                                .onAppear {
+                                    guard !reduceMotion else { return }
+                                    withAnimation(.spring(response: 0.6, dampingFraction: 0.7).repeatCount(3, autoreverses: true)) {
+                                        animateRemark = true
+                                        animateBorder = true
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                                        animateRemark = false
+                                        animateBorder = false
                                     }
                                 }
                             }

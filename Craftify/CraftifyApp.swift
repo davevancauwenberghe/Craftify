@@ -64,8 +64,10 @@ struct CraftifyApp: App {
                     .zIndex(1)
                 }
             }
+            .dynamicTypeSize(.xSmall ... .accessibility5)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Craftify App")
             .onAppear {
-                // Fetch recipes on every app launch
                 dataManager.fetchRecipes(isManual: false)
                 if !hasLaunchedBefore {
                     showOnboarding = true
