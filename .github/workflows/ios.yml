@@ -1,0 +1,67 @@
+name: Craftify iOS CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build and Test Craftify on iPhone 15 Simulator (iOS 17.0)
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Install CocoaPods (if needed)
+        run: |
+          if [ -f "Podfile" ]; then
+            pod install
+          fi
+
+      - name: Build
+        env:
+          SCHEME: Craftify
+          PLATFORM: iOS Simulator
+          DESTINATION: platform=iOS Simulator,name=iPhone 15,OS=17.0
+        run: |
+          FILE_TYPE="project"
+          FILE_TO_BUILD="Craftify.xcodeproj"
+          if [ -f "Craftify.xcworkspace" ]; then
+            FILE_TYPE="workspace"
+            FILE_TO_BUILD="Craftify.xcworkspace"
+          fi
+          xcodebuild clean build-for-testing \
+            -scheme "$SCHEME" \
+            -"$FILE_TYPE" "$FILE_TO_BUILD" \
+            -destination "$DESTINATION" \
+            CODE_SIGNING_ALLOWED=NO | xcpretty
+          echo "Build completed successfully"
+
+      - name: Test
+        env:
+          SCHEME: Craftify
+          PLATFORM: iOS Simulator
+          DESTINATION: platform=iOS Simulator,name=iPhone 15,OS=17.0
+        run: |
+          FILE_TYPE="project"
+          FILE_TO_BUILD="Craftify.xcodeproj"
+          if [ -f "Craftify.xcworkspace" ]; then
+            FILE_TYPE="workspace"
+            FILE_TO_BUILD="Craftify.xcworkspace"
+          fi
+          xcodebuild test-without-building \
+            -scheme "$SCHEME" \
+            -"$FILE_TYPE" "$FILE_TO_BUILD" \
+            -destination "$DESTINATION" \
+            CODE_SIGNING_ALLOWED=NO | xcpretty
+          echo "Tests completed successfully"
