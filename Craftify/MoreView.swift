@@ -64,7 +64,6 @@ struct MoreView: View {
                         // 1. Sync Recipes Button + Cooldown Message
                         VStack(spacing: 8) {
                             Button(action: {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 fetchRecipes(isUserInitiated: true)
                             }) {
                                 HStack {
@@ -292,7 +291,7 @@ struct AboutView: View {
             }
             return Text(attributed)
                 .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                .foregroundColor(.secondary) // if you want the link to use the default blue link color, remove this line
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.6)
                 .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
@@ -302,8 +301,9 @@ struct AboutView: View {
         
         VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
             VStack(spacing: 8) {
-                Image(uiImage: UIImage(named: "AppIconPreview") ?? UIImage(systemName: "minecraft.crafting_table")!)
+                Image("AppIconPreview")
                     .resizable()
+                    .renderingMode(.original)
                     .scaledToFit()
                     .frame(width: 80, height: 80)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -332,7 +332,7 @@ struct AboutView: View {
                         buttonStyle(title: "App Appearance", systemImage: "app.badge.fill")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        // Haptics removed to avoid UIKit dependency
                     })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
@@ -348,7 +348,7 @@ struct AboutView: View {
                         buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        // Haptics removed to avoid UIKit dependency
                     })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
