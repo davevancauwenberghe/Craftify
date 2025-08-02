@@ -1,0 +1,23 @@
+{
+  "images" : [
+    {
+      "filename" : "Polished Blackstone Brick Wall.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "Polished Blackstone Brick Wall 1.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "Polished Blackstone Brick Wall 2.png",
+      "idiom" : "universal",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
