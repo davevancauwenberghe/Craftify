@@ -17,7 +17,7 @@ struct MoreView: View {
     @State private var remainingCooldownTime: Int = 0
     @State private var cooldownTimer: Timer? = nil
     @State private var attemptedSyncWhileOffline: Bool = false
-
+    
     private func formatSyncDate(_ date: Date?) -> String {
         guard let date = date else { return "Not synced" }
         let formatter = DateFormatter()
@@ -100,7 +100,6 @@ struct MoreView: View {
                             .disabled(dataManager.isLoading || !dataManager.isConnected)
                             .accessibilityLabel("Sync Recipes")
                             .accessibilityHint(dataManager.isConnected ? "Syncs Minecraft recipes from CloudKit" : "Sync is disabled due to no internet connection")
-
                             if let message = cooldownMessage, dataManager.isConnected {
                                 Text(message)
                                     .font(.caption)
@@ -109,7 +108,6 @@ struct MoreView: View {
                                     .accessibilityLabel(message)
                             }
                         }
-
                         // 2. Network Status
                         HStack {
                             Image(systemName: dataManager.isConnected ? "wifi" : "wifi.slash")
@@ -124,7 +122,6 @@ struct MoreView: View {
                         .accessibilityElement()
                         .accessibilityLabel(dataManager.isConnected ? "Connected to the internet" : "No internet connection")
                         .accessibilityHint(dataManager.isConnected ? "Your device is connected to the internet" : "Please connect to the internet to sync recipes")
-
                         // 3 & 4. Last Synced + Recipes Available
                         VStack(spacing: 0) {
                             HStack {
@@ -139,7 +136,6 @@ struct MoreView: View {
                             }
                             .padding(.vertical, 2)
                             .accessibilityLabel(dataManager.syncStatus)
-
                             HStack {
                                 Image(systemName: "list.bullet")
                                     .font(.body)
@@ -226,7 +222,7 @@ struct MoreView: View {
             }
         }
     }
-
+    
     private func startCooldownTimer() {
         cooldownTimer?.invalidate()
         cooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
@@ -261,14 +257,15 @@ struct MoreView: View {
 struct AboutView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.openURL) private var openURL
     let accentColorPreference: String
-
+    
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "Version \(version) – Build \(build)"
     }
-
+    
     var body: some View {
         let headerText: some View = Text("Craftify for Minecraft")
             .font(horizontalSizeClass == .regular ? .title : .largeTitle)
@@ -286,6 +283,22 @@ struct AboutView: View {
             .foregroundColor(.primary)
             .multilineTextAlignment(.center)
             .minimumScaleFactor(0.6)
+        
+        let thankYouText: some View = {
+            var attributed = AttributedString("A huge thank you to the Minecraft Wiki for their thorough and devoted work in creating the recipe database and thumbnails that power Craftify.")
+            if let range = attributed.range(of: "Minecraft Wiki") {
+                attributed[range].link = URL(string: "https://minecraft.fandom.com/wiki/Minecraft_Wiki")
+                attributed[range].underlineStyle = .init(rawValue: 0)
+            }
+            return Text(attributed)
+                .font(horizontalSizeClass == .regular ? .callout : .footnote)
+                .foregroundColor(.secondary) // if you want the link to use the default blue link color, remove this line
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.6)
+                .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
+                .accessibilityLabel("Thank you to Minecraft Wiki. Tap the link to open the Minecraft Wiki in Safari.")
+                .accessibilityHint("Acknowledges the Minecraft Wiki for providing recipe data and thumbnails. Tapping the link opens their site.")
+        }()
         
         VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
             VStack(spacing: 8) {
@@ -312,7 +325,7 @@ struct AboutView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
             .accessibilityHint("About the Craftify app and its purpose")
-
+            
             List {
                 Section {
                     NavigationLink(destination: AppAppearanceView()) {
@@ -330,7 +343,7 @@ struct AboutView: View {
                     ))
                     .accessibilityLabel("App Appearance")
                     .accessibilityHint("Customize the app's icon and appearance settings")
-
+                    
                     NavigationLink(destination: ReleaseNotesView()) {
                         buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
                     }
@@ -350,7 +363,7 @@ struct AboutView: View {
             }
             .listStyle(InsetGroupedListStyle())
             .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-
+            
             NavigationLink(destination: SupportView()) {
                 HStack {
                     Image(systemName: "envelope.fill")
@@ -372,7 +385,9 @@ struct AboutView: View {
             .padding(.bottom, 8)
             .accessibilityLabel("Support and Privacy")
             .accessibilityHint("Navigate to support and privacy options")
-
+            
+            thankYouText
+            
             Text("Craftify for Minecraft is not an official Minecraft product; it is not approved or associated with Mojang or Microsoft.")
                 .font(horizontalSizeClass == .regular ? .callout : .footnote)
                 .foregroundColor(.secondary)
@@ -381,7 +396,7 @@ struct AboutView: View {
                 .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                 .accessibilityLabel("Disclaimer")
                 .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
-
+            
             Spacer()
         }
         .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
@@ -394,7 +409,7 @@ struct AboutView: View {
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }
-
+    
     private func buttonStyle(title: String, systemImage: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
