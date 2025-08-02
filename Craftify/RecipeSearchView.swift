@@ -8,6 +8,7 @@
 import SwiftUI
 import Combine
 import CloudKit
+import UIKit
 
 struct RecipeSearchView: View {
     @EnvironmentObject private var dataManager: DataManager
@@ -320,6 +321,7 @@ struct RecentSearchItem: View {
     let accentColorPreference: String
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         HStack(spacing: 12) {
@@ -344,6 +346,23 @@ struct RecentSearchItem: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .background(
+            LinearGradient(
+                colors: colorScheme == .dark
+                    ? [Color.userAccentColor.opacity(0.15), Color.gray.opacity(0.1)]
+                    : [Color.userAccentColor.opacity(0.05), Color.gray.opacity(0.025)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .cornerRadius(10)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(
+                    Color.userAccentColor.opacity(colorScheme == .dark ? 0.7 : 0.3),
+                    style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                )
+        )
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(recipe.name) recent search")
@@ -365,6 +384,9 @@ struct RecentSearchesList: View {
             ForEach(Array(recipes.enumerated()), id: \.element.name) { index, recipe in
                 NavigationLink {
                     RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                        .onAppear {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
                 } label: {
                     RecentSearchItem(recipe: recipe, accentColorPreference: accentColorPreference)
                 }
@@ -376,8 +398,6 @@ struct RecentSearchesList: View {
                 }
             }
         }
-        .background(Color(.systemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }

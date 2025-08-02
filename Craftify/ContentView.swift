@@ -97,11 +97,9 @@ struct ContentView: View {
                 .animation(.easeInOut(duration: 0.3), value: dataManager.isManualSyncing)
             }
         }
-        // ────────────────────────────────────────────────────────────
         // 4) nav-bar material on all OS, tab-bar only on iOS 17
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .modifier(iOS17TabBarBackground())
-        // ────────────────────────────────────────────────────────────
         .onChange(of: selectedTab) { _, newValue in
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             UIAccessibility.post(
@@ -375,6 +373,7 @@ struct RecipeCell: View {
     let recipe: Recipe
     let isCraftifyPick: Bool
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .body) private var imageSizeRegular: CGFloat = 80
     @ScaledMetric(relativeTo: .body) private var imageSizeCompact: CGFloat = 64
     @ScaledMetric(relativeTo: .body) private var imageSizePickRegular: CGFloat = 96
@@ -425,7 +424,9 @@ struct RecipeCell: View {
         .padding(.vertical, paddingVertical)
         .background(
             LinearGradient(
-                colors: [Color.userAccentColor.opacity(0.05), Color.gray.opacity(0.025)],
+                colors: colorScheme == .dark
+                    ? [Color.userAccentColor.opacity(0.15), Color.gray.opacity(0.1)]
+                    : [Color.userAccentColor.opacity(0.05), Color.gray.opacity(0.025)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -434,7 +435,7 @@ struct RecipeCell: View {
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(
-                    Color.userAccentColor.opacity(0.3),
+                    Color.userAccentColor.opacity(colorScheme == .dark ? 0.7 : 0.3),
                     style: isCraftifyPick
                         ? StrokeStyle(lineWidth: 1)
                         : StrokeStyle(lineWidth: 1, dash: [4, 4])

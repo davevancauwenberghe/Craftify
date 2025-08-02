@@ -8,6 +8,7 @@
 import SwiftUI
 import Combine
 import CloudKit
+import UIKit
 
 struct EmptyFavoritesView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
