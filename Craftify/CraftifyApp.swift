@@ -13,7 +13,16 @@ struct CraftifyApp: App {
     init() {
         if #available(iOS 17.0, *) {
             let tabBarAppearance = UITabBarAppearance()
-            tabBarAppearance.configureWithDefaultBackground()
+            if #available(iOS 26.0, *) {
+                // Liquid Glass: Use transparent background with vibrancy
+                tabBarAppearance.configureWithTransparentBackground()
+                let blurEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+                tabBarAppearance.backgroundEffect = blurEffect
+                tabBarAppearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.1)
+            } else {
+                // iOS 17–25: Default background for bug fixes
+                tabBarAppearance.configureWithDefaultBackground()
+            }
             UITabBar.appearance().standardAppearance = tabBarAppearance
             UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
         }
@@ -59,6 +68,13 @@ struct CraftifyApp: App {
                     )
                     .environmentObject(dataManager)
                     .ignoresSafeArea(.container, edges: .top)
+                    .background {
+                        if #available(iOS 26.0, *) {
+                            // Liquid Glass: Vibrant, translucent background
+                            VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                                .ignoresSafeArea()
+                        }
+                    }
                     .opacity(onboardingOpacity)
                     .offset(y: onboardingOffset)
                     .zIndex(1)
@@ -75,5 +91,25 @@ struct CraftifyApp: App {
                 print("CraftifyApp: DataManager initialized, isLoading: \(dataManager.isLoading)")
             }
         }
+    }
+}
+
+// Helper view for iOS 26 vibrancy effect
+@available(iOS 26.0, *)
+struct VisualEffectView: UIViewRepresentable {
+    let effect: UIVisualEffect
+
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        let view = UIVisualEffectView(effect: effect)
+        let vibrancyEffect = UIVibrancyEffect(blurEffect: effect as! UIBlurEffect)
+        let vibrancyView = UIVisualEffectView(effect: vibrancyEffect)
+        view.contentView.addSubview(vibrancyView)
+        vibrancyView.frame = view.bounds
+        vibrancyView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        return view
+    }
+
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        uiView.effect = effect
     }
 }

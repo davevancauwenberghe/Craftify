@@ -93,12 +93,28 @@ struct ContentView: View {
                     horizontalSizeClass: horizontalSizeClass,
                     message: "Syncing Recipes…"
                 )
+                .background(
+                    Group {
+                        if #available(iOS 26.0, *) {
+                            VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                                .ignoresSafeArea()
+                        } else {
+                            Color.clear
+                        }
+                    }
+                )
                 .opacity(1)
                 .animation(.easeInOut(duration: 0.3), value: dataManager.isManualSyncing)
             }
         }
-        // 4) nav-bar material on all OS, tab-bar only on iOS 17
+        // 4) nav-bar material
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .background {
+            if #available(iOS 26.0, *) {
+                VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                    .ignoresSafeArea()
+            }
+        }
         .modifier(iOS17TabBarBackground())
         .onChange(of: selectedTab) { _, newValue in
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -164,10 +180,11 @@ struct CategoryView: View {
     @Binding var navigationPath: NavigationPath
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let accentColorPreference: String
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
-    @State private var isCraftifyPicksExpanded = true
+    @State private var isCraftifyPicksExpanded: Bool = true
     @State private var filteredRecipes: [String: [Recipe]] = [:]
 
     private func updateFilteredRecipes() {
@@ -227,6 +244,7 @@ struct CategoryFilterBar: View {
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @ScaledMetric(relativeTo: .body) private var buttonPaddingHorizontal: CGFloat = 16
     @ScaledMetric(relativeTo: .body) private var buttonPaddingVertical: CGFloat = 8
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -240,7 +258,17 @@ struct CategoryFilterBar: View {
                         .fontWeight(.bold)
                         .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
                         .padding(.vertical, buttonPaddingVertical)
-                        .background(selectedCategory == nil ? Color.userAccentColor : Color.gray.opacity(0.2))
+                        .background(
+                            Group {
+                                if selectedCategory == nil {
+                                    Color.userAccentColor
+                                } else if #available(iOS 26.0, *) {
+                                    VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                                } else {
+                                    Color.gray.opacity(0.2)
+                                }
+                            }
+                        )
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
@@ -257,7 +285,17 @@ struct CategoryFilterBar: View {
                             .fontWeight(.bold)
                             .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
                             .padding(.vertical, buttonPaddingVertical)
-                            .background(selectedCategory == category ? Color.userAccentColor : Color.gray.opacity(0.2))
+                            .background(
+                                Group {
+                                    if selectedCategory == category {
+                                        Color.userAccentColor
+                                    } else if #available(iOS 26.0, *) {
+                                        VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                                    } else {
+                                        Color.gray.opacity(0.2)
+                                    }
+                                }
+                            )
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
@@ -423,14 +461,21 @@ struct RecipeCell: View {
         .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal : paddingHorizontal * 0.75)
         .padding(.vertical, paddingVertical)
         .background(
-            LinearGradient(
-                colors: colorScheme == .dark
-                    ? [Color.userAccentColor.opacity(0.15), Color.gray.opacity(0.1)]
-                    : [Color.userAccentColor.opacity(0.05), Color.gray.opacity(0.025)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .cornerRadius(10)
+            Group {
+                if #available(iOS 26.0, *) {
+                    VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                        .cornerRadius(10)
+                } else {
+                    LinearGradient(
+                        colors: colorScheme == .dark
+                            ? [Color.userAccentColor.opacity(0.15), Color.gray.opacity(0.1)]
+                            : [Color.userAccentColor.opacity(0.05), Color.gray.opacity(0.025)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .cornerRadius(10)
+                }
+            }
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
@@ -455,6 +500,7 @@ struct CraftifyPicksHeader: View {
     var accentColorPreference: String
     var toggle: () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
     @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
     @ScaledMetric(relativeTo: .body) private var headerHeightRegular: CGFloat = 44
@@ -469,7 +515,15 @@ struct CraftifyPicksHeader: View {
                     .font(.title2)
                     .foregroundColor(.gray)
                     .padding(8)
-                    .background(Color.gray.opacity(0.1))
+                    .background(
+                        Group {
+                            if #available(iOS 26.0, *) {
+                                VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                            } else {
+                                Color.gray.opacity(0.1)
+                            }
+                        }
+                    )
                     .clipShape(Circle())
             }
             .contentShape(Rectangle())
