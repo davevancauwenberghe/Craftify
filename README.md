@@ -15,7 +15,7 @@ Craftify is a sleek iOS app designed for Minecraft players to browse, search, an
 
 ## Description
 
-Craftify is the ultimate companion app for Minecraft enthusiasts looking to master crafting recipes. Whether you're a seasoned player or a beginner, Craftify provides an intuitive interface to explore hundreds of recipes, filter by category, save your favorites, and sync them across devices using CloudKit. With features like alternate app icons, dark mode support, and full VoiceOver accessibility, Craftify ensures a personalized and inclusive experience for all users.
+[Craftify](https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/) is the ultimate companion app for Minecraft enthusiasts looking to master crafting recipes. Whether you're a seasoned player or a beginner, Craftify provides an intuitive interface to explore hundreds of recipes, filter by category, save your favorites, and sync them across devices using CloudKit. With features like alternate app icons, dark mode support, and full VoiceOver accessibility, Craftify ensures a personalized and inclusive experience for all users.
 
 ### Key Features
 
