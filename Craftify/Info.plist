@@ -1,81 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Bundle Identifier -->
-    <key>CFBundleIdentifier</key>
-    <string>be.ghentphotography.www.Craftify</string>
-
-    <!-- App Name -->
-    <key>CFBundleName</key>
-    <string>Craftify</string>
-    <key>CFBundleDisplayName</key>
-    <string>Craftify</string>
-
-    <!-- Minimum OS Version -->
-    <key>MinimumOSVersion</key>
-    <string>17.0</string>
-
-    <!-- Supported Device Capabilities -->
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>arm64</string>
-    </array>
-
-    <!-- iCloud Documents Configuration -->
-    <key>NSUbiquitousContainers</key>
-    <dict>
-        <key>iCloud.be.ghentphotography.www.Craftify</key>
-        <dict>
-            <key>NSUbiquitousContainerIsDocumentScopePublic</key>
-            <true/>
-            <key>NSUbiquitousContainerName</key>
-            <string>Craftify</string>
-            <key>NSUbiquitousContainerSupportedFolderLevels</key>
-            <string>All</string>
-        </dict>
-    </dict>
-
-    <!-- CloudKit Container -->
-    <key>com.apple.developer.icloud-container-identifiers</key>
-    <array>
-        <string>iCloud.craftifydb</string>
-    </array>
-    <key>com.apple.developer.icloud-services</key>
-    <array>
-        <string>CloudKit</string>
-    </array>
-
-    <!-- App Icon Configuration -->
-    <key>CFBundleIcons</key>
-    <dict>
-        <!-- Primary (default) icon set -->
-        <key>CFBundlePrimaryIcon</key>
-        <dict>
-            <key>CFBundleIconName</key>
-            <string>AppIcon</string>
-            <key>UIPrerenderedIcon</key>
-            <false/>
-        </dict>
-        <!-- Alternate icons -->
-        <key>CFBundleAlternateIcons</key>
-        <dict>
-            <key>AlternateIcon1</key>
-            <dict>
-                <key>CFBundleIconName</key>
-                <string>AlternateIcon1</string>
-                <key>UIPrerenderedIcon</key>
-                <false/>
-            </dict>
-            <key>AlternateIcon2</key>
-            <dict>
-                <key>CFBundleIconName</key>
-                <string>AlternateIcon2</string>
-                <key>UIPrerenderedIcon</key>
-                <false/>
-            </dict>
-        </dict>
-    </dict>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>AlternateIcon1</key>
+			<dict>
+				<key>CFBundleIconName</key>
+				<string>AlternateIcon1</string>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>AlternateIcon2</key>
+			<dict>
+				<key>CFBundleIconName</key>
+				<string>AlternateIcon2</string>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+		</dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconName</key>
+			<string>AppIcon</string>
+			<key>UIPrerenderedIcon</key>
+			<false/>
+		</dict>
+	</dict>
+	<key>MinimumOSVersion</key>
+	<string>17.0</string>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.be.ghentphotography.www.Craftify</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Craftify</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>All</string>
+		</dict>
+	</dict>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.craftifydb</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
 </dict>
 </plist>
