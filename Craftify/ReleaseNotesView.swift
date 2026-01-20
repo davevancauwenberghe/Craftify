@@ -84,6 +84,9 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
+    ReleaseNote(version: "Version 1.0 - Build 103", changes: [
+        "Early build: Ingredients with an underlying recipe can be viewed within the same view"
+    ]),
     ReleaseNote(version: "Version 1.0 - Build 100-102", changes: [
         "iOS 26/iPadOS 26 support added",
         "Image assets added",

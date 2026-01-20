@@ -27,15 +27,19 @@ struct RecipeDetailView: View {
     @State private var animateRemark: Bool = false
     @State private var animateBorder: Bool = false
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    
+    @State private var selectedSubRecipeIngredient: String? = nil
+    @State private var selectedSubRecipe: Recipe? = nil
+
     private var craftingHeight: CGFloat { horizontalSizeClass == .regular ? 240 : 222 }
-    
+    private var cellSize: CGFloat { horizontalSizeClass == .regular ? 80 : 70 }
+    private var subCellSize: CGFloat { cellSize * 0.75 }
+
     enum SelectedItem: Equatable {
         case grid(index: Int)
         case output
         case imageremark
     }
-    
+
     private func computeIngredientSets() -> [[String]] {
         let maxIngredients: Int
         switch true {
@@ -61,7 +65,7 @@ struct RecipeDetailView: View {
             set.count < maxIngredients ? set + Array(repeating: "", count: maxIngredients - set.count) : Array(set.prefix(maxIngredients))
         }
     }
-    
+
     private func computeOutputs() -> [Int] {
         var outputs: [Int] = [recipe.output]
         if recipe.alternateIngredients != nil {
@@ -78,7 +82,7 @@ struct RecipeDetailView: View {
         }
         return outputs
     }
-    
+
     var body: some View {
         ZStack {
             Color(.systemBackground)
@@ -195,6 +199,22 @@ struct RecipeDetailView: View {
                                             ? (recipe.remarks?.isEmpty == false ? recipe.remarks! : "No remarks available")
                                             : (detail == recipe.name ? recipe.name : "Ingredient for crafting")
                                     )
+                                
+                                if let selectedItem = selectedItem, case .grid(_) = selectedItem, !detail.isEmpty && dataManager.recipes.contains(where: { $0.name == detail }) {
+                                    Button {
+                                        selectedSubRecipeIngredient = detail
+                                        selectedSubRecipe = dataManager.recipes.first { $0.name == detail }
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "info.circle")
+                                            Text("View Recipe")
+                                        }
+                                        .font(.subheadline)
+                                        .foregroundColor(Color.userAccentColor)
+                                    }
+                                    .accessibilityLabel("View recipe for \(detail)")
+                                    .accessibilityHint("Shows the crafting recipe for this ingredient")
+                                }
                             }
                             .padding(.vertical, 12)
                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
@@ -261,6 +281,7 @@ struct RecipeDetailView: View {
                                                 }
                                             }
                                         )
+                                    
                                     if UIImage(named: imageRemark) != nil {
                                         Image(imageRemark)
                                             .resizable()
@@ -362,6 +383,100 @@ struct RecipeDetailView: View {
                 .accessibilityHint("Toggles favorite status")
             }
         }
+        .overlay {
+            if let subRecipe = selectedSubRecipe {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        selectedSubRecipe = nil
+                        selectedSubRecipeIngredient = nil
+                    }
+                ZStack(alignment: .topTrailing) {
+                    VStack(spacing: 8) {
+                        Text("Recipe for \(selectedSubRecipeIngredient ?? "")")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(subCellSize), spacing: 6), count: 3), spacing: 6) {
+                            ForEach(0..<9, id: \.self) { index in
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.systemGray5))
+                                        .frame(width: subCellSize, height: subCellSize)
+                                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+
+                                    if index < subRecipe.ingredients.count && !subRecipe.ingredients[index].isEmpty {
+                                        if UIImage(named: subRecipe.ingredients[index]) != nil {
+                                            Image(subRecipe.ingredients[index])
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: subCellSize - 10, height: subCellSize - 10)
+                                        } else {
+                                            Image(systemName: "photo")
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: subCellSize - 10, height: subCellSize - 10)
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                }
+                                .accessibilityLabel(index < subRecipe.ingredients.count && !subRecipe.ingredients[index].isEmpty ? "Sub-ingredient: \(subRecipe.ingredients[index])" : "Empty slot")
+                                .onTapGesture {
+                                    guard index < subRecipe.ingredients.count && !subRecipe.ingredients[index].isEmpty else { return }
+                                    feedbackGenerator.impactOccurred()
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                                        selectedDetail = subRecipe.ingredients[index]
+                                        selectedItem = .grid(index: index)
+                                        selectedSubRecipe = nil
+                                        selectedSubRecipeIngredient = nil
+                                    }
+                                }
+                            }
+                        }
+                        .padding(8)
+                    }
+                    .padding(16)
+                    .background(
+                        Group {
+                            if #available(iOS 26.0, *) {
+                                VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                                    .cornerRadius(16)
+                            } else {
+                                Color(.systemBackground)
+                                    .cornerRadius(16)
+                            }
+                        }
+                    )
+                    .shadow(radius: 10)
+                    
+                    Button {
+                        feedbackGenerator.impactOccurred()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                            selectedSubRecipe = nil
+                            selectedSubRecipeIngredient = nil
+                        }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(Color.userAccentColor)
+                            .background(
+                                Circle()
+                                    .fill(Color(.systemBackground))
+                                    .frame(width: 24, height: 24)
+                                    .shadow(radius: 2)
+                            )
+                            .frame(width: 24, height: 24)
+                    }
+                    .padding(.top, 4)
+                    .padding(.trailing, 4)
+                    .accessibilityLabel("Close sub-recipe")
+                    .accessibilityHint("Dismisses the sub-recipe overlay")
+                }
+                .transition(.scale)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Sub-recipe for \(selectedSubRecipeIngredient ?? "")")
+                .accessibilityHint("Tap outside to dismiss")
+            }
+        }
+        .animation(.easeInOut, value: selectedSubRecipe)
     }
 }
 
@@ -372,6 +487,7 @@ struct FurnaceGridView: View {
     let feedbackGenerator: UIImpactFeedbackGenerator
     let cellSize: CGFloat
     let accentColorPreference: String
+    @EnvironmentObject var dataManager: DataManager
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var body: some View {
@@ -423,6 +539,7 @@ struct DefaultGridView: View {
     let feedbackGenerator: UIImpactFeedbackGenerator
     let cellSize: CGFloat
     let accentColorPreference: String
+    @EnvironmentObject var dataManager: DataManager
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var body: some View {
