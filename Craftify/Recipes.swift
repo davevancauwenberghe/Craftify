@@ -8,7 +8,7 @@
 import Foundation
 import CloudKit
 
-struct Recipe: Codable, Identifiable, Equatable {
+struct Recipe: Codable, Identifiable, Equatable, Hashable {
     let id: Int
     let name: String
     let image: String
@@ -57,6 +57,25 @@ struct Recipe: Codable, Identifiable, Equatable {
                lhs.category == rhs.category &&
                lhs.imageremark == rhs.imageremark &&
                lhs.remarks == rhs.remarks
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(name)
+        hasher.combine(image)
+        hasher.combine(ingredients)
+        hasher.combine(alternateIngredients)
+        hasher.combine(alternateIngredients1)
+        hasher.combine(alternateIngredients2)
+        hasher.combine(alternateIngredients3)
+        hasher.combine(output)
+        hasher.combine(alternateOutput)
+        hasher.combine(alternateOutput1)
+        hasher.combine(alternateOutput2)
+        hasher.combine(alternateOutput3)
+        hasher.combine(category)
+        hasher.combine(imageremark)
+        hasher.combine(remarks)
     }
 }
 
