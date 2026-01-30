@@ -170,6 +170,12 @@ struct RecipesTabView: View {
                     .navigationBarTitleDisplayMode(.large)
                 }
             }
+            .navigationDestination(for: Recipe.self) { recipe in
+                RecipeDetailView(
+                    recipe: recipe,
+                    navigationPath: $navigationPath
+                )
+            }
         }
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }
