@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 90;
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
@@ -26,13 +26,11 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		5541C83B2DD7B61300478D7A /* Embed Watch Content */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
-			dstSubfolderSpec = 16;
+			dstSubfolder = Product;
 			files = (
 			);
 			name = "Embed Watch Content";
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
@@ -76,24 +74,18 @@
 /* Begin PBXFrameworksBuildPhase section */
 		55BEFB1F2D55A73000587E5B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		55BEFB2F2D55A73200587E5B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		55BEFB392D55A73200587E5B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -132,14 +124,10 @@
 			);
 			buildRules = (
 			);
-			dependencies = (
-			);
 			fileSystemSynchronizedGroups = (
 				55BEFB242D55A73000587E5B /* Craftify */,
 			);
 			name = Craftify;
-			packageProductDependencies = (
-			);
 			productName = Craftify;
 			productReference = 55BEFB222D55A73000587E5B /* Craftify.app */;
 			productType = "com.apple.product-type.application";
@@ -161,8 +149,6 @@
 				55BEFB352D55A73200587E5B /* CraftifyTests */,
 			);
 			name = CraftifyTests;
-			packageProductDependencies = (
-			);
 			productName = CraftifyTests;
 			productReference = 55BEFB322D55A73200587E5B /* CraftifyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -184,8 +170,6 @@
 				55BEFB3F2D55A73200587E5B /* CraftifyUITests */,
 			);
 			name = CraftifyUITests;
-			packageProductDependencies = (
-			);
 			productName = CraftifyUITests;
 			productReference = 55BEFB3C2D55A73200587E5B /* CraftifyUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -199,6 +183,7 @@
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1630;
 				LastUpgradeCheck = 2600;
+				ORGANIZATIONNAME = "Dave Van Cauwenberghe";
 				TargetAttributes = {
 					55BEFB212D55A73000587E5B = {
 						CreatedOnToolsVersion = 16.2;
@@ -222,7 +207,7 @@
 			);
 			mainGroup = 55BEFB192D55A73000587E5B;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
+			preferredProjectObjectVersion = 90;
 			productRefGroup = 55BEFB232D55A73000587E5B /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -237,48 +222,36 @@
 /* Begin PBXResourcesBuildPhase section */
 		55BEFB202D55A73000587E5B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		55BEFB302D55A73200587E5B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		55BEFB3A2D55A73200587E5B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		55BEFB1E2D55A73000587E5B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		55BEFB2E2D55A73200587E5B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		55BEFB382D55A73200587E5B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
@@ -296,7 +269,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		55BEFB442D55A73200587E5B /* Debug */ = {
+		55BEFB442D55A73200587E5B /* Debug configuration for PBXProject "Craftify" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -349,7 +322,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -361,7 +334,7 @@
 			};
 			name = Debug;
 		};
-		55BEFB452D55A73200587E5B /* Release */ = {
+		55BEFB452D55A73200587E5B /* Release configuration for PBXProject "Craftify" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -408,7 +381,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -419,7 +392,7 @@
 			};
 			name = Release;
 		};
-		55BEFB472D55A73200587E5B /* Debug */ = {
+		55BEFB472D55A73200587E5B /* Debug configuration for PBXNativeTarget "Craftify" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Craftify;
@@ -427,7 +400,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Craftify/Craftify.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 106;
+				CURRENT_PROJECT_VERSION = 107;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -442,7 +415,7 @@
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -455,12 +428,12 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		55BEFB482D55A73200587E5B /* Release */ = {
+		55BEFB482D55A73200587E5B /* Release configuration for PBXNativeTarget "Craftify" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Craftify;
@@ -468,7 +441,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Craftify/Craftify.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 106;
+				CURRENT_PROJECT_VERSION = 107;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -483,7 +456,7 @@
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -496,76 +469,76 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
-		55BEFB4A2D55A73200587E5B /* Debug */ = {
+		55BEFB4A2D55A73200587E5B /* Debug configuration for PBXNativeTarget "CraftifyTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 107;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = be.ghentphotography.www.CraftifyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Craftify.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Craftify";
 			};
 			name = Debug;
 		};
-		55BEFB4B2D55A73200587E5B /* Release */ = {
+		55BEFB4B2D55A73200587E5B /* Release configuration for PBXNativeTarget "CraftifyTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 107;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = be.ghentphotography.www.CraftifyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Craftify.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Craftify";
 			};
 			name = Release;
 		};
-		55BEFB4D2D55A73200587E5B /* Debug */ = {
+		55BEFB4D2D55A73200587E5B /* Debug configuration for PBXNativeTarget "CraftifyUITests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 107;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = be.ghentphotography.www.CraftifyUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Craftify;
 			};
 			name = Debug;
 		};
-		55BEFB4E2D55A73200587E5B /* Release */ = {
+		55BEFB4E2D55A73200587E5B /* Release configuration for PBXNativeTarget "CraftifyUITests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 107;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = be.ghentphotography.www.CraftifyUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Craftify;
 			};
@@ -577,37 +550,33 @@
 		55BEFB1D2D55A73000587E5B /* Build configuration list for PBXProject "Craftify" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				55BEFB442D55A73200587E5B /* Debug */,
-				55BEFB452D55A73200587E5B /* Release */,
+				55BEFB442D55A73200587E5B /* Debug configuration for PBXProject "Craftify" */,
+				55BEFB452D55A73200587E5B /* Release configuration for PBXProject "Craftify" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		55BEFB462D55A73200587E5B /* Build configuration list for PBXNativeTarget "Craftify" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				55BEFB472D55A73200587E5B /* Debug */,
-				55BEFB482D55A73200587E5B /* Release */,
+				55BEFB472D55A73200587E5B /* Debug configuration for PBXNativeTarget "Craftify" */,
+				55BEFB482D55A73200587E5B /* Release configuration for PBXNativeTarget "Craftify" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		55BEFB492D55A73200587E5B /* Build configuration list for PBXNativeTarget "CraftifyTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				55BEFB4A2D55A73200587E5B /* Debug */,
-				55BEFB4B2D55A73200587E5B /* Release */,
+				55BEFB4A2D55A73200587E5B /* Debug configuration for PBXNativeTarget "CraftifyTests" */,
+				55BEFB4B2D55A73200587E5B /* Release configuration for PBXNativeTarget "CraftifyTests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		55BEFB4C2D55A73200587E5B /* Build configuration list for PBXNativeTarget "CraftifyUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				55BEFB4D2D55A73200587E5B /* Debug */,
-				55BEFB4E2D55A73200587E5B /* Release */,
+				55BEFB4D2D55A73200587E5B /* Debug configuration for PBXNativeTarget "CraftifyUITests" */,
+				55BEFB4E2D55A73200587E5B /* Release configuration for PBXNativeTarget "CraftifyUITests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
