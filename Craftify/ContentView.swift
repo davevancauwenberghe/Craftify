@@ -147,7 +147,13 @@ struct RecipesTabView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack {
+            CategoryView(
+                navigationPath: $navigationPath,
+                accentColorPreference: accentColorPreference
+            )
+            .navigationTitle("Craftify")
+            .navigationBarTitleDisplayMode(.large)
+            .overlay {
                 if dataManager.isLoading && dataManager.recipes.isEmpty {
                     VStack(spacing: 12) {
                         ProgressView()
@@ -158,16 +164,11 @@ struct RecipesTabView: View {
                             .font(.headline)
                             .foregroundColor(.secondary)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground))
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Loading Recipes")
                     .accessibilityHint("Please wait while the recipes are being loaded")
-                } else {
-                    CategoryView(
-                        navigationPath: $navigationPath,
-                        accentColorPreference: accentColorPreference
-                    )
-                    .navigationTitle("Craftify")
-                    .navigationBarTitleDisplayMode(.large)
                 }
             }
             .navigationDestination(for: Recipe.self) { recipe in
