@@ -10,17 +10,6 @@ import Combine
 import CloudKit
 import UIKit
 
-// Applies the frosted-glass only on iOS 17 for the tab bar
-private struct iOS17TabBarBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 18.0, *) {
-            return content
-        } else {
-            return content.toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        }
-    }
-}
-
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
@@ -69,8 +58,7 @@ struct ContentView: View {
                 RecipeSearchView()
                     .tabItem {
                         // on iPadOS 18+, show icon-only
-                        if UIDevice.current.userInterfaceIdiom == .pad,
-                           #available(iOS 18.0, *) {
+                        if UIDevice.current.userInterfaceIdiom == .pad {
                             Image(systemName: "magnifyingglass")
                         } else {
                             Label("Search", systemImage: "magnifyingglass")
@@ -115,9 +103,8 @@ struct ContentView: View {
                     .ignoresSafeArea()
             }
         }
-        .modifier(iOS17TabBarBackground())
         .onChange(of: selectedTab) { _, newValue in
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.selection()
             UIAccessibility.post(
                 notification: .announcement,
                 argument: "Selected tab: \(tabName(for: newValue))"
@@ -258,7 +245,7 @@ struct CategoryFilterBar: View {
             HStack(spacing: 8) {
                 Button {
                     selectedCategory = nil
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    Haptics.selection()
                 } label: {
                     Text("All")
                         .font(.body)
@@ -285,7 +272,7 @@ struct CategoryFilterBar: View {
                 ForEach(categories, id: \.self) { category in
                     Button {
                         selectedCategory = category
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        Haptics.selection()
                     } label: {
                         Text(category)
                             .font(.body)

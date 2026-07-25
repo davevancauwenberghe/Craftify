@@ -379,7 +379,7 @@ struct SubmitReportSection: View {
             }
 
             Button(action: {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                Haptics.impact(.medium)
                 if isFormIncomplete {
                     return
                 }

@@ -14,7 +14,7 @@ private struct AppIcon: Identifiable {
     let previewName: String
 }
 
-private struct AccentColorOption: Identifiable {
+struct AccentColorOption: Identifiable {
     let id: String
     let name: String
     let color: Color
@@ -40,7 +40,7 @@ struct AppAppearanceView: View {
         .init(id: "AlternateIcon2", name: "Craftify Grid", previewName: "AlternateIcon2Preview")
     ]
 
-    private let accentColors: [AccentColorOption] = [
+    static let accentColors: [AccentColorOption] = [
         .init(id: "default", name: "Default", color: Color(hex: "00AA00")),
         .init(id: "blue", name: "Blue", color: .blue),
         .init(id: "orange", name: "Orange", color: .orange),
@@ -66,7 +66,7 @@ struct AppAppearanceView: View {
             
             Section(header: Text("Accent Color")) {
                 Picker("Accent Color", selection: $accentColorPreference) {
-                    ForEach(accentColors) { option in
+                    ForEach(Self.accentColors) { option in
                         HStack {
                             Circle()
                                 .fill(option.color)
@@ -159,7 +159,7 @@ struct AppAppearanceView: View {
     }
 
     private func changeIcon(to: String?) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Haptics.impact(.medium)
         UIApplication.shared.setAlternateIconName(to) { error in
             DispatchQueue.main.async {
                 if let err = error {

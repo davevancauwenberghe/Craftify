@@ -20,7 +20,7 @@ struct SupportView: View {
             List {
                 Section(header: Text("Support").font(.headline).minimumScaleFactor(0.6)) {
                     Button(action: {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        Haptics.impact(.medium)
                         let supportEmail = "hello@davevancauwenberghe.be"
                         if let url = URL(string: "mailto:\(supportEmail)") {
                             UIApplication.shared.open(url)
@@ -41,8 +41,8 @@ struct SupportView: View {
 
                 Section(header: Text("Data Management").font(.headline).minimumScaleFactor(0.6)) {
                     Button(action: {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                        Haptics.impact(.medium)
+                        Haptics.notification(.warning)
                         showClearDataAlert = true
                     }) {
                         buttonStyle(title: "Clear All Data", systemImage: "trash.fill", foregroundColor: .red)
@@ -68,7 +68,7 @@ struct SupportView: View {
                         .accessibilityHint("This will permanently delete all your favorites, recent searches, recipe reports, and the local recipe cache.")
 
                     Button(action: {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        Haptics.impact(.medium)
                         dataManager.clearCache { success in
                             if !success {
                                 errorMessage = dataManager.errorMessage ?? "Failed to clear cache. Please try again."
@@ -101,7 +101,7 @@ struct SupportView: View {
 
                 Section(header: Text("Privacy").font(.headline).minimumScaleFactor(0.6)) {
                     Button(action: {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        Haptics.impact(.medium)
                         if let url = URL(string: "https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/privacy-policy/") {
                             UIApplication.shared.open(url)
                         }
