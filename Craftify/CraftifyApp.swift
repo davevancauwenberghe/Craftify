@@ -11,21 +11,18 @@ import UIKit
 @main
 struct CraftifyApp: App {
     init() {
-        if #available(iOS 17.0, *) {
-            let tabBarAppearance = UITabBarAppearance()
-            if #available(iOS 26.0, *) {
+        let tabBarAppearance = UITabBarAppearance()
+        if #available(iOS 26.0, *) {
                 // Liquid Glass: Use transparent background with vibrancy
                 tabBarAppearance.configureWithTransparentBackground()
                 let blurEffect = UIBlurEffect(style: .systemUltraThinMaterial)
                 tabBarAppearance.backgroundEffect = blurEffect
                 tabBarAppearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.1)
-            } else {
-                // iOS 17–25: Default background for bug fixes
-                tabBarAppearance.configureWithDefaultBackground()
-            }
-            UITabBar.appearance().standardAppearance = tabBarAppearance
-            UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
+        } else {
+            tabBarAppearance.configureWithDefaultBackground()
         }
+        UITabBar.appearance().standardAppearance = tabBarAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
     }
 
     @StateObject private var dataManager = DataManager()
@@ -39,8 +36,6 @@ struct CraftifyApp: App {
             ZStack {
                 ContentView()
                     .environmentObject(dataManager)
-                    .opacity(showOnboarding ? 0.0 : 1.0)
-                    .animation(.easeInOut(duration: 0.3), value: showOnboarding)
 
                 if showOnboarding {
                     OnboardingView(
@@ -67,7 +62,6 @@ struct CraftifyApp: App {
                         horizontalSizeClass: UIDevice.current.userInterfaceIdiom == .pad ? .regular : .compact
                     )
                     .environmentObject(dataManager)
-                    .ignoresSafeArea(.container, edges: .top)
                     .background {
                         if #available(iOS 26.0, *) {
                             // Liquid Glass: Vibrant, translucent background

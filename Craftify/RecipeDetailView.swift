@@ -69,6 +69,7 @@ struct RecipeDetailView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
                     feedbackGenerator.impactOccurred()
+                    feedbackGenerator.prepare()
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                         animateHeart = true
                     }
@@ -245,7 +246,7 @@ struct AlternateRecipesSelector: View {
                 HStack(spacing: 8) {
                     ForEach(0..<ingredientSets.count, id: \.self) { index in
                         Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            Haptics.impact()
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                 selectedCraftingOption = index
                                 selectedDetail = nil
@@ -377,6 +378,7 @@ struct IngredientDetailPopup: View {
 
             Button {
                 feedbackGenerator.impactOccurred()
+                feedbackGenerator.prepare()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                     selectedDetail = nil
                     selectedItem = nil
@@ -452,6 +454,7 @@ struct RemarkAndCategoryView: View {
                     .accessibilityHint("Tap to view remarks")
                     .onTapGesture {
                         feedbackGenerator.impactOccurred()
+                        feedbackGenerator.prepare()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                             selectedDetail = imageRemark
                             selectedItem = .imageremark
@@ -562,6 +565,7 @@ struct GridView: View {
                     .accessibilityHint("Tap to view details")
                     .onTapGesture {
                         feedbackGenerator.impactOccurred()
+                        feedbackGenerator.prepare()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                             selectedDetail = recipe.name
                             selectedItem = .output
@@ -715,6 +719,7 @@ struct GridCell: View {
         .onTapGesture {
             guard !ingredient.isEmpty else { return }
             feedbackGenerator.impactOccurred()
+            feedbackGenerator.prepare()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                 onTap()
             }

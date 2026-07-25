@@ -124,17 +124,6 @@ struct OnboardingView: View {
 
     private var onboardingPages: some View {
         VStack(spacing: 0) {
-            HStack {
-                appMark.compact
-                Spacer()
-                Text("\(step + 1) of \(pages.count)")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .contentTransition(.numericText())
-            }
-            .padding(.horizontal, pagePadding)
-            .padding(.top, 12)
-
             TabView(selection: $step) {
                 ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
                     OnboardingPageView(page: page, isCurrent: step == index)
@@ -204,12 +193,8 @@ struct OnboardingView: View {
 
     private func finishOnboarding() {
         guard !isFinishing else { return }
-        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) {
-            isFinishing = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + (reduceMotion ? 0 : 0.3)) {
-            onDismiss()
-        }
+        isFinishing = true
+        onDismiss()
     }
 }
 
@@ -217,6 +202,7 @@ private struct OnboardingPageView: View {
     let page: OnboardingPage
     let isCurrent: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
     var body: some View {
         ScrollView {
@@ -272,6 +258,39 @@ private struct OnboardingPageView: View {
                 }
                 .frame(maxWidth: 520)
 
+                if page.title == "Keep favorites close" {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Choose an appearance that feels like yours", systemImage: "paintpalette.fill")
+                            .font(.subheadline.weight(.semibold))
+
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 12)], spacing: 12) {
+                            ForEach(AppAppearanceView.accentColors) { option in
+                                Button {
+                                    accentColorPreference = option.id
+                                    Haptics.selection()
+                                } label: {
+                                    Circle()
+                                        .fill(option.color)
+                                        .frame(width: 34, height: 34)
+                                        .overlay {
+                                            if accentColorPreference == option.id {
+                                                Image(systemName: "checkmark")
+                                                    .font(.caption.bold())
+                                                    .foregroundStyle(.white)
+                                            }
+                                        }
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(option.name)
+                                .accessibilityValue(accentColorPreference == option.id ? "Selected" : "")
+                            }
+                        }
+                    }
+                    .padding(14)
+                    .frame(maxWidth: 520)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+
                 Spacer(minLength: 18)
             }
             .frame(maxWidth: .infinity)
@@ -296,15 +315,6 @@ private struct AppMark: View {
         .accessibilityHidden(true)
     }
 
-    var compact: some View {
-        HStack(spacing: 10) {
-            AppMark(size: 38)
-            Text("Craftify")
-                .font(.headline)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Craftify")
-    }
 }
 
 private struct CraftifyPrimaryButtonStyle: ButtonStyle {
@@ -362,7 +372,7 @@ private struct OnboardingPage {
             symbol: "heart.fill",
             highlights: [
                 Highlight(symbol: "heart.circle", text: "Build a personal shortlist for every project"),
-                Highlight(symbol: "paintpalette", text: "Choose an appearance that feels like yours")
+                Highlight(symbol: "icloud", text: "Favorites sync across all your devices")
             ]
         )
     ]

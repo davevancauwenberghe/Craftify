@@ -34,12 +34,14 @@ struct MoreView: View {
                     NavigationLink(destination: ReportRecipeView()) {
                         buttonStyle(title: "Report Issue", systemImage: "envelope.fill")
                     }
+                    .simultaneousGesture(TapGesture().onEnded { Haptics.selection() })
                     .accessibilityLabel("Report Issue")
                     .accessibilityHint("Navigate to report a missing recipe or an error in an existing recipe")
                     
                     NavigationLink(destination: CommandsView()) {
                         buttonStyle(title: "Console Commands", systemImage: "terminal.fill")
                     }
+                    .simultaneousGesture(TapGesture().onEnded { Haptics.selection() })
                     .accessibilityLabel("Console Commands")
                     .accessibilityHint("Navigate to view in-game console commands")
                 }
@@ -48,6 +50,7 @@ struct MoreView: View {
                     NavigationLink(destination: AboutView(accentColorPreference: accentColorPreference)) {
                         buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
                     }
+                    .simultaneousGesture(TapGesture().onEnded { Haptics.selection() })
                     .accessibilityLabel("About Craftify")
                     .accessibilityHint("View information about the Craftify app")
                     
@@ -64,6 +67,7 @@ struct MoreView: View {
                         // 1. Sync Recipes Button + Cooldown Message
                         VStack(spacing: 8) {
                             Button(action: {
+                                Haptics.impact(.medium)
                                 fetchRecipes(isUserInitiated: true)
                             }) {
                                 HStack {
@@ -331,13 +335,12 @@ struct AboutView: View {
             .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
             .accessibilityHint("About the Craftify app and its purpose")
             
-            List {
-                Section {
-                    NavigationLink(destination: AppAppearanceView()) {
+            VStack(spacing: 0) {
+                NavigationLink(destination: AppAppearanceView()) {
                         buttonStyle(title: "App Appearance", systemImage: "app.badge.fill")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
-                        // Haptics removed to avoid UIKit dependency
+                        Haptics.selection()
                     })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
@@ -348,12 +351,15 @@ struct AboutView: View {
                     ))
                     .accessibilityLabel("App Appearance")
                     .accessibilityHint("Customize the app's icon and appearance settings")
-                    
-                    NavigationLink(destination: ReleaseNotesView()) {
+
+                Divider()
+                    .padding(.leading, 44)
+
+                NavigationLink(destination: ReleaseNotesView()) {
                         buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
-                        // Haptics removed to avoid UIKit dependency
+                        Haptics.selection()
                     })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
@@ -364,9 +370,8 @@ struct AboutView: View {
                     ))
                     .accessibilityLabel("Release Notes")
                     .accessibilityHint("View the release notes for Craftify")
-                }
             }
-            .listStyle(InsetGroupedListStyle())
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
             
             NavigationLink(destination: SupportView()) {
@@ -386,6 +391,7 @@ struct AboutView: View {
                 .foregroundColor(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             }
+            .simultaneousGesture(TapGesture().onEnded { Haptics.selection() })
             .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
             .padding(.bottom, 8)
             .accessibilityLabel("Support and Privacy")
