@@ -2,8 +2,8 @@
 
 [![Craftify iOS CI](https://github.com/davevancauwenberghe/Craftify/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/davevancauwenberghe/Craftify/actions/workflows/ios.yml)
 ![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg?logo=swift)
-![Xcode](https://img.shields.io/badge/Xcode-26.2-blue.svg)
-![Platform](https://img.shields.io/badge/Platform-iOS%2017.0%2B%20%7C%20iPadOS%2017.0%2B-blue.svg)
+![Xcode](https://img.shields.io/badge/Xcode-26.3-blue.svg)
+![Platform](https://img.shields.io/badge/Platform-iOS%2018.0%2B%20%7C%20iPadOS%2018.0%2B-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg?link=https://github.com/davevancauwenberghe/Craftify/blob/main/LICENSE)
 ![GitHub Stars](https://img.shields.io/github/stars/davevancauwenberghe/Craftify)
 
