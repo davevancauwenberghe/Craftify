@@ -15,7 +15,7 @@ struct MoreView: View {
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var cooldownMessage: String? = nil
     @State private var remainingCooldownTime: Int = 0
-    @State private var cooldownTimer: Timer? = nil
+    @State private var cooldownTask: Task<Void, Never>? = nil
     @State private var attemptedSyncWhileOffline: Bool = false
     
     private func formatSyncDate(_ date: Date?) -> String {
@@ -193,8 +193,8 @@ struct MoreView: View {
                 }
             }
             .onDisappear {
-                cooldownTimer?.invalidate()
-                cooldownTimer = nil
+                cooldownTask?.cancel()
+                cooldownTask = nil
                 cooldownMessage = nil
                 remainingCooldownTime = 0
             }
@@ -215,27 +215,32 @@ struct MoreView: View {
                     
                     if self.remainingCooldownTime > 0 {
                         self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before syncing again."
-                        self.startCooldownTimer()
+                        self.startCooldownTask()
                     }
                 }
             }
         }
     }
     
-    private func startCooldownTimer() {
-        cooldownTimer?.invalidate()
-        cooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            DispatchQueue.main.async {
-                if self.remainingCooldownTime > 0 {
-                    self.remainingCooldownTime -= 1
-                    self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before syncing again."
-                } else {
-                    self.cooldownMessage = nil
-                    self.remainingCooldownTime = 0
-                    self.cooldownTimer?.invalidate()
-                    self.cooldownTimer = nil
+    private func startCooldownTask() {
+        cooldownTask?.cancel()
+        cooldownTask = Task { @MainActor in
+            while !Task.isCancelled && remainingCooldownTime > 0 {
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                } catch {
+                    return
+                }
+
+                remainingCooldownTime = max(0, remainingCooldownTime - 1)
+                if remainingCooldownTime > 0 {
+                    cooldownMessage = "Please wait \(remainingCooldownTime) second\(remainingCooldownTime == 1 ? "" : "s") before syncing again."
                 }
             }
+
+            guard !Task.isCancelled else { return }
+            cooldownMessage = nil
+            cooldownTask = nil
         }
     }
     
