@@ -27,7 +27,7 @@ struct ReportRecipeView: View {
     @State private var showSubmissionPopup: Bool = false
     @State private var lastSubmissionTime: Date?
     @State private var submissionCooldownMessage: String?
-    @State private var submissionCooldownTimer: Timer?
+    @State private var submissionCooldownTask: Task<Void, Never>?
     @State private var showDeleteConfirmationPopup: Bool = false
     @State private var deleteConfirmationMessage: String?
     @State private var cachedSortedReports: [RecipeReport] = []
@@ -190,6 +190,12 @@ struct ReportRecipeView: View {
                     if viewMode == .myReports {
                         fetchReportStatuses()
                     }
+                    if isSubmissionOnCooldown {
+                        updateSubmissionCooldownMessage()
+                        startSubmissionCooldownTask()
+                    } else {
+                        submissionCooldownMessage = nil
+                    }
                 }
                 .onChange(of: viewMode) { _, newValue in
                     if newValue == .myReports {
@@ -199,6 +205,10 @@ struct ReportRecipeView: View {
                 }
                 .onChange(of: reportType) { _, _ in
                     resetForm()
+                }
+                .onDisappear {
+                    submissionCooldownTask?.cancel()
+                    submissionCooldownTask = nil
                 }
             }
         }
@@ -216,17 +226,23 @@ struct ReportRecipeView: View {
         submissionCooldownMessage = "Please wait \(remaining) second\(remaining == 1 ? "" : "s") before submitting again."
     }
 
-    private func startSubmissionCooldownTimer() {
-        submissionCooldownTimer?.invalidate()
-        submissionCooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            DispatchQueue.main.async {
+    private func startSubmissionCooldownTask() {
+        submissionCooldownTask?.cancel()
+        submissionCooldownTask = Task { @MainActor in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                } catch {
+                    return
+                }
+
                 let remaining = self.remainingSubmissionCooldown
                 if remaining > 0 {
                     self.updateSubmissionCooldownMessage()
                 } else {
                     self.submissionCooldownMessage = nil
-                    timer.invalidate()
-                    self.submissionCooldownTimer = nil
+                    self.submissionCooldownTask = nil
+                    return
                 }
             }
         }
@@ -261,7 +277,7 @@ struct ReportRecipeView: View {
                     )
                     self.lastSubmissionTime = Date()
                     self.updateSubmissionCooldownMessage()
-                    self.startSubmissionCooldownTimer()
+                    self.startSubmissionCooldownTask()
                 case .failure(let error):
                     self.submissionState = .failure("Failed to submit report: \(error.localizedDescription)")
                 }

@@ -438,7 +438,12 @@ final class DataManager: ObservableObject {
         Task {
             do {
                 let database = CKContainer(identifier: "iCloud.craftifydb").publicCloudDatabase
-                _ = try await database.modifyRecords(saving: [], deleting: recordIDs)
+                let (_, deleteResults) = try await database.modifyRecords(saving: [], deleting: recordIDs)
+                for result in deleteResults.values {
+                    if case .failure(let error) = result {
+                        throw error
+                    }
+                }
                 accessibilityAnnouncement = "All reports deleted successfully"
                 completion(true)
             } catch {
