@@ -16,281 +16,354 @@ struct OnboardingView: View {
     let onDismiss: () -> Void
     let onRetry: () -> Void
     let horizontalSizeClass: UserInterfaceSizeClass?
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @State private var isButtonEnabled: Bool
-    @State private var buttonScale: CGFloat = 1.0
-    @State private var onboardingStep: OnboardingStep = .loading
-    @ScaledMetric(relativeTo: .body) private var contentSpacing: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 24
-    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var tabViewMinHeight: CGFloat = 80
-    @ScaledMetric(relativeTo: .body) private var tabViewMaxHeight: CGFloat = 120
 
-    // List of Minecraft crafting tips
-    private let craftingTips: [String] = [
-        "This is a test!",
-        "Thanks for downloading the Craftify app!",
-        "Tips will be added soon."
-    ]
-    
-    // Adaptive styling based on device size
-    private var titleFont: Font {
-        horizontalSizeClass == .regular ? .title : .title2
-    }
-    
-    private var messageFont: Font {
-        horizontalSizeClass == .regular ? .title3 : .subheadline
-    }
-    
-    private var buttonFont: Font {
-        horizontalSizeClass == .regular ? .title3 : .headline
-    }
-    
-    enum OnboardingStep {
-        case loading
-        case options
-        case tips
-    }
-    
-    init(title: String, message: String, isLoading: Binding<Bool>, errorMessage: Binding<String?>, isFirstLaunch: Bool, onDismiss: @escaping () -> Void, onRetry: @escaping () -> Void, horizontalSizeClass: UserInterfaceSizeClass?) {
-        self.title = title
-        self.message = message
-        self._isLoading = isLoading
-        self._errorMessage = errorMessage
-        self.isFirstLaunch = isFirstLaunch
-        self.onDismiss = onDismiss
-        self.onRetry = onRetry
-        self.horizontalSizeClass = horizontalSizeClass
-        self._isButtonEnabled = State(initialValue: !isLoading.wrappedValue)
-    }
-    
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var step = 0
+    @State private var isFinishing = false
+    @State private var retryCount = 0
+
+    private let pages = OnboardingPage.all
+
     var body: some View {
-        VStack(spacing: contentSpacing) {
-            switch onboardingStep {
-            case .loading:
+        ZStack {
+            onboardingBackground
+
+            if isLoading || errorMessage != nil {
                 loadingView
-            case .options:
-                optionsView
-            case .tips:
-                tipsView
+                    .transition(.opacity)
+            } else {
+                onboardingPages
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
+        .id(accentColorPreference)
+        .tint(Color.userAccentColor)
+        .dynamicTypeSize(.xSmall ... .accessibility5)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: isLoading)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: errorMessage)
+        .sensoryFeedback(.impact(weight: .light), trigger: step)
+        .sensoryFeedback(.success, trigger: isFinishing)
+        .onChange(of: isLoading) { _, loading in
+            guard !loading, errorMessage == nil, !isFirstLaunch else { return }
+            finishOnboarding()
+        }
+    }
+
+    private var onboardingBackground: some View {
+        ZStack {
+            Color(.systemBackground)
             LinearGradient(
-                colors: [Color.userAccentColor.opacity(0.4), Color(.systemBackground)],
+                colors: [Color.userAccentColor.opacity(0.22), .clear, Color.userAccentColor.opacity(0.08)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .ignoresSafeArea()
-        )
-        .shadow(radius: 10)
-        .id(accentColorPreference)
-        .onAppear {
-            // No overlay or card animations for full-screen
+            Circle()
+                .fill(Color.userAccentColor.opacity(0.12))
+                .frame(width: horizontalSizeClass == .regular ? 520 : 330)
+                .blur(radius: 2)
+                .offset(x: 160, y: -300)
         }
-        .onChange(of: isLoading) { _, newValue in
-            if !newValue && errorMessage == nil {
-                if isFirstLaunch {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0.2)) {
-                            isButtonEnabled = true
-                            buttonScale = 1.2
-                        }
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0.2).delay(0.2)) {
-                            buttonScale = 1.0
-                            onboardingStep = .options
-                        }
-                    }
-                } else {
-                    dismissWithAnimation()
-                }
-            }
-        }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: onboardingStep)
-        .dynamicTypeSize(.xSmall ... .accessibility5)
+        .ignoresSafeArea()
     }
-    
+
     private var loadingView: some View {
-        VStack(spacing: contentSpacing) {
+        VStack(spacing: 24) {
             Spacer()
-            Text(title)
-                .font(titleFont)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-                .accessibilityLabel(title)
-            
-            Text(message)
-                .font(messageFont)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.67 : paddingHorizontal)
-                .accessibilityLabel(message)
-            
-            if isLoading && errorMessage == nil {
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .tint(Color.userAccentColor)
-                    .accessibilityLabel("Loading recipes")
-                    .accessibilityHint("Please wait while the app fetches your recipes")
-            } else if let error = errorMessage {
-                Text(error)
-                    .font(messageFont)
-                    .foregroundColor(.red)
+
+            appMark
+
+            VStack(spacing: 10) {
+                Text(title)
+                    .font(horizontalSizeClass == .regular ? .largeTitle : .title)
+                    .fontWeight(.bold)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.67 : paddingHorizontal)
-                    .accessibilityLabel("Error: \(error)")
-                
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    isButtonEnabled = false
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                        onboardingStep = .loading
-                    }
-                    onRetry()
-                }) {
-                    Text("Retry")
-                        .font(buttonFont)
-                        .foregroundColor(.white)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.userAccentColor)
-                        .cornerRadius(10)
-                }
-                .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.67 : paddingHorizontal)
-                .scaleEffect(buttonScale)
-                .opacity(isButtonEnabled ? 1.0 : 0.5)
-                .disabled(!isButtonEnabled)
-                .accessibilityLabel("Retry Sync")
-                .accessibilityHint("Retries fetching recipes from the cloud")
+
+                Text(errorMessage == nil ? message : "We couldn't prepare your recipe book.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            Spacer()
-        }
-        .padding(.vertical, paddingVertical)
-        .frame(maxWidth: .infinity, alignment: .center)
-        .accessibilityElement(children: .contain)
-    }
-    
-    private var optionsView: some View {
-        VStack(spacing: contentSpacing) {
-            Spacer()
-            Text("Ready to Craft!")
-                .font(titleFont)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-                .accessibilityLabel("Ready to Craft")
-            
-            Text("Your recipes are loaded. Would you like to see some crafting tips before you start?")
-                .font(messageFont)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.67 : paddingHorizontal)
-                .accessibilityLabel("Your recipes are loaded")
-                .accessibilityHint("Choose to view crafting tips or start using the app")
-            
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    onboardingStep = .tips
-                }
-            }) {
-                Text("Show Tips")
-                    .font(buttonFont)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.userAccentColor)
-                    .cornerRadius(10)
-            }
-            .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.67 : paddingHorizontal)
-            .scaleEffect(buttonScale)
-            .opacity(isButtonEnabled ? 1.0 : 0.5)
-            .accessibilityLabel("Show Crafting Tips")
-            .accessibilityHint("View some helpful Minecraft crafting tips")
-            
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                dismissWithAnimation()
-            }) {
-                Text("Start Crafting")
-                    .font(buttonFont)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.userAccentColor)
-                    .cornerRadius(10)
-            }
-            .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.67 : paddingHorizontal)
-            .scaleEffect(buttonScale)
-            .opacity(isButtonEnabled ? 1.0 : 0.5)
-            .accessibilityLabel("Start Crafting")
-            .accessibilityHint("Dismiss the onboarding and start using the app")
-            Spacer()
-        }
-        .padding(.vertical, paddingVertical)
-        .frame(maxWidth: .infinity, alignment: .center)
-        .accessibilityElement(children: .contain)
-    }
-    
-    private var tipsView: some View {
-        VStack(spacing: contentSpacing) {
-            Spacer()
-            Text("Crafting Tips")
-                .font(titleFont)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-                .accessibilityLabel("Crafting Tips")
-            
-            TabView {
-                ForEach(craftingTips.indices, id: \.self) { index in
-                    Text(craftingTips[index])
-                        .font(messageFont)
-                        .foregroundColor(.secondary)
+
+            if let errorMessage {
+                VStack(spacing: 18) {
+                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.67 : paddingHorizontal)
-                        .padding(.vertical, paddingVertical)
-                        .padding(.bottom, paddingVertical * 1.5)
-                        .accessibilityLabel("Crafting Tip \(index + 1) of \(craftingTips.count)")
-                        .accessibilityValue(craftingTips[index])
-                        .accessibilityHint("Swipe left or right to read more tips")
+
+                    Button("Try Again", systemImage: "arrow.clockwise") {
+                        retryCount += 1
+                        onRetry()
+                    }
+                    .buttonStyle(CraftifyPrimaryButtonStyle())
+                    .sensoryFeedback(.impact(weight: .medium), trigger: retryCount)
+                    .accessibilityHint("Retries loading the Craftify recipe library")
+                }
+            } else {
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .controlSize(.large)
+                    Text("Building your recipe book…")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Loading recipes")
+            }
+
+            Spacer()
+            Text("Everything you need to craft with confidence")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, pagePadding)
+        .padding(.vertical, 28)
+        .frame(maxWidth: 620)
+    }
+
+    private var onboardingPages: some View {
+        VStack(spacing: 0) {
+            HStack {
+                appMark.compact
+                Spacer()
+                Text("\(step + 1) of \(pages.count)")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
+            }
+            .padding(.horizontal, pagePadding)
+            .padding(.top, 12)
+
+            TabView(selection: $step) {
+                ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
+                    OnboardingPageView(page: page, isCurrent: step == index)
+                        .tag(index)
+                        .padding(.horizontal, pagePadding)
                 }
             }
-            .tabViewStyle(.page)
-            .frame(minHeight: horizontalSizeClass == .regular ? tabViewMinHeight * 1.25 : tabViewMinHeight, maxHeight: horizontalSizeClass == .regular ? tabViewMaxHeight * 1.25 : tabViewMaxHeight)
-            .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.67 : paddingHorizontal)
-            .ignoresSafeArea(edges: .vertical)
-            
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                dismissWithAnimation()
-            }) {
-                Text("Start Crafting")
-                    .font(buttonFont)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.userAccentColor)
-                    .cornerRadius(10)
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .accessibilityLabel("Craftify introduction")
+            .accessibilityValue("Page \(step + 1) of \(pages.count): \(pages[step].title)")
+
+            VStack(spacing: 18) {
+                HStack(spacing: 8) {
+                    ForEach(pages.indices, id: \.self) { index in
+                        Capsule()
+                            .fill(index == step ? Color.userAccentColor : Color.secondary.opacity(0.22))
+                            .frame(width: index == step ? 28 : 8, height: 8)
+                            .animation(reduceMotion ? nil : .snappy, value: step)
+                    }
+                }
+                .accessibilityHidden(true)
+
+                HStack(spacing: 12) {
+                    if step > 0 {
+                        Button("Back") {
+                            move(to: step - 1)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .accessibilityHint("Shows the previous introduction page")
+                    }
+
+                    Button(step == pages.count - 1 ? "Start Crafting" : "Continue") {
+                        if step == pages.count - 1 {
+                            finishOnboarding()
+                        } else {
+                            move(to: step + 1)
+                        }
+                    }
+                    .buttonStyle(CraftifyPrimaryButtonStyle())
+                    .accessibilityHint(step == pages.count - 1
+                        ? "Opens your Craftify recipe library"
+                        : "Shows the next introduction page")
+                }
             }
-            .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.67 : paddingHorizontal)
-            .scaleEffect(buttonScale)
-            .opacity(isButtonEnabled ? 1.0 : 0.5)
-            .accessibilityLabel("Start Crafting")
-            .accessibilityHint("Dismiss the onboarding and start using the app")
-            Spacer()
+            .padding(.horizontal, pagePadding)
+            .padding(.bottom, 18)
         }
-        .padding(.vertical, paddingVertical)
-        .frame(maxWidth: .infinity, alignment: .center)
-        .accessibilityElement(children: .contain)
+        .frame(maxWidth: 720)
+        .opacity(isFinishing ? 0 : 1)
+        .offset(y: isFinishing && !reduceMotion ? -24 : 0)
     }
-    
-    private func dismissWithAnimation() {
-        withAnimation(.easeInOut(duration: 0.5)) {
-            // No overlay or card animations for full-screen
+
+    private var appMark: AppMark {
+        AppMark()
+    }
+
+    private var pagePadding: CGFloat {
+        horizontalSizeClass == .regular ? 48 : 24
+    }
+
+    private func move(to newStep: Int) {
+        withAnimation(reduceMotion ? nil : .snappy(duration: 0.35)) {
+            step = newStep
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+    }
+
+    private func finishOnboarding() {
+        guard !isFinishing else { return }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) {
+            isFinishing = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + (reduceMotion ? 0 : 0.3)) {
             onDismiss()
         }
     }
+}
+
+private struct OnboardingPageView: View {
+    let page: OnboardingPage
+    let isCurrent: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer(minLength: 18)
+
+                ZStack {
+                    RoundedRectangle(cornerRadius: 36, style: .continuous)
+                        .fill(.thinMaterial)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 36, style: .continuous)
+                                .stroke(Color.userAccentColor.opacity(0.22), lineWidth: 1)
+                        }
+
+                    Image(systemName: page.symbol)
+                        .font(.system(size: 66, weight: .medium))
+                        .foregroundStyle(Color.userAccentColor.gradient)
+                        .symbolEffect(.bounce, value: isCurrent)
+                }
+                .frame(width: 176, height: 176)
+                .shadow(color: Color.userAccentColor.opacity(0.14), radius: 24, y: 12)
+                .scaleEffect(isCurrent || reduceMotion ? 1 : 0.9)
+
+                VStack(spacing: 10) {
+                    Text(page.eyebrow.uppercased())
+                        .font(.caption.weight(.bold))
+                        .tracking(1.2)
+                        .foregroundStyle(Color.userAccentColor)
+                    Text(page.title)
+                        .font(.largeTitle.bold())
+                        .multilineTextAlignment(.center)
+                    Text(page.detail)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 520)
+                }
+
+                VStack(spacing: 10) {
+                    ForEach(page.highlights) { highlight in
+                        HStack(spacing: 14) {
+                            Image(systemName: highlight.symbol)
+                                .font(.headline)
+                                .foregroundStyle(Color.userAccentColor)
+                                .frame(width: 28)
+                            Text(highlight.text)
+                                .font(.subheadline.weight(.medium))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(14)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                }
+                .frame(maxWidth: 520)
+
+                Spacer(minLength: 18)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.hidden)
+    }
+}
+
+private struct AppMark: View {
+    var size: CGFloat = 88
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size / 4, style: .continuous)
+                .fill(Color.userAccentColor.gradient)
+            Image(systemName: "hammer.fill")
+                .font(.system(size: size * 0.43, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: size, height: size)
+        .shadow(color: Color.userAccentColor.opacity(0.28), radius: 16, y: 8)
+        .accessibilityHidden(true)
+    }
+
+    var compact: some View {
+        HStack(spacing: 10) {
+            AppMark(size: 38)
+            Text("Craftify")
+                .font(.headline)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Craftify")
+    }
+}
+
+private struct CraftifyPrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Color.userAccentColor.gradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: Color.userAccentColor.opacity(configuration.isPressed ? 0.12 : 0.25), radius: 10, y: 5)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+private struct OnboardingPage {
+    struct Highlight: Identifiable {
+        let id = UUID()
+        let symbol: String
+        let text: String
+    }
+
+    let eyebrow: String
+    let title: String
+    let detail: String
+    let symbol: String
+    let highlights: [Highlight]
+
+    static let all: [OnboardingPage] = [
+        OnboardingPage(
+            eyebrow: "Welcome",
+            title: "Your crafting companion",
+            detail: "Find the Minecraft recipe you need without breaking your flow.",
+            symbol: "hammer.fill",
+            highlights: [
+                Highlight(symbol: "square.grid.2x2", text: "Browse a complete, organized recipe library"),
+                Highlight(symbol: "sparkles", text: "Discover a fresh selection of Craftify Picks")
+            ]
+        ),
+        OnboardingPage(
+            eyebrow: "Find anything",
+            title: "Search in an instant",
+            detail: "Jump straight to an item or explore recipes by category.",
+            symbol: "magnifyingglass",
+            highlights: [
+                Highlight(symbol: "line.3.horizontal.decrease.circle", text: "Filter categories to narrow the recipe list"),
+                Highlight(symbol: "arrow.triangle.branch", text: "Follow ingredients and nested recipes step by step")
+            ]
+        ),
+        OnboardingPage(
+            eyebrow: "Make it yours",
+            title: "Keep favorites close",
+            detail: "Save the recipes you use most and personalize Craftify with your favorite accent.",
+            symbol: "heart.fill",
+            highlights: [
+                Highlight(symbol: "heart.circle", text: "Build a personal shortlist for every project"),
+                Highlight(symbol: "paintpalette", text: "Choose an appearance that feels like yours")
+            ]
+        )
+    ]
 }
