@@ -224,7 +224,7 @@ struct MoreView: View {
     
     private func startCooldownTimer() {
         cooldownTimer?.invalidate()
-        cooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+        cooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             DispatchQueue.main.async {
                 if self.remainingCooldownTime > 0 {
                     self.remainingCooldownTime -= 1
@@ -232,7 +232,7 @@ struct MoreView: View {
                 } else {
                     self.cooldownMessage = nil
                     self.remainingCooldownTime = 0
-                    timer.invalidate()
+                    self.cooldownTimer?.invalidate()
                     self.cooldownTimer = nil
                 }
             }
