@@ -44,8 +44,8 @@ struct OnboardingView: View {
             SlidingDoorMask(progress: isFinishing && !reduceMotion ? 1 : 0)
                 .ignoresSafeArea()
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: isLoading)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: errorMessage)
+        .animation(pageAnimation, value: isLoading)
+        .animation(pageAnimation, value: errorMessage)
         .sensoryFeedback(.impact(weight: .light), trigger: step)
         .sensoryFeedback(.success, trigger: isFinishing)
         .onChange(of: isLoading) { _, loading in
@@ -145,7 +145,7 @@ struct OnboardingView: View {
                         Capsule()
                             .fill(index == step ? Color.userAccentColor : Color.secondary.opacity(0.22))
                             .frame(width: index == step ? 28 : 8, height: 8)
-                            .animation(reduceMotion ? nil : .snappy, value: step)
+                            .animation(pageAnimation, value: step)
                     }
                 }
                 .accessibilityHidden(true)
@@ -187,8 +187,12 @@ struct OnboardingView: View {
         horizontalSizeClass == .regular ? 48 : 24
     }
 
+    private var pageAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.55)
+    }
+
     private func move(to newStep: Int) {
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.35)) {
+        withAnimation(pageAnimation) {
             step = newStep
         }
     }
@@ -201,10 +205,10 @@ struct OnboardingView: View {
             return
         }
 
-        withAnimation(.smooth(duration: 0.75)) {
+        withAnimation(.easeInOut(duration: 0.9)) {
             isFinishing = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
             onDismiss()
         }
     }
@@ -232,11 +236,12 @@ private struct OnboardingPageView: View {
                     Image(systemName: page.symbol)
                         .font(.system(size: 66, weight: .medium))
                         .foregroundStyle(Color.userAccentColor.gradient)
-                        .symbolEffect(.bounce, value: isCurrent)
                 }
                 .frame(width: 176, height: 176)
                 .shadow(color: Color.userAccentColor.opacity(0.14), radius: 24, y: 12)
-                .scaleEffect(isCurrent || reduceMotion ? 1 : 0.9)
+                .scaleEffect(isCurrent || reduceMotion ? 1 : 0.94)
+                .opacity(isCurrent || reduceMotion ? 1 : 0.7)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: isCurrent)
 
                 VStack(spacing: 10) {
                     Text(page.eyebrow.uppercased())
@@ -272,12 +277,15 @@ private struct OnboardingPageView: View {
 
                 if page.title == "Keep favorites close" {
                     VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 14) {
                             Image(systemName: "paintpalette.fill")
+                                .font(.headline)
                                 .foregroundStyle(Color.userAccentColor)
+                                .frame(width: 28)
                             Text("Choose an appearance that feels like yours")
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .font(.subheadline.weight(.semibold))
+                        .font(.subheadline.weight(.medium))
 
                         accentColorPicker
                     }
@@ -294,13 +302,14 @@ private struct OnboardingPageView: View {
     }
 
     private var accentColorPicker: some View {
-        let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
+        let columns = [GridItem(.adaptive(minimum: 44), spacing: 12, alignment: .leading)]
 
         return LazyVGrid(columns: columns, spacing: 12) {
             ForEach(AppAppearanceView.accentColors) { option in
                 accentColorButton(for: option)
             }
         }
+        .padding(.leading, 42)
     }
 
     private func accentColorButton(for option: AccentColorOption) -> some View {
@@ -377,7 +386,7 @@ private struct CraftifyPrimaryButtonStyle: ButtonStyle {
             .background(Color.userAccentColor.gradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .shadow(color: Color.userAccentColor.opacity(configuration.isPressed ? 0.12 : 0.25), radius: 10, y: 5)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            .animation(.easeInOut(duration: 0.25), value: configuration.isPressed)
     }
 }
 

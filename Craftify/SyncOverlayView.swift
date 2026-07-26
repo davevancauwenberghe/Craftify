@@ -10,46 +10,90 @@ import SwiftUI
 struct SyncOverlayView: View {
     let horizontalSizeClass: UserInterfaceSizeClass?
     let message: String
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private var cardHorizontalPadding: CGFloat {
-        horizontalSizeClass == .regular ? 100 : 40
-    }
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isAnimating = false
 
-    private var cardCornerRadius: CGFloat {
-        20
+    private var cardWidth: CGFloat {
+        horizontalSizeClass == .regular ? 420 : 330
     }
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.4)
+            Color.black.opacity(0.32)
                 .ignoresSafeArea()
 
-            VStack(spacing: 16) {
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .tint(Color.userAccentColor)
-                    .scaleEffect(1.5) // Slightly larger for visibility
+            VStack(spacing: 20) {
+                syncIllustration
 
-                Text(message)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.8)
-                    .lineLimit(2)
+                VStack(spacing: 7) {
+                    Text(message)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text("Gathering the latest recipes from your cloud cookbook.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                ProgressView()
+                    .tint(Color.userAccentColor)
+                    .controlSize(.small)
+                    .accessibilityHidden(true)
             }
-            .padding(24)
-            .background(.ultraThinMaterial) // Frosted glass blur (iOS 15+)
-            .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius))
-            .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
-            .padding(.horizontal, cardHorizontalPadding)
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("\(message), Syncing in progress")
-            .accessibilityHint("Please wait while data is syncing. This overlay will dismiss automatically when complete.")
-            .accessibilityAddTraits(.isModal)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 30)
+            .frame(maxWidth: cardWidth)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(Color.userAccentColor.opacity(0.18), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.18), radius: 24, y: 12)
+            .padding(.horizontal, 24)
         }
-        .transition(.opacity.animation(.easeInOut(duration: 0.3))) // Smooth fade-in/out
-        .dynamicTypeSize(.xSmall ... .accessibility5)
+        .onAppear { isAnimating = true }
+        .onDisappear { isAnimating = false }
+        .transition(.opacity.combined(with: .scale(scale: 0.97)))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(message). Gathering the latest recipes from your cloud cookbook.")
+        .accessibilityHint("Please wait. This view closes automatically when syncing is complete.")
+        .accessibilityAddTraits(.isModal)
+    }
+
+    private var syncIllustration: some View {
+        ZStack {
+            Circle()
+                .fill(Color.userAccentColor.opacity(0.10))
+                .frame(width: 108, height: 108)
+                .scaleEffect(isAnimating && !reduceMotion ? 1.08 : 0.94)
+                .opacity(isAnimating && !reduceMotion ? 0.55 : 1)
+                .animation(
+                    reduceMotion ? nil : .easeInOut(duration: 1.6).repeatForever(autoreverses: true),
+                    value: isAnimating
+                )
+
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.userAccentColor.gradient)
+                .frame(width: 76, height: 76)
+                .shadow(color: Color.userAccentColor.opacity(0.24), radius: 14, y: 7)
+
+            Image(systemName: "book.closed.fill")
+                .font(.system(size: 32, weight: .semibold))
+                .foregroundStyle(.white)
+
+            Image(systemName: "icloud.fill")
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(Color.userAccentColor, Color(.systemBackground))
+                .padding(7)
+                .background(.regularMaterial, in: Circle())
+                .offset(x: 35, y: 35)
+                .scaleEffect(isAnimating && !reduceMotion ? 1 : 0.88)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.7), value: isAnimating)
+        }
+        .frame(width: 116, height: 116)
+        .accessibilityHidden(true)
     }
 }
