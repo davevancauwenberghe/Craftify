@@ -246,7 +246,7 @@ struct AlternateRecipesSelector: View {
                 HStack(spacing: 8) {
                     ForEach(0..<ingredientSets.count, id: \.self) { index in
                         Button {
-                            Haptics.impact()
+                            HapticFeedback.impact()
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                 selectedCraftingOption = index
                                 selectedDetail = nil

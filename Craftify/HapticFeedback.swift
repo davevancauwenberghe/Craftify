@@ -1,8 +1,10 @@
 import UIKit
 
 /// A single, prepared entry point for tactile feedback throughout Craftify.
+///
+/// Its app-specific name keeps call sites distinct from system haptics APIs.
 @MainActor
-enum Haptics {
+enum HapticFeedback {
     static func selection() {
         let generator = UISelectionFeedbackGenerator()
         generator.prepare()

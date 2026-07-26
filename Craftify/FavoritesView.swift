@@ -131,7 +131,7 @@ struct FavoritesView: View {
                         HStack(spacing: hStackSpacing) {
                             Button {
                                 selectedCategory = nil
-                                Haptics.impact()
+                                HapticFeedback.impact()
                             } label: {
                                 Text("All")
                                     .font(.body)
@@ -148,7 +148,7 @@ struct FavoritesView: View {
                             ForEach(favoriteCategories, id: \.self) { category in
                                 Button {
                                     selectedCategory = category
-                                    Haptics.impact()
+                                    HapticFeedback.impact()
                                 } label: {
                                     Text(category)
                                         .font(.body)
