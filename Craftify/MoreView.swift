@@ -335,8 +335,9 @@ struct AboutView: View {
             .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
             .accessibilityHint("About the Craftify app and its purpose")
             
-            VStack(spacing: 0) {
-                NavigationLink(destination: AppAppearanceView()) {
+            List {
+                Section {
+                    NavigationLink(destination: AppAppearanceView()) {
                         buttonStyle(title: "App Appearance", systemImage: "app.badge.fill")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
@@ -352,10 +353,7 @@ struct AboutView: View {
                     .accessibilityLabel("App Appearance")
                     .accessibilityHint("Customize the app's icon and appearance settings")
 
-                Divider()
-                    .padding(.leading, 44)
-
-                NavigationLink(destination: ReleaseNotesView()) {
+                    NavigationLink(destination: ReleaseNotesView()) {
                         buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
@@ -370,8 +368,14 @@ struct AboutView: View {
                     ))
                     .accessibilityLabel("Release Notes")
                     .accessibilityHint("View the release notes for Craftify")
+                }
             }
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
+            .frame(height: dynamicTypeSize.isAccessibilitySize
+                ? 220
+                : (horizontalSizeClass == .regular ? 154 : 126))
             .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
             
             NavigationLink(destination: SupportView()) {

@@ -28,8 +28,6 @@ struct CraftifyApp: App {
     @StateObject private var dataManager = DataManager()
     @AppStorage("hasLaunchedBefore") private var hasLaunchedBefore: Bool = false
     @State private var showOnboarding: Bool = false
-    @State private var onboardingOpacity: CGFloat = 1.0
-    @State private var onboardingOffset: CGFloat = 0.0
 
     var body: some Scene {
         WindowGroup {
@@ -45,16 +43,8 @@ struct CraftifyApp: App {
                         errorMessage: $dataManager.errorMessage,
                         isFirstLaunch: !hasLaunchedBefore,
                         onDismiss: {
-                            withAnimation(.easeInOut(duration: 0.5)) {
-                                onboardingOpacity = 0.0
-                                onboardingOffset = -UIScreen.main.bounds.height
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                hasLaunchedBefore = true
-                                showOnboarding = false
-                                onboardingOpacity = 1.0
-                                onboardingOffset = 0.0
-                            }
+                            hasLaunchedBefore = true
+                            showOnboarding = false
                         },
                         onRetry: {
                             dataManager.fetchRecipes(isManual: false)
@@ -69,8 +59,6 @@ struct CraftifyApp: App {
                                 .ignoresSafeArea()
                         }
                     }
-                    .opacity(onboardingOpacity)
-                    .offset(y: onboardingOffset)
                     .zIndex(1)
                 }
             }

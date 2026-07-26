@@ -40,6 +40,10 @@ struct OnboardingView: View {
         .id(accentColorPreference)
         .tint(Color.userAccentColor)
         .dynamicTypeSize(.xSmall ... .accessibility5)
+        .mask {
+            SlidingDoorMask(progress: isFinishing && !reduceMotion ? 1 : 0)
+                .ignoresSafeArea()
+        }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: isLoading)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: errorMessage)
         .sensoryFeedback(.impact(weight: .light), trigger: step)
@@ -173,8 +177,6 @@ struct OnboardingView: View {
             .padding(.bottom, 18)
         }
         .frame(maxWidth: 720)
-        .opacity(isFinishing ? 0 : 1)
-        .offset(y: isFinishing && !reduceMotion ? -24 : 0)
     }
 
     private var appMark: AppMark {
@@ -193,8 +195,18 @@ struct OnboardingView: View {
 
     private func finishOnboarding() {
         guard !isFinishing else { return }
-        isFinishing = true
-        onDismiss()
+        guard !reduceMotion else {
+            isFinishing = true
+            onDismiss()
+            return
+        }
+
+        withAnimation(.smooth(duration: 0.75)) {
+            isFinishing = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+            onDismiss()
+        }
     }
 }
 
@@ -260,8 +272,12 @@ private struct OnboardingPageView: View {
 
                 if page.title == "Keep favorites close" {
                     VStack(alignment: .leading, spacing: 12) {
-                        Label("Choose an appearance that feels like yours", systemImage: "paintpalette.fill")
-                            .font(.subheadline.weight(.semibold))
+                        HStack(spacing: 8) {
+                            Image(systemName: "paintpalette.fill")
+                                .foregroundStyle(Color.userAccentColor)
+                            Text("Choose an appearance that feels like yours")
+                        }
+                        .font(.subheadline.weight(.semibold))
 
                         accentColorPicker
                     }
@@ -312,6 +328,24 @@ private struct OnboardingPageView: View {
     private func selectAccentColor(_ id: String) {
         accentColorPreference = id
         HapticFeedback.selection()
+    }
+}
+
+private struct SlidingDoorMask: Shape {
+    var progress: CGFloat
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let halfWidth = rect.width / 2
+        let travel = halfWidth * progress
+        var path = Path()
+        path.addRect(CGRect(x: -travel, y: rect.minY, width: halfWidth, height: rect.height))
+        path.addRect(CGRect(x: halfWidth + travel, y: rect.minY, width: halfWidth, height: rect.height))
+        return path
     }
 }
 
