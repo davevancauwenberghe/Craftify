@@ -122,7 +122,7 @@ struct RecipeSearchView: View {
 
                                     Button(action: {
                                         clearRecentSearches()
-                                        Haptics.impact(.medium)
+                                        HapticFeedback.impact(.medium)
                                     }) {
                                         Text("Clear All")
                                             .font(.subheadline)
@@ -164,7 +164,7 @@ struct RecipeSearchView: View {
                         .accessibilityHint("Choose to search all recipes or only favorite recipes")
                         .onChange(of: searchFilter) { _, _ in
                             updateFilteredRecipes()
-                            Haptics.impact()
+                            HapticFeedback.impact()
                         }
 
                         if searchText.isEmpty {
@@ -237,7 +237,7 @@ struct RecipeSearchView: View {
                                                 RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
                                                     .onAppear {
                                                         saveRecentSearch(recipe)
-                                                        Haptics.impact()
+                                                        HapticFeedback.impact()
                                                     }
                                             } label: {
                                                 RecipeCell(recipe: recipe, isCraftifyPick: false)

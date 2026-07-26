@@ -104,7 +104,7 @@ struct ContentView: View {
             }
         }
         .onChange(of: selectedTab) { _, newValue in
-            Haptics.selection()
+            HapticFeedback.selection()
             UIAccessibility.post(
                 notification: .announcement,
                 argument: "Selected tab: \(tabName(for: newValue))"
@@ -245,7 +245,7 @@ struct CategoryFilterBar: View {
             HStack(spacing: 8) {
                 Button {
                     selectedCategory = nil
-                    Haptics.selection()
+                    HapticFeedback.selection()
                 } label: {
                     Text("All")
                         .font(.body)
@@ -272,7 +272,7 @@ struct CategoryFilterBar: View {
                 ForEach(categories, id: \.self) { category in
                     Button {
                         selectedCategory = category
-                        Haptics.selection()
+                        HapticFeedback.selection()
                     } label: {
                         Text(category)
                             .font(.body)

@@ -159,7 +159,7 @@ struct AppAppearanceView: View {
     }
 
     private func changeIcon(to: String?) {
-        Haptics.impact(.medium)
+        HapticFeedback.impact(.medium)
         UIApplication.shared.setAlternateIconName(to) { error in
             DispatchQueue.main.async {
                 if let err = error {

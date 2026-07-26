@@ -263,28 +263,7 @@ private struct OnboardingPageView: View {
                         Label("Choose an appearance that feels like yours", systemImage: "paintpalette.fill")
                             .font(.subheadline.weight(.semibold))
 
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 12)], spacing: 12) {
-                            ForEach(AppAppearanceView.accentColors) { option in
-                                Button {
-                                    accentColorPreference = option.id
-                                    Haptics.selection()
-                                } label: {
-                                    Circle()
-                                        .fill(option.color)
-                                        .frame(width: 34, height: 34)
-                                        .overlay {
-                                            if accentColorPreference == option.id {
-                                                Image(systemName: "checkmark")
-                                                    .font(.caption.bold())
-                                                    .foregroundStyle(.white)
-                                            }
-                                        }
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(option.name)
-                                .accessibilityValue(accentColorPreference == option.id ? "Selected" : "")
-                            }
-                        }
+                        accentColorPicker
                     }
                     .padding(14)
                     .frame(maxWidth: 520)
@@ -296,6 +275,43 @@ private struct OnboardingPageView: View {
             .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
+    }
+
+    private var accentColorPicker: some View {
+        let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
+
+        return LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(AppAppearanceView.accentColors) { option in
+                accentColorButton(for: option)
+            }
+        }
+    }
+
+    private func accentColorButton(for option: AccentColorOption) -> some View {
+        let isSelected = accentColorPreference == option.id
+
+        return Button {
+            selectAccentColor(option.id)
+        } label: {
+            Circle()
+                .fill(option.color)
+                .frame(width: 34, height: 34)
+                .overlay {
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.caption.bold())
+                            .foregroundStyle(.white)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(option.name)
+        .accessibilityValue(isSelected ? "Selected" : "")
+    }
+
+    private func selectAccentColor(_ id: String) {
+        accentColorPreference = id
+        HapticFeedback.selection()
     }
 }
 

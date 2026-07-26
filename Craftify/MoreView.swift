@@ -34,14 +34,14 @@ struct MoreView: View {
                     NavigationLink(destination: ReportRecipeView()) {
                         buttonStyle(title: "Report Issue", systemImage: "envelope.fill")
                     }
-                    .simultaneousGesture(TapGesture().onEnded { Haptics.selection() })
+                    .simultaneousGesture(TapGesture().onEnded { HapticFeedback.selection() })
                     .accessibilityLabel("Report Issue")
                     .accessibilityHint("Navigate to report a missing recipe or an error in an existing recipe")
                     
                     NavigationLink(destination: CommandsView()) {
                         buttonStyle(title: "Console Commands", systemImage: "terminal.fill")
                     }
-                    .simultaneousGesture(TapGesture().onEnded { Haptics.selection() })
+                    .simultaneousGesture(TapGesture().onEnded { HapticFeedback.selection() })
                     .accessibilityLabel("Console Commands")
                     .accessibilityHint("Navigate to view in-game console commands")
                 }
@@ -50,7 +50,7 @@ struct MoreView: View {
                     NavigationLink(destination: AboutView(accentColorPreference: accentColorPreference)) {
                         buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
                     }
-                    .simultaneousGesture(TapGesture().onEnded { Haptics.selection() })
+                    .simultaneousGesture(TapGesture().onEnded { HapticFeedback.selection() })
                     .accessibilityLabel("About Craftify")
                     .accessibilityHint("View information about the Craftify app")
                     
@@ -67,7 +67,7 @@ struct MoreView: View {
                         // 1. Sync Recipes Button + Cooldown Message
                         VStack(spacing: 8) {
                             Button(action: {
-                                Haptics.impact(.medium)
+                                HapticFeedback.impact(.medium)
                                 fetchRecipes(isUserInitiated: true)
                             }) {
                                 HStack {
@@ -340,7 +340,7 @@ struct AboutView: View {
                         buttonStyle(title: "App Appearance", systemImage: "app.badge.fill")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
-                        Haptics.selection()
+                        HapticFeedback.selection()
                     })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
@@ -359,7 +359,7 @@ struct AboutView: View {
                         buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
-                        Haptics.selection()
+                        HapticFeedback.selection()
                     })
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(
@@ -391,7 +391,7 @@ struct AboutView: View {
                 .foregroundColor(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             }
-            .simultaneousGesture(TapGesture().onEnded { Haptics.selection() })
+            .simultaneousGesture(TapGesture().onEnded { HapticFeedback.selection() })
             .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
             .padding(.bottom, 8)
             .accessibilityLabel("Support and Privacy")
