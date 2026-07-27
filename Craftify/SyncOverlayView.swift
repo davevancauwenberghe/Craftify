@@ -31,7 +31,7 @@ struct SyncOverlayView: View {
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
 
-                    Text("Gathering the latest recipes from your cloud cookbook.")
+                    Text("Gathering the latest recipes from the cloud")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -58,7 +58,7 @@ struct SyncOverlayView: View {
         .onDisappear { isAnimating = false }
         .transition(.opacity.combined(with: .scale(scale: 0.97)))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(message). Gathering the latest recipes from your cloud cookbook.")
+        .accessibilityLabel("\(message). Gathering the latest recipes from the cloud")
         .accessibilityHint("Please wait. This view closes automatically when syncing is complete.")
         .accessibilityAddTraits(.isModal)
     }
