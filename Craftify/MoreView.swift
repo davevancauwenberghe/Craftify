@@ -6,436 +6,217 @@
 //
 
 import SwiftUI
-import Combine
-import CloudKit
 
 struct MoreView: View {
-    @EnvironmentObject var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @State private var cooldownMessage: String? = nil
-    @State private var remainingCooldownTime: Int = 0
-    @State private var cooldownTask: Task<Void, Never>? = nil
-    @State private var attemptedSyncWhileOffline: Bool = false
-    
-    private func formatSyncDate(_ date: Date?) -> String {
-        guard let date = date else { return "Not synced" }
-        let formatter = DateFormatter()
-        formatter.locale = Locale.autoupdatingCurrent
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return "Last synced: \(formatter.string(from: date))"
+    @EnvironmentObject private var dataManager: DataManager
+    @State private var cooldownTask: Task<Void, Never>?
+    @State private var remainingCooldownTime = 0
+
+    private var syncDetail: String {
+        guard let date = dataManager.lastUpdated else { return dataManager.syncStatus }
+        return "Last synced \(date.formatted(date: .abbreviated, time: .shortened))"
     }
-    
+
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("Need Help?")) {
-                    NavigationLink(destination: ReportRecipeView()) {
-                        buttonStyle(title: "Report Issue", systemImage: "envelope.fill")
+                Section("Help & Reference") {
+                    destination("Report an Issue", systemImage: "exclamationmark.bubble.fill", hint: "Report a missing recipe or an error") {
+                        ReportRecipeView()
                     }
-                    .simultaneousGesture(TapGesture().onEnded { HapticFeedback.selection() })
-                    .accessibilityLabel("Report Issue")
-                    .accessibilityHint("Navigate to report a missing recipe or an error in an existing recipe")
-                    
-                    NavigationLink(destination: CommandsView()) {
-                        buttonStyle(title: "Console Commands", systemImage: "terminal.fill")
+                    destination("Console Commands", systemImage: "terminal.fill", hint: "Browse Minecraft console commands") {
+                        CommandsView()
                     }
-                    .simultaneousGesture(TapGesture().onEnded { HapticFeedback.selection() })
-                    .accessibilityLabel("Console Commands")
-                    .accessibilityHint("Navigate to view in-game console commands")
                 }
-                
-                Section(header: Text("About")) {
-                    NavigationLink(destination: AboutView(accentColorPreference: accentColorPreference)) {
-                        buttonStyle(title: "About Craftify", systemImage: "info.circle.fill")
+
+                Section("Craftify") {
+                    destination("About Craftify", systemImage: "info.circle.fill", hint: "View app information, appearance, release notes, support, and privacy") {
+                        AboutView()
                     }
-                    .simultaneousGesture(TapGesture().onEnded { HapticFeedback.selection() })
-                    .accessibilityLabel("About Craftify")
-                    .accessibilityHint("View information about the Craftify app")
-                    
-                    Text("Craftify for Minecraft is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.")
-                        .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                        .foregroundColor(.secondary)
-                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
-                        .accessibilityLabel("Disclaimer")
-                        .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
+                } footer: {
+                    Text("Craftify for Minecraft is an independent app and is not approved by or associated with Mojang or Microsoft.")
                 }
-                
-                Section(header: Text("Data Sync & Status")) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        // 1. Sync Recipes Button + Cooldown Message
-                        VStack(spacing: 8) {
-                            Button(action: {
-                                HapticFeedback.impact(.medium)
-                                fetchRecipes(isUserInitiated: true)
-                            }) {
-                                HStack {
-                                    if dataManager.isLoading {
-                                        ProgressView()
-                                            .progressViewStyle(.circular)
-                                            .tint(Color.userAccentColor)
-                                            .padding(.trailing, 8)
-                                            .accessibilityLabel("Syncing")
-                                            .accessibilityHint("Recipes are currently syncing")
-                                            .opacity(dataManager.isLoading ? 1 : 0)
-                                            .animation(.easeInOut(duration: 0.3), value: dataManager.isLoading)
-                                    } else {
-                                        Image(systemName: "arrow.clockwise")
-                                            .font(.title2)
-                                            .foregroundColor(dataManager.isConnected ? Color.userAccentColor : Color.gray)
-                                    }
-                                    Text("Sync Recipes")
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(dataManager.isConnected ? .primary : .gray)
-                                    Spacer()
-                                }
-                                .id(accentColorPreference)
-                                .padding(horizontalSizeClass == .regular ? 16 : 12)
-                                .padding(.vertical, horizontalSizeClass == .regular ? 8 : 6)
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                                .background(Color.gray.opacity(dataManager.isConnected ? 0.1 : 0.05))
-                                .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
-                            .contentShape(Rectangle())
-                            .disabled(dataManager.isLoading || !dataManager.isConnected)
-                            .accessibilityLabel("Sync Recipes")
-                            .accessibilityHint(dataManager.isConnected ? "Syncs Minecraft recipes from CloudKit" : "Sync is disabled due to no internet connection")
-                            if let message = cooldownMessage, dataManager.isConnected {
-                                Text(message)
+
+                Section("Data Sync") {
+                    Button(action: syncRecipes) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(dataManager.isLoading ? "Syncing Recipes…" : "Sync Recipes")
+                                Text(syncDetail)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .accessibilityLabel(message)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            if dataManager.isLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
                             }
                         }
-                        // 2. Network Status
-                        HStack {
-                            Image(systemName: dataManager.isConnected ? "wifi" : "wifi.slash")
-                                .font(.body)
-                                .foregroundColor(dataManager.isConnected ? .green : .red)
-                            Text(dataManager.isConnected ? "Connected to the Internet" : "No Internet Connection")
-                                .font(.caption)
-                                .foregroundColor(dataManager.isConnected ? .green : .red)
-                            Spacer()
-                        }
-                        .padding(.vertical, horizontalSizeClass == .regular ? 4 : 2)
-                        .accessibilityElement()
-                        .accessibilityLabel(dataManager.isConnected ? "Connected to the internet" : "No internet connection")
-                        .accessibilityHint(dataManager.isConnected ? "Your device is connected to the internet" : "Please connect to the internet to sync recipes")
-                        // 3 & 4. Last Synced + Recipes Available
-                        VStack(spacing: 0) {
-                            HStack {
-                                Image(systemName: "clock")
-                                    .font(.body)
-                                    .foregroundColor(.gray)
-                                    .frame(width: 20)
-                                Text(dataManager.lastUpdated != nil ? formatSyncDate(dataManager.lastUpdated) : dataManager.syncStatus)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                            }
-                            .padding(.vertical, 2)
-                            .accessibilityLabel(dataManager.syncStatus)
-                            HStack {
-                                Image(systemName: "list.bullet")
-                                    .font(.body)
-                                    .foregroundColor(.gray)
-                                    .frame(width: 20)
-                                Text("\(dataManager.recipes.count) recipes available")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                            }
-                            .padding(.vertical, 2)
-                            .accessibilityLabel("\(dataManager.recipes.count) recipes available")
-                            .accessibilityHint("Number of recipes currently available in the app")
-                        }
-                        .padding(.vertical, horizontalSizeClass == .regular ? 4 : 2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Last synced and recipes available: \(dataManager.syncStatus), \(dataManager.recipes.count) recipes available")
-                        .accessibilityHint("Manage recipe syncing, view network status, last sync time, and number of recipes available")
                     }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Data Sync and Status: Sync Recipes button, \(dataManager.isConnected ? "Connected to the internet" : "No internet connection"), \(dataManager.syncStatus), \(dataManager.recipes.count) available")
-                    .accessibilityHint("Manage recipe syncing, view network status, last sync time, and number of recipes available")
+                    .disabled(dataManager.isLoading || !dataManager.isConnected || remainingCooldownTime > 0)
+                    .accessibilityHint(syncHint)
+
+                    LabeledContent {
+                        Text(dataManager.isConnected ? "Online" : "Offline")
+                            .foregroundStyle(dataManager.isConnected ? .green : .red)
+                    } label: {
+                        Label("Connection", systemImage: dataManager.isConnected ? "wifi" : "wifi.slash")
+                    }
+
+                    LabeledContent("Recipes", value: dataManager.recipes.count.formatted())
+                } footer: {
+                    if remainingCooldownTime > 0 {
+                        Text("Sync is available again in \(remainingCooldownTime) second\(remainingCooldownTime == 1 ? "" : "s").")
+                            .contentTransition(.numericText())
+                    } else if !dataManager.isConnected {
+                        Text("Connect to the internet to sync recipes. Craftify will keep your existing recipes available offline.")
+                    }
                 }
             }
-            .listStyle(InsetGroupedListStyle())
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemBackground))
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-            .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
-            .alert(isPresented: Binding(
-                get: { dataManager.errorMessage != nil },
-                set: { if !$0 { dataManager.errorMessage = nil } }
-            )) {
-                Alert(
-                    title: Text("Error"),
-                    message: Text(dataManager.errorMessage ?? "Unknown error"),
-                    dismissButton: .default(Text("OK"))
-                )
+            .alert("Unable to Sync", isPresented: errorBinding) {
+                Button("OK", role: .cancel) { dataManager.errorMessage = nil }
+            } message: {
+                Text(dataManager.errorMessage ?? "Please try again.")
             }
             .onAppear {
                 dataManager.syncFavorites()
                 dataManager.syncRecentSearches()
             }
-            .onChange(of: dataManager.isLoading) { _, newValue in
-                if !newValue && dataManager.isManualSyncing {
-                    dataManager.accessibilityAnnouncement = "Sync completed"
-                }
-            }
-            .onChange(of: dataManager.isConnected) { _, newValue in
-                if newValue && attemptedSyncWhileOffline {
-                    fetchRecipes(isUserInitiated: false)
-                    attemptedSyncWhileOffline = false
-                    dataManager.accessibilityAnnouncement = "Reconnected to the internet. Retrying sync."
-                }
-            }
-            .onDisappear {
-                cooldownTask?.cancel()
-                cooldownTask = nil
-                cooldownMessage = nil
-                remainingCooldownTime = 0
-            }
+            .onDisappear { stopCooldown() }
         }
     }
-    
-    private func fetchRecipes(isUserInitiated: Bool) {
+
+    private var syncHint: String {
+        if !dataManager.isConnected { return "Unavailable while offline" }
+        if remainingCooldownTime > 0 { return "Available in \(remainingCooldownTime) seconds" }
+        return "Fetch the latest Minecraft recipes"
+    }
+
+    private var errorBinding: Binding<Bool> {
+        Binding(
+            get: { dataManager.errorMessage != nil },
+            set: { if !$0 { dataManager.errorMessage = nil } }
+        )
+    }
+
+    private func destination<Destination: View>(
+        _ title: String,
+        systemImage: String,
+        hint: String,
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink(destination: destination()) {
+            Label(title, systemImage: systemImage)
+                .foregroundStyle(.primary)
+        }
+        .accessibilityHint(hint)
+    }
+
+    private func syncRecipes() {
+        guard dataManager.isConnected, !dataManager.isLoading, remainingCooldownTime == 0 else { return }
+        HapticFeedback.impact(.light)
         dataManager.fetchRecipes(isManual: true) {
-            DispatchQueue.main.async {
-                if !dataManager.isConnected {
-                    attemptedSyncWhileOffline = true
-                }
-                if self.dataManager.isRecipeFetchOnCooldown() && isUserInitiated {
-                    let cooldownDuration = 30
-                    let lastFetchTime = self.dataManager.lastRecipeFetch ?? Date.distantPast
-                    let elapsed = Int(Date().timeIntervalSince(lastFetchTime))
-                    self.remainingCooldownTime = max(0, cooldownDuration - elapsed)
-                    
-                    if self.remainingCooldownTime > 0 {
-                        self.cooldownMessage = "Please wait \(self.remainingCooldownTime) second\(self.remainingCooldownTime == 1 ? "" : "s") before syncing again."
-                        self.startCooldownTask()
-                    }
+            Task { @MainActor in
+                if dataManager.isRecipeFetchOnCooldown() {
+                    beginCooldown()
                 }
             }
         }
     }
-    
-    private func startCooldownTask() {
+
+    private func beginCooldown() {
+        let lastFetch = dataManager.lastRecipeFetch ?? .distantPast
+        remainingCooldownTime = max(0, 30 - Int(Date().timeIntervalSince(lastFetch)))
         cooldownTask?.cancel()
         cooldownTask = Task { @MainActor in
-            while !Task.isCancelled && remainingCooldownTime > 0 {
-                do {
-                    try await Task.sleep(for: .seconds(1))
-                } catch {
-                    return
-                }
-
-                remainingCooldownTime = max(0, remainingCooldownTime - 1)
-                if remainingCooldownTime > 0 {
-                    cooldownMessage = "Please wait \(remainingCooldownTime) second\(remainingCooldownTime == 1 ? "" : "s") before syncing again."
-                }
+            while remainingCooldownTime > 0, !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                remainingCooldownTime -= 1
             }
-
-            guard !Task.isCancelled else { return }
-            cooldownMessage = nil
             cooldownTask = nil
         }
     }
-    
-    private func buttonStyle(title: String, systemImage: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.title2)
-                .foregroundColor(Color.userAccentColor)
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
-            Spacer()
-        }
-        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+
+    private func stopCooldown() {
+        cooldownTask?.cancel()
+        cooldownTask = nil
+        remainingCooldownTime = 0
     }
 }
 
 struct AboutView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.openURL) private var openURL
-    let accentColorPreference: String
-    
+
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
-        return "Version \(version) – Build \(build)"
+        return "Version \(version) • Build \(build)"
     }
-    
-    var body: some View {
-        let headerText: some View = Text("Craftify for Minecraft")
-            .font(horizontalSizeClass == .regular ? .title : .largeTitle)
-            .fontWeight(.bold)
-            .multilineTextAlignment(.center)
-            .minimumScaleFactor(0.6)
-        
-        let versionText: some View = Text(appVersion)
-            .font(.subheadline)
-            .foregroundColor(.secondary)
-            .minimumScaleFactor(0.6)
-        
-        let descriptionText: some View = Text("Craftify helps you manage your recipes and favorites. If you encounter any missing recipes or issues, please let us know!")
-            .font(horizontalSizeClass == .regular ? .body : .subheadline)
-            .foregroundColor(.primary)
-            .multilineTextAlignment(.center)
-            .minimumScaleFactor(0.6)
-        
-        let thankYouText: some View = {
-            var attributed = AttributedString("A huge thank you to the Minecraft Wiki for their thorough and devoted work in creating the recipe database and thumbnails that power Craftify.")
-            if let range = attributed.range(of: "Minecraft Wiki") {
-                attributed[range].link = URL(string: "https://minecraft.fandom.com/wiki/Minecraft_Wiki")
-                attributed[range].underlineStyle = .init(rawValue: 0)
-            }
-            return Text(attributed)
-                .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.6)
-                .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-                .accessibilityLabel("Thank you to Minecraft Wiki. Tap the link to open the Minecraft Wiki in Safari.")
-                .accessibilityHint("Acknowledges the Minecraft Wiki for providing recipe data and thumbnails. Tapping the link opens their site.")
-        }()
-        
-        VStack(spacing: horizontalSizeClass == .regular ? 20 : 16) {
-            VStack(spacing: 8) {
-                Image("AppIconPreview")
-                    .resizable()
-                    .renderingMode(.original)
-                    .scaledToFit()
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18)
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                    )
-                    .shadow(radius: 2, x: 0, y: 1)
-                    .accessibilityLabel("Craftify app icon")
-                    .accessibilityAddTraits(.isImage)
-                
-                headerText
-                versionText
-                descriptionText
-                    .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-            }
-            .padding(.top, horizontalSizeClass == .regular ? 16 : 12)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Craftify for Minecraft, \(appVersion). Craftify helps you manage your recipes and favorites.")
-            .accessibilityHint("About the Craftify app and its purpose")
-            
-            List {
-                Section {
-                    NavigationLink(destination: AppAppearanceView()) {
-                        buttonStyle(title: "App Appearance", systemImage: "app.badge.fill")
-                    }
-                    .simultaneousGesture(TapGesture().onEnded {
-                        HapticFeedback.selection()
-                    })
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(
-                        top: horizontalSizeClass == .regular ? 12 : 8,
-                        leading: horizontalSizeClass == .regular ? 16 : 12,
-                        bottom: horizontalSizeClass == .regular ? 12 : 8,
-                        trailing: horizontalSizeClass == .regular ? 16 : 12
-                    ))
-                    .accessibilityLabel("App Appearance")
-                    .accessibilityHint("Customize the app's icon and appearance settings")
 
-                    NavigationLink(destination: ReleaseNotesView()) {
-                        buttonStyle(title: "Release Notes", systemImage: "doc.text.fill")
-                    }
-                    .simultaneousGesture(TapGesture().onEnded {
-                        HapticFeedback.selection()
-                    })
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(
-                        top: horizontalSizeClass == .regular ? 12 : 8,
-                        leading: horizontalSizeClass == .regular ? 16 : 12,
-                        bottom: horizontalSizeClass == .regular ? 12 : 8,
-                        trailing: horizontalSizeClass == .regular ? 16 : 12
-                    ))
-                    .accessibilityLabel("Release Notes")
-                    .accessibilityHint("View the release notes for Craftify")
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 12) {
+                    Image("AppIconPreview")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: horizontalSizeClass == .regular ? 104 : 88, height: horizontalSizeClass == .regular ? 104 : 88)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .accessibilityLabel("Craftify app icon")
+
+                    Text("Craftify for Minecraft")
+                        .font(.title.bold())
+                        .multilineTextAlignment(.center)
+                    Text(appVersion)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("A focused companion for finding Minecraft recipes and keeping your favorites close at hand.")
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
                 }
-            }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
-            .scrollDisabled(true)
-            .frame(height: dynamicTypeSize.isAccessibilitySize
-                ? 220
-                : (horizontalSizeClass == .regular ? 154 : 126))
-            .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-            
-            NavigationLink(destination: SupportView()) {
-                HStack {
-                    Image(systemName: "envelope.fill")
-                        .font(.title2)
-                    Text("Support & Privacy")
-                        .font(horizontalSizeClass == .regular ? .title3 : .headline)
-                        .bold()
-                        .minimumScaleFactor(0.6)
-                }
-                .id(accentColorPreference)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, horizontalSizeClass == .regular ? 16 : 12)
-                .padding(.horizontal, horizontalSizeClass == .regular ? 32 : 24)
-                .background(Color.userAccentColor)
-                .foregroundColor(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .padding(.vertical, 12)
+                .accessibilityElement(children: .combine)
             }
-            .simultaneousGesture(TapGesture().onEnded { HapticFeedback.selection() })
-            .frame(maxWidth: horizontalSizeClass == .regular ? 600 : 400)
-            .padding(.bottom, 8)
-            .accessibilityLabel("Support and Privacy")
-            .accessibilityHint("Navigate to support and privacy options")
-            
-            thankYouText
-            
-            Text("Craftify for Minecraft is not an official Minecraft product; it is not approved or associated with Mojang or Microsoft.")
-                .font(horizontalSizeClass == .regular ? .callout : .footnote)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.6)
-                .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-                .accessibilityLabel("Disclaimer")
-                .accessibilityHint("Craftify is not an official Minecraft product and is not associated with Mojang or Microsoft")
-            
-            Spacer()
+
+            Section("Personalize") {
+                NavigationLink("App Appearance", destination: AppAppearanceView())
+            }
+
+            Section("Information") {
+                NavigationLink("Release Notes", destination: ReleaseNotesView())
+                NavigationLink("Support & Privacy", destination: SupportView())
+            }
+
+            Section("Acknowledgements") {
+                Link(destination: URL(string: "https://minecraft.wiki/")!) {
+                    Label("Minecraft Wiki", systemImage: "arrow.up.right.square")
+                }
+                Text("Thank you to the Minecraft Wiki contributors for the recipe knowledge and thumbnails that help power Craftify.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Text("Craftify for Minecraft is an independent app and is not approved by or associated with Mojang or Microsoft.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-        .frame(maxWidth: .infinity)
-        .background(Color(UIColor.systemGroupedBackground))
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemBackground))
         .navigationTitle("About Craftify")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
-        .dynamicTypeSize(.xSmall ... .accessibility5)
-    }
-    
-    private func buttonStyle(title: String, systemImage: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.title2)
-                .foregroundColor(Color.userAccentColor)
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
-                .minimumScaleFactor(0.6)
-            Spacer()
-        }
-        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
     }
 }
