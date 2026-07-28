@@ -29,15 +29,17 @@ struct MoreView: View {
                     }
                 }
 
-                Section("Craftify") {
+                Section {
                     destination("About Craftify", systemImage: "info.circle.fill", hint: "View app information, appearance, release notes, support, and privacy") {
                         AboutView()
                     }
+                } header: {
+                    Text("Craftify")
                 } footer: {
                     Text("Craftify for Minecraft is an independent app and is not approved by or associated with Mojang or Microsoft.")
                 }
 
-                Section("Data Sync") {
+                Section {
                     Button(action: syncRecipes) {
                         Label {
                             VStack(alignment: .leading, spacing: 3) {
@@ -66,6 +68,8 @@ struct MoreView: View {
                     }
 
                     LabeledContent("Recipes", value: dataManager.recipes.count.formatted())
+                } header: {
+                    Text("Data Sync")
                 } footer: {
                     if remainingCooldownTime > 0 {
                         Text("Sync is available again in \(remainingCooldownTime) second\(remainingCooldownTime == 1 ? "" : "s").")
