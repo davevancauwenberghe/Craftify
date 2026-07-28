@@ -31,3 +31,5 @@ Craftify is a sleek iOS app designed for Minecraft players to browse, search, an
 #### Disclaimer
 
 Craftify for Minecraft ("Craftify") is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.
+
+![AppIcon](https://github.com/davevancauwenberghe/Craftify/blob/main/Craftify/Assets.xcassets/AppIcon.appiconset/AppIcon.png)
