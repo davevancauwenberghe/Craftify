@@ -11,6 +11,22 @@ import SwiftUI
 
 struct CraftifyTests {
     @MainActor
+    @Test func testBackgroundICloudNotificationDoesNotViolateMainActorIsolation() async {
+        let dataManager = DataManager()
+
+        await Task.detached {
+            NotificationCenter.default.post(
+                name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+                object: NSUbiquitousKeyValueStore.default
+            )
+        }.value
+
+        // Give the notification handler's main-actor task an opportunity to run.
+        await Task.yield()
+        #expect(dataManager.recentSearchNames.count <= 10)
+    }
+
+    @MainActor
     @Test func testDynamicTypeSettings() throws {
         // Create a test environment with AppStorage mock
         let userDefaults = UserDefaults(suiteName: "testCraftify")!
