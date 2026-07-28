@@ -113,10 +113,13 @@ final class DataManager: ObservableObject {
         networkMonitor.cancel()
     }
 
-    @objc private func appWillEnterForeground() {
-        NSUbiquitousKeyValueStore.default.synchronize()
-        syncFavorites()
-        syncRecentSearches()
+    @objc nonisolated private func appWillEnterForeground() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            NSUbiquitousKeyValueStore.default.synchronize()
+            syncFavorites()
+            syncRecentSearches()
+        }
     }
 
     var syncStatus: String {
@@ -195,9 +198,14 @@ final class DataManager: ObservableObject {
         }
     }
 
-    @objc private func icloudDidChange() {
-        syncFavorites()
-        syncRecentSearches()
+    @objc nonisolated private func icloudDidChange() {
+        // iCloud posts this notification on the queue where the change arrives,
+        // which is not guaranteed to be the main queue. Hop to the main actor
+        // before reading iCloud values or updating observable state.
+        Task { @MainActor [weak self] in
+            self?.syncFavorites()
+            self?.syncRecentSearches()
+        }
     }
 
     func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
