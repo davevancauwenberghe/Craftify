@@ -10,7 +10,6 @@ import UIKit
 
 struct ReportRecipeView: View {
     @EnvironmentObject var dataManager: DataManager
-    @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewMode: ViewMode = .submitReport
     @State private var reportType: ReportType = .missingRecipe
@@ -30,7 +29,6 @@ struct ReportRecipeView: View {
     @State private var submissionCooldownTask: Task<Void, Never>?
     @State private var showDeleteConfirmationPopup: Bool = false
     @State private var deleteConfirmationMessage: String?
-    @State private var cachedSortedReports: [RecipeReport] = []
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
 
     private let categories: [String] = [
@@ -98,9 +96,8 @@ struct ReportRecipeView: View {
     }
 
     var body: some View {
-            NavigationStack {
-                ZStack {
-                    Color(.systemBackground)
+            ZStack {
+                    Color(.systemGroupedBackground)
                         .ignoresSafeArea()
 
                     ScrollView {
@@ -198,6 +195,7 @@ struct ReportRecipeView: View {
                     }
                 }
                 .onChange(of: viewMode) { _, newValue in
+                    HapticFeedback.selection()
                     if newValue == .myReports {
                         dataManager.lastReportStatusFetchTime = nil
                         fetchReportStatuses()
@@ -210,7 +208,6 @@ struct ReportRecipeView: View {
                     submissionCooldownTask?.cancel()
                     submissionCooldownTask = nil
                 }
-            }
         }
 
     private func resetForm() {
@@ -249,9 +246,9 @@ struct ReportRecipeView: View {
     }
 
     private func submitReport() {
-        if isFormIncomplete {
-            return
-        }
+        guard !isFormIncomplete, !isSubmissionOnCooldown, dataManager.isConnected else { return }
+
+        HapticFeedback.impact(.light)
 
         submissionState = .submitting
         showSubmissionPopup = true
@@ -270,6 +267,7 @@ struct ReportRecipeView: View {
             DispatchQueue.main.async {
                 switch result {
                 case .success:
+                    HapticFeedback.notification(.success)
                     self.submissionState = .success(
                         reportType: reportTypeString,
                         recipeName: recipeNameValue,
@@ -279,6 +277,7 @@ struct ReportRecipeView: View {
                     self.updateSubmissionCooldownMessage()
                     self.startSubmissionCooldownTask()
                 case .failure(let error):
+                    HapticFeedback.notification(.error)
                     self.submissionState = .failure("Failed to submit report: \(error.localizedDescription)")
                 }
             }
@@ -379,13 +378,6 @@ struct SubmitReportSection: View {
             }
 
             Button(action: {
-                HapticFeedback.impact(.medium)
-                if isFormIncomplete {
-                    return
-                }
-                if isSubmissionOnCooldown {
-                    return
-                }
                 onSubmit()
             }) {
                 Text("Submit Report")
@@ -419,6 +411,7 @@ struct ReportTypeToggle: View {
                 withAnimation(.easeInOut) {
                     reportType = .missingRecipe
                 }
+                HapticFeedback.selection()
             }) {
                 Text("Missing Recipe")
                     .font(.subheadline)
@@ -437,6 +430,7 @@ struct ReportTypeToggle: View {
                 withAnimation(.easeInOut) {
                     reportType = .recipeError
                 }
+                HapticFeedback.selection()
             }) {
                 Text("Recipe Error")
                     .font(.subheadline)

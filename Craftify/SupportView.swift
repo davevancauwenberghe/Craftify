@@ -16,11 +16,10 @@ struct SupportView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        NavigationStack {
             List {
                 Section(header: Text("Support").font(.headline).minimumScaleFactor(0.6)) {
                     Button(action: {
-                        HapticFeedback.impact(.medium)
+                        HapticFeedback.selection()
                         let supportEmail = "hello@davevancauwenberghe.be"
                         if let url = URL(string: "mailto:\(supportEmail)") {
                             UIApplication.shared.open(url)
@@ -41,8 +40,6 @@ struct SupportView: View {
 
                 Section(header: Text("Data Management").font(.headline).minimumScaleFactor(0.6)) {
                     Button(action: {
-                        HapticFeedback.impact(.medium)
-                        HapticFeedback.notification(.warning)
                         showClearDataAlert = true
                     }) {
                         buttonStyle(title: "Clear All Data", systemImage: "trash.fill", foregroundColor: .red)
@@ -68,9 +65,11 @@ struct SupportView: View {
                         .accessibilityHint("This will permanently delete all your favorites, recent searches, recipe reports, and the local recipe cache.")
 
                     Button(action: {
-                        HapticFeedback.impact(.medium)
                         dataManager.clearCache { success in
-                            if !success {
+                            if success {
+                                HapticFeedback.notification(.success)
+                            } else {
+                                HapticFeedback.notification(.error)
                                 errorMessage = dataManager.errorMessage ?? "Failed to clear cache. Please try again."
                                 showErrorAlert = true
                             }
@@ -101,7 +100,7 @@ struct SupportView: View {
 
                 Section(header: Text("Privacy").font(.headline).minimumScaleFactor(0.6)) {
                     Button(action: {
-                        HapticFeedback.impact(.medium)
+                        HapticFeedback.selection()
                         if let url = URL(string: "https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/privacy-policy/") {
                             UIApplication.shared.open(url)
                         }
@@ -122,11 +121,10 @@ struct SupportView: View {
                 }
             }
             .listStyle(InsetGroupedListStyle())
+            .scrollContentBackground(.hidden)
             .navigationTitle("Support & Privacy")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-            .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
             .background(Color(UIColor.systemGroupedBackground))
             .alert(isPresented: $showErrorAlert) {
                 Alert(
@@ -143,7 +141,10 @@ struct SupportView: View {
                     message: Text("Are you sure? This will remove all your favorites, recent searches, recipe reports, and the local recipe cache. This action cannot be undone."),
                     primaryButton: .destructive(Text("Clear All Data")) {
                         dataManager.clearAllData { success in
-                            if !success {
+                            if success {
+                                HapticFeedback.notification(.success)
+                            } else {
+                                HapticFeedback.notification(.error)
                                 errorMessage = dataManager.errorMessage ?? "Failed to clear all data. Please try again."
                                 showErrorAlert = true
                             }
@@ -153,8 +154,6 @@ struct SupportView: View {
                 )
             }
             .dynamicTypeSize(.xSmall ... .accessibility5)
-        }
-        .navigationViewStyle(.stack)
     }
 
     private func buttonStyle(title: String, systemImage: String, foregroundColor: Color = Color.userAccentColor) -> some View {

@@ -63,6 +63,7 @@ struct AppAppearanceView: View {
                 .pickerStyle(.segmented)
                 .accessibilityLabel("Appearance")
                 .accessibilityHint("Choose between System, Light, or Dark mode")
+                .onChange(of: colorSchemePreference) { _, _ in HapticFeedback.selection() }
             }
             
             Section(header: Text("Accent Color")) {
@@ -81,6 +82,7 @@ struct AppAppearanceView: View {
                 }
                 .accessibilityLabel("Accent Color")
                 .accessibilityHint("Choose the accent color for the app")
+                .onChange(of: accentColorPreference) { _, _ in HapticFeedback.selection() }
             }
             
             Section(header: Text("App Icons")) {
@@ -131,6 +133,8 @@ struct AppAppearanceView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemBackground))
         .navigationTitle("App Appearance")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
@@ -160,12 +164,13 @@ struct AppAppearanceView: View {
     }
 
     private func changeIcon(to: String?) {
-        HapticFeedback.impact(.medium)
         UIApplication.shared.setAlternateIconName(to) { error in
             DispatchQueue.main.async {
                 if let err = error {
+                    HapticFeedback.notification(.error)
                     errorMessage = "Failed to change icon: \(err.localizedDescription)"
                 } else {
+                    HapticFeedback.notification(.success)
                     selectedAppIcon = to
                     UIAccessibility.post(notification: .announcement, argument: "App icon changed to \(appIcons.first(where: { $0.id == to })?.name ?? "Default")")
                 }

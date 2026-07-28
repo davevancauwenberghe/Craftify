@@ -58,9 +58,9 @@ struct ReleaseNotesView: View {
                             .font(.headline)
                             .foregroundColor(.secondary)) {
                     ForEach(note.changes, id: \.self) { change in
-                        Text("• \(change)")
-                            .font(horizontalSizeClass == .regular ? .subheadline : .footnote)
-                            .foregroundColor(.primary)
+                        Label(change, systemImage: "checkmark.circle.fill")
+                            .font(.body)
+                            .foregroundStyle(.primary)
                             .padding(.vertical, horizontalSizeClass == .regular ? listRowPaddingVertical * 1.5 : listRowPaddingVertical)
                             .accessibilityLabel(change)
                     }
@@ -69,11 +69,11 @@ struct ReleaseNotesView: View {
         }
         .id(accentColorPreference)
         .listStyle(InsetGroupedListStyle())
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemBackground))
         .navigationTitle("Release Notes")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
-        .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
