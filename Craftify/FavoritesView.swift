@@ -351,7 +351,9 @@ struct FavoritesView: View {
                         ? Color.userAccentColor
                         : Color.gray.opacity(0.2)
                 )
-                .foregroundStyle(.white)
+                .foregroundStyle(
+                    selectedCategory == category ? Color.white : Color.primary
+                )
                 .clipShape(
                     RoundedRectangle(
                         cornerRadius: 10,

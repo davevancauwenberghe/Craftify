@@ -259,10 +259,10 @@ struct RecipeSearchView: View {
                         }
                     }
                 }
-                .scrollContentBackground(.hidden)
-                .background(Color(.systemGroupedBackground))
                 .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             }
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .id(accentColorPreference)
             .overlay {
                 if dataManager.isLoading && dataManager.recipes.isEmpty {
@@ -284,6 +284,7 @@ struct RecipeSearchView: View {
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .searchable(
                 text: $searchText,
                 isPresented: $isSearchActive,
@@ -382,7 +383,11 @@ struct RecentSearchesList: View {
                 }
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color(.secondarySystemGroupedBackground))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
         .dynamicTypeSize(.xSmall ... .accessibility5)
