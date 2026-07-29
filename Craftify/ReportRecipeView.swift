@@ -140,6 +140,7 @@ struct ReportRecipeView: View {
                         .padding(.vertical, 24)
                         .frame(maxWidth: .infinity)
                     }
+                    .background(Color(.systemGroupedBackground))
                     .id(accentColorPreference)
 
                     if showSubmissionPopup {
@@ -172,6 +173,7 @@ struct ReportRecipeView: View {
                 }
                 .navigationTitle("Report Issue")
                 .navigationBarTitleDisplayMode(.large)
+                .toolbar(.visible, for: .navigationBar)
                 .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
                 .alert("Delete Report", isPresented: $showDeleteConfirmation) {
                     Button("Delete", role: .destructive) {
@@ -397,7 +399,7 @@ struct SubmitReportSection: View {
         }
         .padding(.vertical, 16)
         .padding(.horizontal, 16)
-        .background(Color(.systemBackground))
+        .background(Color(.systemGroupedBackground))
     }
 }
 
@@ -415,12 +417,12 @@ struct ReportTypeToggle: View {
             }) {
                 Text("Missing Recipe")
                     .font(.subheadline)
-                    .foregroundColor(reportType == .missingRecipe ? .white : Color.userAccentColor)
+                    .foregroundStyle(reportType == .missingRecipe ? Color.white : Color.primary)
                     .padding(.vertical, 8)
                     .padding(.horizontal, 12)
                     .frame(maxWidth: .infinity, minHeight: 36)
-                    .background(reportType == .missingRecipe ? Color.userAccentColor : Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .background(reportType == .missingRecipe ? Color.userAccentColor : Color.gray.opacity(0.2))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .accessibilityLabel("Report Missing Recipe")
             .accessibilityHint("Select to report a missing recipe")
@@ -434,12 +436,12 @@ struct ReportTypeToggle: View {
             }) {
                 Text("Recipe Error")
                     .font(.subheadline)
-                    .foregroundColor(reportType == .recipeError ? .white : Color.userAccentColor)
+                    .foregroundStyle(reportType == .recipeError ? Color.white : Color.primary)
                     .padding(.vertical, 8)
                     .padding(.horizontal, 12)
                     .frame(maxWidth: .infinity, minHeight: 36)
-                    .background(reportType == .recipeError ? Color.userAccentColor : Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .background(reportType == .recipeError ? Color.userAccentColor : Color.gray.opacity(0.2))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .accessibilityLabel("Report Recipe Error")
             .accessibilityHint("Select to report an error in a recipe")
@@ -469,8 +471,8 @@ struct CategoryPicker: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, minHeight: fieldHeight)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.userAccentColor, lineWidth: 2)
@@ -699,8 +701,8 @@ struct MyReportsSection: View {
                         .padding(.vertical, 12)
                         .padding(.horizontal, 16)
                         .frame(maxWidth: .infinity)
-                        .background(Color(.systemGray6))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(
@@ -722,7 +724,7 @@ struct MyReportsSection: View {
         }
         .padding(.vertical, 16)
         .padding(.horizontal, 16)
-        .background(Color(.systemBackground))
+        .background(Color(.systemGroupedBackground))
     }
 }
 

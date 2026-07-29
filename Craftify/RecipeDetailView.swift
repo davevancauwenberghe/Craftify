@@ -40,6 +40,7 @@ struct RecipeDetailView: View {
     var body: some View {
         ZStack {
             Color(.systemGroupedBackground)
+                .ignoresSafeArea()
 
             RecipeDetailContent(
                 recipe: recipe,
@@ -64,6 +65,7 @@ struct RecipeDetailView: View {
         }
         .navigationTitle(recipe.name)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar(.visible, for: .navigationBar)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -221,6 +223,7 @@ struct RecipeDetailContent: View {
         .id(accentColorPreference)
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
+        .background(Color(.systemGroupedBackground))
         .accessibilityElement(children: .contain)
     }
 }
@@ -258,8 +261,8 @@ struct AlternateRecipesSelector: View {
                                 .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                 .padding(.vertical, 8)
                                 .background(selectedCraftingOption == index ? Color.userAccentColor : Color.gray.opacity(0.2))
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
+                                .foregroundStyle(selectedCraftingOption == index ? Color.white : Color.primary)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         }
                         .accessibilityLabel("Recipe \(index + 1)")
                         .accessibilityHint("Selects ingredient combination \(index + 1)")
