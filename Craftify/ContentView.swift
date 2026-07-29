@@ -23,7 +23,7 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             // 1) solid base so the TabView never floats transparent
-            Color(.systemBackground)
+            Color(.systemGroupedBackground)
                 .ignoresSafeArea()
 
             // 2) your TabView

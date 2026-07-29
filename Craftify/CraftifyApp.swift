@@ -27,6 +27,7 @@ struct CraftifyApp: App {
 
     @StateObject private var dataManager = DataManager()
     @AppStorage("hasLaunchedBefore") private var hasLaunchedBefore: Bool = false
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @State private var showOnboarding: Bool = false
 
     var body: some Scene {
@@ -62,6 +63,8 @@ struct CraftifyApp: App {
                     .zIndex(1)
                 }
             }
+            .id(accentColorPreference)
+            .tint(Color.userAccentColor)
             .dynamicTypeSize(.xSmall ... .accessibility5)
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Craftify App")

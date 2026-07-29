@@ -56,7 +56,7 @@ struct OnboardingView: View {
 
     private var onboardingBackground: some View {
         ZStack {
-            Color(.systemBackground)
+            Color(.systemGroupedBackground)
             LinearGradient(
                 colors: [Color.userAccentColor.opacity(0.22), .clear, Color.userAccentColor.opacity(0.08)],
                 startPoint: .topLeading,

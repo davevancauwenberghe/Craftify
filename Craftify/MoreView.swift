@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MoreView: View {
     @EnvironmentObject private var dataManager: DataManager
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @State private var cooldownTask: Task<Void, Never>?
     @State private var remainingCooldownTime = 0
 
@@ -56,7 +57,10 @@ struct MoreView: View {
                                 Image(systemName: "arrow.clockwise")
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .center)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.userAccentColor)
                     .disabled(dataManager.isLoading || !dataManager.isConnected || remainingCooldownTime > 0)
                     .accessibilityHint(syncHint)
 
@@ -64,7 +68,13 @@ struct MoreView: View {
                         Text(dataManager.isConnected ? "Online" : "Offline")
                             .foregroundStyle(dataManager.isConnected ? .green : .red)
                     } label: {
-                        Label("Connection", systemImage: dataManager.isConnected ? "wifi" : "wifi.slash")
+                        Label {
+                            Text("Connection")
+                                .foregroundStyle(.primary)
+                        } icon: {
+                            Image(systemName: dataManager.isConnected ? "wifi" : "wifi.slash")
+                                .foregroundStyle(Color.userAccentColor)
+                        }
                     }
 
                     LabeledContent("Recipes", value: dataManager.recipes.count.formatted())
@@ -80,8 +90,11 @@ struct MoreView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(24)
             .scrollContentBackground(.hidden)
-            .background(Color(.systemBackground))
+            .background(Color(.systemGroupedBackground))
+            .id(accentColorPreference)
+            .tint(Color.userAccentColor)
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
@@ -118,8 +131,13 @@ struct MoreView: View {
         @ViewBuilder destination: () -> Destination
     ) -> some View {
         NavigationLink(destination: destination()) {
-            Label(title, systemImage: systemImage)
-                .foregroundStyle(.primary)
+            Label {
+                Text(title)
+                    .foregroundStyle(.primary)
+            } icon: {
+                Image(systemName: systemImage)
+                    .foregroundStyle(Color.userAccentColor)
+            }
         }
         .accessibilityHint(hint)
     }
@@ -159,6 +177,7 @@ struct MoreView: View {
 
 struct AboutView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -193,17 +212,23 @@ struct AboutView: View {
             }
 
             Section("Personalize") {
-                NavigationLink("App Appearance", destination: AppAppearanceView())
+                NavigationLink(destination: AppAppearanceView()) {
+                    accentLabel("App Appearance", systemImage: "paintpalette.fill")
+                }
             }
 
             Section("Information") {
-                NavigationLink("Release Notes", destination: ReleaseNotesView())
-                NavigationLink("Support & Privacy", destination: SupportView())
+                NavigationLink(destination: ReleaseNotesView()) {
+                    accentLabel("Release Notes", systemImage: "sparkles")
+                }
+                NavigationLink(destination: SupportView()) {
+                    accentLabel("Support & Privacy", systemImage: "hand.raised.fill")
+                }
             }
 
             Section("Acknowledgements") {
                 Link(destination: URL(string: "https://minecraft.wiki/")!) {
-                    Label("Minecraft Wiki", systemImage: "arrow.up.right.square")
+                    accentLabel("Minecraft Wiki", systemImage: "arrow.up.right.square")
                 }
                 Text("Thank you to the Minecraft Wiki contributors for the recipe knowledge and thumbnails that help power Craftify.")
                     .font(.footnote)
@@ -218,9 +243,21 @@ struct AboutView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color(.systemBackground))
+        .background(Color(.systemGroupedBackground))
+        .id(accentColorPreference)
+        .tint(Color.userAccentColor)
         .navigationTitle("About Craftify")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+    }
+
+    private func accentLabel(_ title: String, systemImage: String) -> some View {
+        Label {
+            Text(title)
+                .foregroundStyle(.primary)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(Color.userAccentColor)
+        }
     }
 }

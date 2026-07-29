@@ -39,7 +39,7 @@ struct RecipeDetailView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemBackground)
+            Color(.systemGroupedBackground)
 
             RecipeDetailContent(
                 recipe: recipe,
