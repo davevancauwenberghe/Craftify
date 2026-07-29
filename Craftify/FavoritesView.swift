@@ -121,7 +121,7 @@ struct FavoritesSection: View {
                     )
                     .padding(.vertical, paddingVertical)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.systemBackground))
+                    .background(Color(.systemGroupedBackground))
             }
         }
         .dynamicTypeSize(.xSmall ... .accessibility5)
@@ -405,7 +405,7 @@ struct FavoritesView: View {
                     isCraftifyPicksExpanded.toggle()
                 }
             }
-            .background(Color(.systemBackground))
+            .background(Color(.systemGroupedBackground))
         }
     }
 

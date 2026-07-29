@@ -31,24 +31,49 @@ struct MoreView: View {
                 }
 
                 Section {
+                    destination("App Appearance", systemImage: "paintpalette.fill", hint: "Choose the app icon, color, and appearance") {
+                        AppAppearanceView()
+                    }
+                    Button {
+                        NotificationCenter.default.post(name: .showOnboarding, object: nil)
+                    } label: {
+                        Label {
+                            Text("Getting Started")
+                                .foregroundStyle(.primary)
+                        } icon: {
+                            Image(systemName: "lightbulb.fill")
+                                .foregroundStyle(Color.userAccentColor)
+                        }
+                    }
+                    .accessibilityHint("Revisit Craftify's introductory tips")
                     destination("About Craftify", systemImage: "info.circle.fill", hint: "View app information, appearance, release notes, support, and privacy") {
                         AboutView()
                     }
                 } header: {
                     Text("Craftify")
-                } footer: {
-                    Text("Craftify for Minecraft is an independent app and is not approved by or associated with Mojang or Microsoft.")
                 }
 
                 Section {
+                    HStack(spacing: 16) {
+                        syncStatusItem(
+                            dataManager.isConnected ? "Online" : "Offline",
+                            systemImage: dataManager.isConnected ? "wifi" : "wifi.slash",
+                            color: dataManager.isConnected ? .green : .red
+                        )
+                        syncStatusItem(
+                            "\(dataManager.recipes.count.formatted()) recipes",
+                            systemImage: "book.closed.fill"
+                        )
+                        Spacer(minLength: 0)
+                        Text(syncDetail)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+
                     Button(action: syncRecipes) {
                         Label {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(dataManager.isLoading ? "Syncing Recipes…" : "Sync Recipes")
-                                Text(syncDetail)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                            Text(dataManager.isLoading ? "Checking for Updates…" : "Check for Recipe Updates")
                         } icon: {
                             if dataManager.isLoading {
                                 ProgressView()
@@ -63,21 +88,6 @@ struct MoreView: View {
                     .tint(Color.userAccentColor)
                     .disabled(dataManager.isLoading || !dataManager.isConnected || remainingCooldownTime > 0)
                     .accessibilityHint(syncHint)
-
-                    LabeledContent {
-                        Text(dataManager.isConnected ? "Online" : "Offline")
-                            .foregroundStyle(dataManager.isConnected ? .green : .red)
-                    } label: {
-                        Label {
-                            Text("Connection")
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: dataManager.isConnected ? "wifi" : "wifi.slash")
-                                .foregroundStyle(Color.userAccentColor)
-                        }
-                    }
-
-                    LabeledContent("Recipes", value: dataManager.recipes.count.formatted())
                 } header: {
                     Text("Data Sync")
                 } footer: {
@@ -93,7 +103,6 @@ struct MoreView: View {
             .listSectionSpacing(24)
             .scrollContentBackground(.hidden)
             .background(Color(.systemGroupedBackground))
-            .id(accentColorPreference)
             .tint(Color.userAccentColor)
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.large)
@@ -122,6 +131,13 @@ struct MoreView: View {
             get: { dataManager.errorMessage != nil },
             set: { if !$0 { dataManager.errorMessage = nil } }
         )
+    }
+
+    private func syncStatusItem(_ title: String, systemImage: String, color: Color = .secondary) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption2)
+            .foregroundStyle(color)
+            .lineLimit(1)
     }
 
     private func destination<Destination: View>(
@@ -211,12 +227,6 @@ struct AboutView: View {
                 .accessibilityElement(children: .combine)
             }
 
-            Section("Personalize") {
-                NavigationLink(destination: AppAppearanceView()) {
-                    accentLabel("App Appearance", systemImage: "paintpalette.fill")
-                }
-            }
-
             Section("Information") {
                 NavigationLink(destination: ReleaseNotesView()) {
                     accentLabel("Release Notes", systemImage: "sparkles")
@@ -244,7 +254,6 @@ struct AboutView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
-        .id(accentColorPreference)
         .tint(Color.userAccentColor)
         .navigationTitle("About Craftify")
         .navigationBarTitleDisplayMode(.large)
