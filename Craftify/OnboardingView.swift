@@ -13,6 +13,7 @@ struct OnboardingView: View {
     @Binding var isLoading: Bool
     @Binding var errorMessage: String?
     let isFirstLaunch: Bool
+    let dismissAfterLoading: Bool
     let onDismiss: () -> Void
     let onRetry: () -> Void
     let horizontalSizeClass: UserInterfaceSizeClass?
@@ -49,7 +50,7 @@ struct OnboardingView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: step)
         .sensoryFeedback(.success, trigger: isFinishing)
         .onChange(of: isLoading) { _, loading in
-            guard !loading, errorMessage == nil, !isFirstLaunch else { return }
+            guard dismissAfterLoading, !loading, errorMessage == nil, !isFirstLaunch else { return }
             finishOnboarding()
         }
     }

@@ -30,6 +30,7 @@ struct CraftifyApp: App {
     @AppStorage("hasLaunchedBefore") private var hasLaunchedBefore: Bool = false
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @State private var showOnboarding: Bool = false
+    @State private var dismissOnboardingAfterLoading = true
 
     var body: some Scene {
         WindowGroup {
@@ -44,6 +45,7 @@ struct CraftifyApp: App {
                         isLoading: $dataManager.isLoading,
                         errorMessage: $dataManager.errorMessage,
                         isFirstLaunch: !hasLaunchedBefore,
+                        dismissAfterLoading: dismissOnboardingAfterLoading,
                         onDismiss: {
                             hasLaunchedBefore = true
                             showOnboarding = false
@@ -71,11 +73,13 @@ struct CraftifyApp: App {
             .onAppear {
                 dataManager.fetchRecipes(isManual: false)
                 if !hasLaunchedBefore {
+                    dismissOnboardingAfterLoading = true
                     showOnboarding = true
                 }
                 print("CraftifyApp: DataManager initialized, isLoading: \(dataManager.isLoading)")
             }
             .onReceive(NotificationCenter.default.publisher(for: .showOnboarding)) { _ in
+                dismissOnboardingAfterLoading = false
                 showOnboarding = true
             }
         }
