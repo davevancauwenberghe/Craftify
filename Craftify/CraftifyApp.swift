@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import Combine
 
 @main
 struct CraftifyApp: App {
@@ -63,7 +64,6 @@ struct CraftifyApp: App {
                     .zIndex(1)
                 }
             }
-            .id(accentColorPreference)
             .tint(Color.userAccentColor)
             .dynamicTypeSize(.xSmall ... .accessibility5)
             .accessibilityElement(children: .contain)
@@ -75,8 +75,15 @@ struct CraftifyApp: App {
                 }
                 print("CraftifyApp: DataManager initialized, isLoading: \(dataManager.isLoading)")
             }
+            .onReceive(NotificationCenter.default.publisher(for: .showOnboarding)) { _ in
+                showOnboarding = true
+            }
         }
     }
+}
+
+extension Notification.Name {
+    static let showOnboarding = Notification.Name("showOnboarding")
 }
 
 // Helper view for iOS 26 vibrancy effect

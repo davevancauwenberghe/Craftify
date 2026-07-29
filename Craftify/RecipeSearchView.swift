@@ -136,7 +136,7 @@ struct RecipeSearchView: View {
                                 .padding(.horizontal, 16)
                                 .padding(.top, 8)
                                 .padding(.bottom, 4)
-                                .background(Color(.systemBackground))
+                                .background(Color(.systemGroupedBackground))
                                 .id(accentColorPreference)
 
                                 RecentSearchesList(
@@ -252,7 +252,7 @@ struct RecipeSearchView: View {
                                             .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                                             .padding(.vertical, 8)
                                             .frame(maxWidth: .infinity, alignment: .leading)
-                                            .background(Color(.systemBackground))
+                                            .background(Color(.systemGroupedBackground))
                                     }
                                 }
                             }
@@ -260,6 +260,7 @@ struct RecipeSearchView: View {
                     }
                 }
                 .scrollContentBackground(.hidden)
+                .background(Color(.systemGroupedBackground))
                 .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             }
             .id(accentColorPreference)

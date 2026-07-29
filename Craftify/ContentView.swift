@@ -152,7 +152,7 @@ struct RecipesTabView: View {
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(.systemBackground))
+                    .background(Color(.systemGroupedBackground))
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Loading Recipes")
                     .accessibilityHint("Please wait while the recipes are being loaded")
@@ -343,7 +343,7 @@ struct RecipeListView: View {
                         CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded, accentColorPreference: accentColorPreference) {
                             withAnimation { isCraftifyPicksExpanded.toggle() }
                         }
-                        .background(Color(.systemBackground))
+                        .background(Color(.systemGroupedBackground))
                     }
                 }
 
@@ -389,7 +389,7 @@ struct RecipeListView: View {
                             .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
                             .padding(.vertical, paddingVertical)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(.systemBackground))
+                            .background(Color(.systemGroupedBackground))
                     }
                 }
             }
@@ -533,7 +533,7 @@ struct CraftifyPicksHeader: View {
         }
         .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
         .padding(.vertical, paddingVertical)
-        .background(Color(.systemBackground))
+        .background(Color(.systemGroupedBackground))
         .frame(height: horizontalSizeClass == .regular ? headerHeightRegular : headerHeightCompact)
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }
