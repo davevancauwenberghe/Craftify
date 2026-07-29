@@ -205,6 +205,7 @@ struct FavoritesView: View {
                     favoritesContent
                 }
             }
+            .background(Color(.systemGroupedBackground))
             .id(accentColorPreference)
             .navigationTitle("Favorite Recipes")
             .navigationBarTitleDisplayMode(.large)
@@ -419,7 +420,7 @@ struct FavoritesView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color(.systemGroupedBackground))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Loading Favorites")
         .accessibilityHint(

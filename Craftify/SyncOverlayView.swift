@@ -86,7 +86,7 @@ struct SyncOverlayView: View {
 
             Image(systemName: "icloud.fill")
                 .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(Color.userAccentColor, Color(.systemBackground))
+                .foregroundStyle(Color.userAccentColor, Color(.systemGroupedBackground))
                 .padding(7)
                 .background(.regularMaterial, in: Circle())
                 .offset(x: 35, y: 35)

@@ -58,9 +58,14 @@ struct ReleaseNotesView: View {
                             .font(.headline)
                             .foregroundColor(.secondary)) {
                     ForEach(note.changes, id: \.self) { change in
-                        Label(change, systemImage: "checkmark.circle.fill")
+                        Label {
+                            Text(change)
+                                .foregroundStyle(.primary)
+                        } icon: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Color.userAccentColor)
+                        }
                             .font(.body)
-                            .foregroundStyle(.primary)
                             .padding(.vertical, horizontalSizeClass == .regular ? listRowPaddingVertical * 1.5 : listRowPaddingVertical)
                             .accessibilityLabel(change)
                     }
@@ -70,7 +75,7 @@ struct ReleaseNotesView: View {
         .id(accentColorPreference)
         .listStyle(InsetGroupedListStyle())
         .scrollContentBackground(.hidden)
-        .background(Color(.systemBackground))
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("Release Notes")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)

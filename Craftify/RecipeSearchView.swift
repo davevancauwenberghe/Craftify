@@ -274,7 +274,7 @@ struct RecipeSearchView: View {
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(.systemBackground))
+                    .background(Color(.systemGroupedBackground))
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Loading Recipes")
                     .accessibilityHint("Please wait while the recipes are being loaded")
