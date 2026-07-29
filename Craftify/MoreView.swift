@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MoreView: View {
     @EnvironmentObject private var dataManager: DataManager
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @State private var cooldownTask: Task<Void, Never>?
     @State private var remainingCooldownTime = 0
@@ -65,21 +66,7 @@ struct MoreView: View {
                     .disabled(dataManager.isLoading || !dataManager.isConnected || remainingCooldownTime > 0)
                     .accessibilityHint(syncHint)
 
-                    HStack(spacing: 16) {
-                        syncStatusItem(
-                            dataManager.isConnected ? "Online" : "Offline",
-                            systemImage: dataManager.isConnected ? "wifi" : "wifi.slash",
-                            color: dataManager.isConnected ? .green : .red
-                        )
-                        syncStatusItem(
-                            "\(dataManager.recipes.count.formatted()) recipes",
-                            systemImage: "book.closed.fill"
-                        )
-                    }
-
-                    Text(syncDetail)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    syncStatus
                 } header: {
                     Text("Data Sync")
                 } footer: {
@@ -116,6 +103,46 @@ struct MoreView: View {
         if !dataManager.isConnected { return "Unavailable while offline" }
         if remainingCooldownTime > 0 { return "Available in \(remainingCooldownTime) seconds" }
         return "Fetch the latest Minecraft recipes"
+    }
+
+    @ViewBuilder
+    private var syncStatus: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 10) {
+                connectionStatus
+                recipeCountStatus
+                syncDetailText
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 16) {
+                    connectionStatus
+                    recipeCountStatus
+                }
+                syncDetailText
+            }
+        }
+    }
+
+    private var connectionStatus: some View {
+        syncStatusItem(
+            dataManager.isConnected ? "Online" : "Offline",
+            systemImage: dataManager.isConnected ? "wifi" : "wifi.slash",
+            color: dataManager.isConnected ? .green : .red
+        )
+    }
+
+    private var recipeCountStatus: some View {
+        syncStatusItem(
+            "\(dataManager.recipes.count.formatted()) recipes",
+            systemImage: "book.closed.fill"
+        )
+    }
+
+    private var syncDetailText: some View {
+        Text(syncDetail)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
     }
 
     private var errorBinding: Binding<Bool> {
