@@ -31,29 +31,40 @@ struct MoreView: View {
                 }
 
                 Section {
+                    destination("About Craftify", systemImage: "info.circle.fill", hint: "View app information, appearance, release notes, support, and privacy") {
+                        AboutView()
+                    }
                     destination("App Appearance", systemImage: "paintpalette.fill", hint: "Choose the app icon, color, and appearance") {
                         AppAppearanceView()
                     }
                     Button {
                         NotificationCenter.default.post(name: .showOnboarding, object: nil)
                     } label: {
-                        Label {
-                            Text("Getting Started")
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "lightbulb.fill")
-                                .foregroundStyle(Color.userAccentColor)
-                        }
+                        accentLabel("Getting Started", systemImage: "lightbulb.fill")
                     }
                     .accessibilityHint("Revisit Craftify's introductory tips")
-                    destination("About Craftify", systemImage: "info.circle.fill", hint: "View app information, appearance, release notes, support, and privacy") {
-                        AboutView()
-                    }
                 } header: {
                     Text("Craftify")
                 }
 
                 Section {
+                    Button(action: syncRecipes) {
+                        Label {
+                            Text(dataManager.isLoading ? "Syncing Recipes…" : "Sync Recipes")
+                                .foregroundStyle(.primary)
+                        } icon: {
+                            if dataManager.isLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                    .foregroundStyle(Color.userAccentColor)
+                            }
+                        }
+                    }
+                    .disabled(dataManager.isLoading || !dataManager.isConnected || remainingCooldownTime > 0)
+                    .accessibilityHint(syncHint)
+
                     HStack(spacing: 16) {
                         syncStatusItem(
                             dataManager.isConnected ? "Online" : "Offline",
@@ -64,30 +75,11 @@ struct MoreView: View {
                             "\(dataManager.recipes.count.formatted()) recipes",
                             systemImage: "book.closed.fill"
                         )
-                        Spacer(minLength: 0)
-                        Text(syncDetail)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
                     }
 
-                    Button(action: syncRecipes) {
-                        Label {
-                            Text(dataManager.isLoading ? "Checking for Updates…" : "Check for Recipe Updates")
-                        } icon: {
-                            if dataManager.isLoading {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else {
-                                Image(systemName: "arrow.clockwise")
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color.userAccentColor)
-                    .disabled(dataManager.isLoading || !dataManager.isConnected || remainingCooldownTime > 0)
-                    .accessibilityHint(syncHint)
+                    Text(syncDetail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 } header: {
                     Text("Data Sync")
                 } footer: {
@@ -147,15 +139,19 @@ struct MoreView: View {
         @ViewBuilder destination: () -> Destination
     ) -> some View {
         NavigationLink(destination: destination()) {
-            Label {
-                Text(title)
-                    .foregroundStyle(.primary)
-            } icon: {
-                Image(systemName: systemImage)
-                    .foregroundStyle(Color.userAccentColor)
-            }
+            accentLabel(title, systemImage: systemImage)
         }
         .accessibilityHint(hint)
+    }
+
+    private func accentLabel(_ title: String, systemImage: String) -> some View {
+        Label {
+            Text(title)
+                .foregroundStyle(.primary)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(Color.userAccentColor)
+        }
     }
 
     private func syncRecipes() {
