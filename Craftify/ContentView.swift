@@ -382,6 +382,7 @@ struct RecipeListView: View {
                 .scrollContentBackground(.hidden)
             }
         }
+        }
         .id(accentColorPreference)
         .background(Color(.systemGroupedBackground))
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }

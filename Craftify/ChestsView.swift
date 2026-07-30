@@ -108,7 +108,7 @@ struct ChestsView: View {
 
     private func deletePendingChest() {
         guard let chest = chestPendingDeletion,
-              let index = dataManager.chests.firstIndex(of: chest) else { return }
+              let index = dataManager.chests.firstIndex(where: { $0.id == chest.id }) else { return }
         dataManager.deleteChests(at: IndexSet(integer: index))
         chestPendingDeletion = nil
         HapticFeedback.notification(.success)
