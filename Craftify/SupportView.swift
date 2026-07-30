@@ -183,14 +183,14 @@ struct PrivacyPolicyContent: View {
                 .minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
 
-            Text("Last updated: 20 May 2025")
+            Text("Last updated: 30 July 2026")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .minimumScaleFactor(0.6)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Craftify for Minecraft (\"Craftify\") is developed by Dave Van Cauwenberghe, an individual developer. This Privacy Policy explains how Craftify handles your data. We are committed to protecting your privacy and do not collect any personal information.")
+                    Text("Craftify for Minecraft (\"Craftify\") is developed by Dave Van Cauwenberghe, an individual developer. This Privacy Policy explains how Craftify handles your data. Craftify does not ask you for identity or account details. You choose chest names, so avoid including personal information in them.")
                         .font(.body)
                         .minimumScaleFactor(0.6)
 
@@ -201,12 +201,12 @@ struct PrivacyPolicyContent: View {
                             .minimumScaleFactor(0.6)
                             .accessibilityAddTraits(.isHeader)
 
-                        Text("Craftify collects minimal data to provide its features, none of which identifies you:")
+                        Text("Craftify stores the minimum data needed to provide its features:")
                             .font(.body)
                             .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("• Favorites: Recipe IDs when you mark a recipe as a favorite, stored in iCloud to sync across your devices.")
+                            Text("• Chests: Names you enter, chest sizes and ordering, and stored recipe IDs are saved in iCloud to sync your chest room across your devices.")
                             Text("• Recent Searches: Recipe names when you search for recipes, stored in iCloud to sync across your devices.")
                             Text("• Recipe Reports (Optional): When you report an issue, you may submit a recipe name, category, and description. These are stored in a private CloudKit database (accessible only to you) for the \"My Reports\" feature, allowing you to view and manage your reports across devices.")
                             Text("• Local Recipe Cache: Recipes are cached on your device for offline access but contain no personal data.")
@@ -227,8 +227,8 @@ struct PrivacyPolicyContent: View {
                             .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("• Support the Favorites and Recent Searches features by storing data in iCloud.")
-                            Text("• Sync Favorites, Recent Searches, and Recipe Reports across your devices using CloudKit.")
+                            Text("• Support Chests and Recent Searches by storing their data in iCloud.")
+                            Text("• Sync Chests, Recent Searches, and Recipe Reports across your devices using iCloud and CloudKit.")
                             Text("• Store Recipe Reports in CloudKit to improve Craftify’s recipe database.")
                             Text("• Let you view and manage your reports in the \"My Reports\" section using CloudKit sync.")
                         }
@@ -248,7 +248,7 @@ struct PrivacyPolicyContent: View {
                             .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("• Favorites and Recent Searches: Stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
+                            Text("• Chests and Recent Searches: Chest names, sizes, ordering, recipe IDs, and recent recipe names are stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
                             Text("• Recipe Reports: Stored privately in a CloudKit database (accessible only to you via your iCloud account) for the \"My Reports\" feature.")
                             Text("• Local Recipe Cache: Stored on your device with no personal information.")
                         }
@@ -375,7 +375,7 @@ struct PrivacyPolicyContent: View {
             .frame(maxHeight: 300)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Privacy Policy for Craftify")
-            .accessibilityValue("Last updated 20 May 2025. Craftify does not collect personal information. Data includes Favorites, Recent Searches, and Recipe Reports stored in iCloud and CloudKit for syncing. Network connectivity is monitored locally to manage syncing, not shared. Data is used for app features, with no third-party sharing. Anonymized CloudKit metadata is used for performance. You can clear all data. Craftify is safe for kids under 13, complying with COPPA and GDPR.")
+            .accessibilityValue("Last updated 30 July 2026. Craftify does not ask for identity or account details. Data includes user-entered chest names, sizes, ordering and recipe IDs, Recent Searches, and Recipe Reports stored in iCloud and CloudKit for syncing. Network connectivity is monitored locally to manage syncing, not shared. Data is used for app features, with no third-party sharing. Anonymized CloudKit metadata is used for performance. You can clear all data. Craftify is safe for kids under 13, complying with COPPA and GDPR.")
         }
         .padding(.vertical, 8)
         .dynamicTypeSize(.xSmall ... .accessibility5)
