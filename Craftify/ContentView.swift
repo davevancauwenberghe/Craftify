@@ -178,7 +178,7 @@ struct CategoryView: View {
     let accentColorPreference: String
     @State private var selectedCategory: String? = nil
     @State private var recommendedRecipes: [Recipe] = []
-    @State private var isCraftifyPicksExpanded: Bool = true
+    @AppStorage("isCraftifyPicksExpanded") private var isCraftifyPicksExpanded: Bool = true
     @State private var filteredRecipes: [String: [Recipe]] = [:]
 
     private func updateFilteredRecipes() {
@@ -218,11 +218,11 @@ struct CategoryView: View {
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
-            recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
+            recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(7))
             updateFilteredRecipes()
         }
         .onChange(of: dataManager.recipes) { _, _ in
-            recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(5))
+            recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(7))
             updateFilteredRecipes()
         }
         .onChange(of: selectedCategory) { _, _ in
@@ -294,6 +294,7 @@ struct RecipeListView: View {
     let horizontalSizeClass: UserInterfaceSizeClass?
     let accentColorPreference: String
     @ScaledMetric(relativeTo: .body) private var gridSpacing: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var picksSpacing: CGFloat = 8
     @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
     @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
 
@@ -304,7 +305,7 @@ struct RecipeListView: View {
                     Section {
                         if isCraftifyPicksExpanded {
                             ScrollView(.horizontal, showsIndicators: false) {
-                                LazyHStack(spacing: gridSpacing) {
+                                LazyHStack(spacing: picksSpacing) {
                                     ForEach(recommendedRecipes, id: \.name) { recipe in
                                         NavigationLink {
                                             RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)

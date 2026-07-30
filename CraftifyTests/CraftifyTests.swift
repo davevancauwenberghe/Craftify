@@ -90,6 +90,38 @@ struct CraftifyTests {
         #expect(store.array(forKey: "favoriteRecipes")?.isEmpty == true)
         #expect(store.object(forKey: "recipeChests.v1") == nil)
     }
+
+    @MainActor
+    @Test func recentSearchHistorySynchronizesThroughUbiquitousStore() {
+        let store = InMemoryKeyValueStore()
+        let firstDevice = DataManager(keyValueStore: store)
+        let secondDevice = DataManager(keyValueStore: store)
+        let recipe = Recipe(
+            id: 1,
+            name: "Crafting Table",
+            image: "Crafting Table",
+            ingredients: ["Oak Planks"],
+            alternateIngredients: nil,
+            alternateIngredients1: nil,
+            alternateIngredients2: nil,
+            alternateIngredients3: nil,
+            output: 1,
+            alternateOutput: nil,
+            alternateOutput1: nil,
+            alternateOutput2: nil,
+            alternateOutput3: nil,
+            category: "Utility",
+            imageremark: nil,
+            remarks: nil
+        )
+        firstDevice.recipes = [recipe]
+        secondDevice.recipes = [recipe]
+
+        firstDevice.saveRecentSearch(recipe)
+        secondDevice.syncRecentSearches()
+
+        #expect(secondDevice.recentSearchNames == [recipe.name])
+    }
 }
 
 extension CraftifyTests {
