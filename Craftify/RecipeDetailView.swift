@@ -26,6 +26,7 @@ struct RecipeDetailView: View {
     @State private var selectedDetail: String?
     @State private var selectedItem: SelectedItem?
     @State private var animateHeart: Bool = false
+    @State private var showingChestPicker = false
     @State private var selectedCraftingOption: Int = 0
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
     @State private var ingredientSets: [[String]] = []
@@ -70,24 +71,20 @@ struct RecipeDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    feedbackGenerator.impactOccurred()
-                    feedbackGenerator.prepare()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                        animateHeart = true
-                    }
-                    dataManager.toggleFavorite(recipe: recipe)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        withAnimation { animateHeart = false }
-                    }
+                    HapticFeedback.impact()
+                    showingChestPicker = true
                 } label: {
-                    Image(systemName: dataManager.isFavorite(recipe: recipe) ? "heart.fill" : "heart")
+                    Image(systemName: "plus")
                         .foregroundColor(Color.userAccentColor)
                         .font(.title2)
-                        .scaleEffect(animateHeart ? 1.3 : 1.0)
                 }
-                .accessibilityLabel(dataManager.isFavorite(recipe: recipe) ? "Remove from favorites" : "Add to favorites")
-                .accessibilityHint("Toggles favorite status")
+                .accessibilityLabel("Add recipe to chest")
+                .accessibilityHint("Opens your chests")
             }
+        }
+        .sheet(isPresented: $showingChestPicker) {
+            AddRecipeToChestView(recipe: recipe)
+                .environmentObject(dataManager)
         }
         .onAppear {
             feedbackGenerator.prepare()
@@ -96,7 +93,7 @@ struct RecipeDetailView: View {
         }
         .onChange(of: dataManager.isLoading) { _, newValue in
             if !newValue && dataManager.isManualSyncing {
-                dataManager.syncFavorites()
+                dataManager.syncChests()
             }
         }
         .dynamicTypeSize(.xSmall ... .accessibility5)
@@ -143,6 +140,67 @@ struct RecipeDetailView: View {
             outputs.append(recipe.alternateOutput3 ?? recipe.output)
         }
         return outputs
+    }
+}
+
+private struct AddRecipeToChestView: View {
+    @EnvironmentObject private var dataManager: DataManager
+    @Environment(\.dismiss) private var dismiss
+    let recipe: Recipe
+    @State private var creatingChest = false
+    @State private var message: String?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button {
+                        creatingChest = true
+                    } label: {
+                        Label("Create New Chest", systemImage: "plus.rectangle.on.folder")
+                            .fontWeight(.semibold)
+                    }
+                }
+                if !dataManager.chests.isEmpty {
+                    Section("Choose a chest") {
+                        ForEach(dataManager.chests) { chest in
+                            Button {
+                                if dataManager.add(recipe, to: chest) {
+                                    HapticFeedback.notification(.success)
+                                    dismiss()
+                                } else {
+                                    HapticFeedback.notification(.warning)
+                                    message = chest.recipeIDs.contains(recipe.id)
+                                        ? "This recipe is already in \(chest.name)."
+                                        : "\(chest.name) is full."
+                                }
+                            } label: {
+                                HStack {
+                                    Label(chest.name, systemImage: "shippingbox")
+                                    Spacer()
+                                    Text("\(chest.recipeIDs.count)/\(chest.size.rawValue)")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .disabled(chest.recipeIDs.count >= chest.size.rawValue || chest.recipeIDs.contains(recipe.id))
+                            .accessibilityHint(chest.recipeIDs.contains(recipe.id) ? "Recipe already stored here" : "Adds recipe to this chest")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Store \(recipe.name)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .sheet(isPresented: $creatingChest) {
+                ChestEditorView(context: .new, recipeToAdd: recipe)
+                    .environmentObject(dataManager)
+                    .presentationDetents([.medium])
+            }
+            .alert("Couldn’t Add Recipe", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+                Button("OK", role: .cancel) { message = nil }
+            } message: { Text(message ?? "Please try another chest.") }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 

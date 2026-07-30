@@ -241,7 +241,7 @@ struct AboutView: View {
                     Text(appVersion)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("A focused companion for finding Minecraft recipes and keeping your favorites close at hand.")
+                    Text("A focused companion for finding Minecraft recipes and organizing recipes in synced chests.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                 }

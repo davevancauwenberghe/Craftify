@@ -23,7 +23,7 @@ struct RecipeSearchView: View {
 
     enum SearchFilter: String, CaseIterable {
         case all = "All recipes"
-        case favorites = "Favorite Recipes"
+        case chests = "In Chests"
     }
 
     // Computed property to get recent search recipes, filtered by searchFilter
@@ -38,7 +38,7 @@ struct RecipeSearchView: View {
             }
         }
         // Apply filter to recent searches, limit set to 10
-        return Array((searchFilter == .all ? recipes : recipes.filter { recipe in dataManager.favorites.contains { $0.id == recipe.id } }).prefix(10))
+        return Array((searchFilter == .all ? recipes : recipes.filter { recipe in dataManager.chests.contains { $0.recipeIDs.contains(recipe.id) } }).prefix(10))
     }
 
     // Save a new recent search using DataManager
@@ -52,8 +52,8 @@ struct RecipeSearchView: View {
     }
 
     private func updateFilteredRecipes() {
-        // Start with either all recipes or favorited recipes based on the filter
-        let baseRecipes = searchFilter == .all ? dataManager.recipes : dataManager.favorites
+        // Start with either all recipes or recipes stored in chests based on the filter
+        let baseRecipes = searchFilter == .all ? dataManager.recipes : dataManager.recipes.filter { recipe in dataManager.chests.contains { $0.recipeIDs.contains(recipe.id) } }
 
         let filtered = searchText.isEmpty ? baseRecipes :
             baseRecipes.filter { recipe in
@@ -109,7 +109,7 @@ struct RecipeSearchView: View {
                                         .foregroundColor(.primary)
 
                                     // Add filter indicator
-                                    Text(searchFilter == .all ? "All" : "Favorites")
+                                    Text(searchFilter == .all ? "All" : "Chests")
                                         .font(.caption)
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)
@@ -147,8 +147,8 @@ struct RecipeSearchView: View {
                             }
                             .padding(.vertical, 16)
                             .accessibilityElement(children: .combine)
-                            .accessibilityLabel("Recent Searches, filtered by \(searchFilter == .all ? "All recipes" : "Favorite recipes")")
-                            .accessibilityHint("Shows the last 10 recipes you searched for, filtered by \(searchFilter == .all ? "all recipes" : "favorite recipes")")
+                            .accessibilityLabel("Recent Searches, filtered by \(searchFilter == .all ? "All recipes" : "Recipes in chests")")
+                            .accessibilityHint("Shows the last 10 recipes you searched for, filtered by \(searchFilter == .all ? "all recipes" : "recipes in chests")")
                         }
                     } else {
                         // Search filter picker (always visible when search is active)
@@ -161,7 +161,7 @@ struct RecipeSearchView: View {
                         .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
                         .padding(.vertical, 8)
                         .accessibilityLabel("Search Filter")
-                        .accessibilityHint("Choose to search all recipes or only favorite recipes")
+                        .accessibilityHint("Choose to search all recipes or only recipes in chests")
                         .onChange(of: searchFilter) { _, _ in
                             updateFilteredRecipes()
                             HapticFeedback.impact()
@@ -187,17 +187,17 @@ struct RecipeSearchView: View {
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("Start Searching")
                             .accessibilityHint("Enter a name, category, or ingredient to find recipes")
-                        } else if searchFilter == .favorites && dataManager.favorites.isEmpty {
-                            // Empty state when no favorite recipes exist and filter is set to favorites
+                        } else if searchFilter == .chests && dataManager.chests.isEmpty {
+                            // Empty state when no stored recipes exist and the chest filter is selected
                             VStack(spacing: 16) {
-                                Image(systemName: "heart.fill")
+                                Image(systemName: "shippingbox.fill")
                                     .font(.system(size: 48))
                                     .foregroundColor(Color.userAccentColor.opacity(0.8))
-                                Text("No Favorite Recipes")
+                                Text("No Recipes in Chests")
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
-                                Text("You haven't favorited any recipes yet.\nAdd some favorites or switch to All recipes.")
+                                Text("You haven't stored any recipes yet.\nAdd recipes to a chest or switch to All recipes.")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
@@ -205,8 +205,8 @@ struct RecipeSearchView: View {
                             }
                             .padding(.vertical, 32)
                             .accessibilityElement(children: .combine)
-                            .accessibilityLabel("No Favorite Recipes")
-                            .accessibilityHint("You haven't favorited any recipes yet. Add some favorites or switch to All recipes.")
+                            .accessibilityLabel("No Recipes in Chests")
+                            .accessibilityHint("You haven't stored any recipes yet. Add recipes to a chest or switch to All recipes.")
                         } else if !searchText.isEmpty && filteredRecipes.isEmpty {
                             // Empty state when no recipes are found after searching
                             VStack(spacing: 16) {
@@ -217,7 +217,7 @@ struct RecipeSearchView: View {
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
-                                Text("Try adjusting your search term\(searchFilter == .favorites ? " or switch to All recipes" : "").")
+                                Text("Try adjusting your search term\(searchFilter == .chests ? " or switch to All recipes" : "").")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
@@ -226,7 +226,7 @@ struct RecipeSearchView: View {
                             .padding(.vertical, 32)
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("No recipes found")
-                            .accessibilityHint("No recipes match your search term. Try adjusting your search\(searchFilter == .favorites ? " or switch to All recipes" : "").")
+                            .accessibilityHint("No recipes match your search term. Try adjusting your search\(searchFilter == .chests ? " or switch to All recipes" : "").")
                         } else {
                             // Search results
                             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
@@ -307,8 +307,8 @@ struct RecipeSearchView: View {
                 }
             }
             .onAppear {
-                // Sync favorites, recent searches, and fetch recipes
-                dataManager.syncFavorites()
+                // Sync chests, recent searches, and fetch recipes
+                dataManager.syncChests()
                 dataManager.syncRecentSearches()
                 dataManager.fetchRecipes(isManual: false)
                 updateFilteredRecipes()
