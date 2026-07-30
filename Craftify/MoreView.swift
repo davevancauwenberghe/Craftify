@@ -92,7 +92,6 @@ struct MoreView: View {
                 Text(dataManager.errorMessage ?? "Please try again.")
             }
             .onAppear {
-                dataManager.syncFavorites()
                 dataManager.syncRecentSearches()
             }
             .onDisappear { stopCooldown() }

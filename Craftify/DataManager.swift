@@ -14,7 +14,6 @@ import Network
 @MainActor
 final class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []
-    @Published var favorites: [Recipe] = []
     @Published private(set) var chests: [RecipeChest] = []
     @Published var recentSearchNames: [String] = []
     @Published var selectedCategory: String? = nil
@@ -101,7 +100,6 @@ final class DataManager: ObservableObject {
         if let localRecipes = loadRecipesFromLocalCache() {
             print("Loaded \(localRecipes.count) recipes from local cache.")
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
-            self.syncFavorites()
             self.syncRecentSearches()
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
@@ -120,7 +118,6 @@ final class DataManager: ObservableObject {
         Task { @MainActor [weak self] in
             guard let self else { return }
             NSUbiquitousKeyValueStore.default.synchronize()
-            syncFavorites()
             syncChests()
             syncRecentSearches()
         }
@@ -145,39 +142,13 @@ final class DataManager: ObservableObject {
         }
     }
 
-    func isFavorite(recipe: Recipe) -> Bool {
-        return favorites.contains { $0.id == recipe.id }
-    }
-
-    func toggleFavorite(recipe: Recipe) {
-        if let index = favorites.firstIndex(where: { $0.id == recipe.id }) {
-            favorites.remove(at: index)
-        } else {
-            favorites.append(recipe)
-        }
-        saveFavorites()
-    }
-
-    func saveFavorites() {
-        let favoriteIDs = favorites.map { $0.id }
-        NSUbiquitousKeyValueStore.default.set(favoriteIDs, forKey: iCloudFavoritesKey)
-        NSUbiquitousKeyValueStore.default.synchronize()
-    }
-
-    func syncFavorites() {
-        if let savedIDs = NSUbiquitousKeyValueStore.default.array(forKey: iCloudFavoritesKey) as? [Int] {
-            favorites = recipes.filter { savedIDs.contains($0.id) }
-        }
-    }
-
-    func clearFavorites() {
-        favorites = []
+    func clearChestsAndLegacyFavorites() {
         chests = []
         let store = NSUbiquitousKeyValueStore.default
-        store.set(favorites.map { $0.id }, forKey: iCloudFavoritesKey)
+        store.removeObject(forKey: iCloudFavoritesKey)
         store.removeObject(forKey: iCloudChestsKey)
         store.synchronize()
-        print("Cleared saved recipes and chests")
+        print("Cleared chests and legacy favorites")
     }
 
     func createChest(name: String, size: RecipeChest.Size, adding recipe: Recipe? = nil) {
@@ -242,23 +213,6 @@ final class DataManager: ObservableObject {
         if let data = store.data(forKey: iCloudChestsKey),
            let decoded = try? JSONDecoder().decode([RecipeChest].self, from: data) {
             chests = decoded
-        } else if chests.isEmpty,
-                  let favoriteIDs = store.array(forKey: iCloudFavoritesKey) as? [Int],
-                  !favoriteIDs.isEmpty {
-            chests = Self.importedFavoriteChests(from: favoriteIDs)
-            saveChests()
-        }
-    }
-
-    static func importedFavoriteChests(from favoriteIDs: [Int]) -> [RecipeChest] {
-        let chunks = stride(from: 0, to: favoriteIDs.count, by: RecipeChest.Size.large.rawValue).map { start in
-            Array(favoriteIDs[start..<min(start + RecipeChest.Size.large.rawValue, favoriteIDs.count)])
-        }
-
-        return chunks.enumerated().map { index, recipeIDs in
-            let name = chunks.count == 1 ? "Imported Favorites" : "Imported Favorites \(index + 1)"
-            let size: RecipeChest.Size = recipeIDs.count > RecipeChest.Size.small.rawValue ? .large : .small
-            return RecipeChest(name: name, size: size, recipeIDs: recipeIDs)
         }
     }
 
@@ -298,7 +252,6 @@ final class DataManager: ObservableObject {
         // which is not guaranteed to be the main queue. Hop to the main actor
         // before reading iCloud values or updating observable state.
         Task { @MainActor [weak self] in
-            self?.syncFavorites()
             self?.syncChests()
             self?.syncRecentSearches()
         }
@@ -348,7 +301,6 @@ final class DataManager: ObservableObject {
                 let records = try await fetchAllRecords(matching: query, from: database)
                 let fetchedRecipes = records.compactMap(convertRecordToRecipe)
                 recipes = fetchedRecipes.sorted { $0.name < $1.name }
-                syncFavorites()
                 syncRecentSearches()
                 saveRecipesToLocalCache(fetchedRecipes)
                 lastUpdated = Date()
@@ -576,7 +528,7 @@ final class DataManager: ObservableObject {
 
     func clearAllData(completion: @escaping (Bool) -> Void) {
         clearCache { cacheSuccess in
-            self.clearFavorites()
+            self.clearChestsAndLegacyFavorites()
             self.clearRecentSearches()
 
             if cacheSuccess {

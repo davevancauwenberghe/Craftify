@@ -50,6 +50,20 @@ struct CraftifyTests {
         // Clean up
         userDefaults.removePersistentDomain(forName: "testCraftify")
     }
+
+    @MainActor
+    @Test func clearingSavedRecipesRemovesChestsAndLegacyFavorites() {
+        let dataManager = DataManager()
+        let store = NSUbiquitousKeyValueStore.default
+        store.set([1, 2, 3], forKey: "favoriteRecipes")
+        dataManager.createChest(name: "Test Chest", size: .small)
+
+        dataManager.clearChestsAndLegacyFavorites()
+
+        #expect(dataManager.chests.isEmpty)
+        #expect(store.object(forKey: "favoriteRecipes") == nil)
+        #expect(store.object(forKey: "recipeChests.v1") == nil)
+    }
 }
 
 extension CraftifyTests {
@@ -64,17 +78,5 @@ extension CraftifyTests {
         let encoded = try JSONEncoder().encode(chest)
         let decoded = try JSONDecoder().decode(RecipeChest.self, from: encoded)
         #expect(decoded == chest)
-    }
-
-    @MainActor
-    @Test func favoriteMigrationPreservesEveryRecipeID() {
-        let favoriteIDs = Array(1...130)
-        let chests = DataManager.importedFavoriteChests(from: favoriteIDs)
-
-        #expect(chests.count == 3)
-        #expect(chests.flatMap(\.recipeIDs) == favoriteIDs)
-        #expect(chests.map(\.recipeIDs.count) == [54, 54, 22])
-        #expect(chests.map(\.size) == [.large, .large, .small])
-        #expect(chests.map(\.name) == ["Imported Favorites 1", "Imported Favorites 2", "Imported Favorites 3"])
     }
 }
