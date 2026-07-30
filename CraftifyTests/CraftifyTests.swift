@@ -9,6 +9,32 @@ import Testing
 @testable import Craftify
 import SwiftUI
 
+private final class InMemoryKeyValueStore: KeyValueStore {
+    private var values: [String: Any] = [:]
+
+    func set(_ value: Any?, forKey defaultName: String) {
+        values[defaultName] = value
+    }
+
+    func removeObject(forKey defaultName: String) {
+        values.removeValue(forKey: defaultName)
+    }
+
+    func object(forKey defaultName: String) -> Any? {
+        values[defaultName]
+    }
+
+    func data(forKey defaultName: String) -> Data? {
+        values[defaultName] as? Data
+    }
+
+    func array(forKey defaultName: String) -> [Any]? {
+        values[defaultName] as? [Any]
+    }
+
+    func synchronize() -> Bool { true }
+}
+
 struct CraftifyTests {
     @MainActor
     @Test func testBackgroundICloudNotificationDoesNotViolateMainActorIsolation() async {
@@ -53,15 +79,15 @@ struct CraftifyTests {
 
     @MainActor
     @Test func clearingSavedRecipesRemovesChestsAndLegacyFavorites() {
-        let dataManager = DataManager()
-        let store = NSUbiquitousKeyValueStore.default
+        let store = InMemoryKeyValueStore()
+        let dataManager = DataManager(keyValueStore: store)
         store.set([1, 2, 3], forKey: "favoriteRecipes")
         dataManager.createChest(name: "Test Chest", size: .small)
 
         dataManager.clearChestsAndLegacyFavorites()
 
         #expect(dataManager.chests.isEmpty)
-        #expect(store.object(forKey: "favoriteRecipes") == nil)
+        #expect(store.array(forKey: "favoriteRecipes")?.isEmpty == true)
         #expect(store.object(forKey: "recipeChests.v1") == nil)
     }
 }
