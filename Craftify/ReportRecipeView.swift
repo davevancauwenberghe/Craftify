@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ReportRecipeView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
     @State private var viewMode: ViewMode = .submitReport
@@ -76,8 +75,6 @@ struct ReportRecipeView: View {
     }
 
     private var isSubmissionOnCooldown: Bool { remainingSubmissionCooldown > 0 }
-    private var contentWidth: CGFloat? { horizontalSizeClass == .regular ? 720 : nil }
-
     var body: some View {
         ZStack {
             Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
@@ -106,7 +103,7 @@ struct ReportRecipeView: View {
                             isLoadingReports: isLoadingReports,
                             isConnected: dataManager.isConnected,
                             errorMessage: dataManager.errorMessage,
-                            onRefresh: fetchReportStatuses,
+                            onRefresh: { fetchReportStatuses(forceRefresh: true) },
                             onDelete: {
                                 reportToDelete = $0
                                 showDeleteConfirmation = true
@@ -114,9 +111,8 @@ struct ReportRecipeView: View {
                         )
                     }
                 }
-                .frame(maxWidth: contentWidth)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
+                .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 32)
             }
@@ -282,10 +278,13 @@ struct ReportRecipeView: View {
         submissionState = .idle
     }
 
-    private func fetchReportStatuses() {
+    private func fetchReportStatuses(forceRefresh: Bool = false) {
         guard dataManager.isConnected else {
             isLoadingReports = false
             return
+        }
+        if forceRefresh {
+            dataManager.lastReportStatusFetchTime = nil
         }
         isLoadingReports = true
         dataManager.fetchRecipeReports { result in
