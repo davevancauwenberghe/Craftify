@@ -92,14 +92,18 @@ struct RecipeChest: Codable, Identifiable, Equatable, Hashable {
     let id: UUID
     var name: String
     var size: Size
+    var symbol: String?
     var recipeIDs: [Int]
 
-    init(id: UUID = UUID(), name: String, size: Size, recipeIDs: [Int] = []) {
+    init(id: UUID = UUID(), name: String, size: Size, symbol: String? = nil, recipeIDs: [Int] = []) {
         self.id = id
         self.name = name
         self.size = size
+        self.symbol = symbol
         self.recipeIDs = Array(recipeIDs.prefix(size.rawValue))
     }
+
+    var displaySymbol: String { symbol ?? (size == .large ? "shippingbox.fill" : "shippingbox") }
 }
 
 struct RecipeReport: Identifiable, Codable {
