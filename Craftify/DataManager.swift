@@ -11,6 +11,17 @@ import Combine
 import UIKit
 import Network
 
+protocol KeyValueStore: AnyObject {
+    func set(_ value: Any?, forKey defaultName: String)
+    func removeObject(forKey defaultName: String)
+    func object(forKey defaultName: String) -> Any?
+    func data(forKey defaultName: String) -> Data?
+    func array(forKey defaultName: String) -> [Any]?
+    @discardableResult func synchronize() -> Bool
+}
+
+extension NSUbiquitousKeyValueStore: KeyValueStore {}
+
 @MainActor
 final class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []
@@ -37,6 +48,7 @@ final class DataManager: ObservableObject {
     private let recipeFetchInterval: TimeInterval = 30
     private let networkMonitor = NWPathMonitor()
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
+    private let keyValueStore: any KeyValueStore
 
     enum ErrorType: String {
         case network = "Network issue, please try again later."
@@ -47,8 +59,9 @@ final class DataManager: ObservableObject {
         case unknown = "An unexpected error occurred. Please try again later."
     }
 
-    init() {
-        NSUbiquitousKeyValueStore.default.synchronize()
+    init(keyValueStore: any KeyValueStore = NSUbiquitousKeyValueStore.default) {
+        self.keyValueStore = keyValueStore
+        keyValueStore.synchronize()
 
         networkMonitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor in
@@ -65,7 +78,7 @@ final class DataManager: ObservableObject {
             self,
             selector: #selector(icloudDidChange),
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: NSUbiquitousKeyValueStore.default
+            object: keyValueStore
         )
 
         NotificationCenter.default.addObserver(
@@ -117,7 +130,7 @@ final class DataManager: ObservableObject {
     @objc nonisolated private func appWillEnterForeground() {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            NSUbiquitousKeyValueStore.default.synchronize()
+            keyValueStore.synchronize()
             syncChests()
             syncRecentSearches()
         }
@@ -144,10 +157,11 @@ final class DataManager: ObservableObject {
 
     func clearChestsAndLegacyFavorites() {
         chests = []
-        let store = NSUbiquitousKeyValueStore.default
-        store.removeObject(forKey: iCloudFavoritesKey)
-        store.removeObject(forKey: iCloudChestsKey)
-        store.synchronize()
+        // Preserve an explicit empty value so older clients observe the clear and
+        // cannot upload favorites they still hold in memory.
+        keyValueStore.set([Int](), forKey: iCloudFavoritesKey)
+        keyValueStore.removeObject(forKey: iCloudChestsKey)
+        keyValueStore.synchronize()
         print("Cleared chests and legacy favorites")
     }
 
@@ -209,8 +223,7 @@ final class DataManager: ObservableObject {
     }
 
     func syncChests() {
-        let store = NSUbiquitousKeyValueStore.default
-        if let data = store.data(forKey: iCloudChestsKey),
+        if let data = keyValueStore.data(forKey: iCloudChestsKey),
            let decoded = try? JSONDecoder().decode([RecipeChest].self, from: data) {
             chests = decoded
         }
@@ -218,8 +231,8 @@ final class DataManager: ObservableObject {
 
     private func saveChests() {
         guard let data = try? JSONEncoder().encode(chests) else { return }
-        NSUbiquitousKeyValueStore.default.set(data, forKey: iCloudChestsKey)
-        NSUbiquitousKeyValueStore.default.synchronize()
+        keyValueStore.set(data, forKey: iCloudChestsKey)
+        keyValueStore.synchronize()
     }
 
     func saveRecentSearch(_ recipe: Recipe) {
@@ -228,19 +241,19 @@ final class DataManager: ObservableObject {
         recentSearchNames = Array(recentSearchNames.prefix(10))
         print("Updated recent search names: \(recentSearchNames)")
 
-        NSUbiquitousKeyValueStore.default.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
-        NSUbiquitousKeyValueStore.default.synchronize()
+        keyValueStore.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
+        keyValueStore.synchronize()
     }
 
     func clearRecentSearches() {
         recentSearchNames = []
-        NSUbiquitousKeyValueStore.default.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
-        NSUbiquitousKeyValueStore.default.synchronize()
+        keyValueStore.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
+        keyValueStore.synchronize()
         print("Cleared recent search names: \(recentSearchNames)")
     }
 
     func syncRecentSearches() {
-        if let savedNames = NSUbiquitousKeyValueStore.default.array(forKey: iCloudRecentSearchesKey) as? [String] {
+        if let savedNames = keyValueStore.array(forKey: iCloudRecentSearchesKey) as? [String] {
             recentSearchNames = Array(savedNames.prefix(10)).filter { name in
                 recipes.contains { $0.name == name }
             }
