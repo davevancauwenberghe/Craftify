@@ -187,13 +187,24 @@ final class DataManager: ObservableObject {
         saveChests()
     }
 
-    func updateChest(_ chest: RecipeChest, name: String, size: RecipeChest.Size) {
-        guard let index = chests.firstIndex(where: { $0.id == chest.id }) else { return }
+    @discardableResult
+    func updateChest(
+        _ chest: RecipeChest,
+        name: String,
+        size: RecipeChest.Size,
+        removingOverflow: Bool = false
+    ) -> Bool {
+        guard let index = chests.firstIndex(where: { $0.id == chest.id }) else { return false }
+        let overflowCount = max(0, chests[index].recipeIDs.count - size.rawValue)
+        guard overflowCount == 0 || removingOverflow else { return false }
         let cleanedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         chests[index].name = cleanedName.isEmpty ? chest.name : cleanedName
         chests[index].size = size
-        chests[index].recipeIDs = Array(chests[index].recipeIDs.prefix(size.rawValue))
+        if overflowCount > 0 {
+            chests[index].recipeIDs.removeLast(overflowCount)
+        }
         saveChests()
+        return true
     }
 
     @discardableResult
@@ -206,9 +217,9 @@ final class DataManager: ObservableObject {
         return true
     }
 
-    func removeRecipe(at offsets: IndexSet, from chestID: UUID) {
+    func removeRecipes(withIDs recipeIDs: Set<Int>, from chestID: UUID) {
         guard let index = chests.firstIndex(where: { $0.id == chestID }) else { return }
-        chests[index].recipeIDs.remove(atOffsets: offsets)
+        chests[index].recipeIDs.removeAll { recipeIDs.contains($0) }
         saveChests()
     }
 
@@ -234,8 +245,20 @@ final class DataManager: ObservableObject {
         } else if chests.isEmpty,
                   let favoriteIDs = store.array(forKey: iCloudFavoritesKey) as? [Int],
                   !favoriteIDs.isEmpty {
-            chests = [RecipeChest(name: "Imported Favorites", size: favoriteIDs.count > 27 ? .large : .small, recipeIDs: favoriteIDs)]
+            chests = Self.importedFavoriteChests(from: favoriteIDs)
             saveChests()
+        }
+    }
+
+    static func importedFavoriteChests(from favoriteIDs: [Int]) -> [RecipeChest] {
+        let chunks = stride(from: 0, to: favoriteIDs.count, by: RecipeChest.Size.large.rawValue).map { start in
+            Array(favoriteIDs[start..<min(start + RecipeChest.Size.large.rawValue, favoriteIDs.count)])
+        }
+
+        return chunks.enumerated().map { index, recipeIDs in
+            let name = chunks.count == 1 ? "Imported Favorites" : "Imported Favorites \(index + 1)"
+            let size: RecipeChest.Size = recipeIDs.count > RecipeChest.Size.small.rawValue ? .large : .small
+            return RecipeChest(name: name, size: size, recipeIDs: recipeIDs)
         }
     }
 

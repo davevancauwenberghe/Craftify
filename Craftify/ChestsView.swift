@@ -138,7 +138,10 @@ struct ChestDetailView: View {
                             }
                         }
                         .onDelete { offsets in
-                            dataManager.removeRecipe(at: offsets, from: chestID)
+                            let recipeIDs = Set(offsets.compactMap { index in
+                                storedRecipes.indices.contains(index) ? storedRecipes[index].id : nil
+                            })
+                            dataManager.removeRecipes(withIDs: recipeIDs, from: chestID)
                             HapticFeedback.impact()
                         }
                     }
@@ -173,6 +176,7 @@ struct ChestEditorView: View {
     let recipeToAdd: Recipe?
     @State private var name: String
     @State private var size: RecipeChest.Size
+    @State private var showShrinkConfirmation = false
 
     init(context: ChestEditorContext, recipeToAdd: Recipe? = nil) {
         self.context = context
@@ -203,15 +207,43 @@ struct ChestEditorView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        switch context {
-                        case .new: dataManager.createChest(name: name, size: size, adding: recipeToAdd)
-                        case .edit(let chest): dataManager.updateChest(chest, name: name, size: size)
+                        if overflowCount > 0 {
+                            showShrinkConfirmation = true
+                        } else {
+                            saveChanges()
                         }
-                        HapticFeedback.notification(.success); dismiss()
                     }.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .alert("Remove \(overflowCount) stored recipes?", isPresented: $showShrinkConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Shrink Chest", role: .destructive) { saveChanges(removingOverflow: true) }
+            } message: {
+                Text("A small chest holds 27 recipes. Shrinking will permanently remove the last \(overflowCount) recipes from this chest and sync the change to iCloud.")
+            }
         }
+    }
+
+    private var overflowCount: Int {
+        guard case .edit(let chest) = context else { return 0 }
+        let storedCount = dataManager.chests.first(where: { $0.id == chest.id })?.recipeIDs.count ?? chest.recipeIDs.count
+        return max(0, storedCount - size.rawValue)
+    }
+
+    private func saveChanges(removingOverflow: Bool = false) {
+        switch context {
+        case .new:
+            dataManager.createChest(name: name, size: size, adding: recipeToAdd)
+        case .edit(let chest):
+            guard dataManager.updateChest(
+                chest,
+                name: name,
+                size: size,
+                removingOverflow: removingOverflow
+            ) else { return }
+        }
+        HapticFeedback.notification(.success)
+        dismiss()
     }
 }
 
