@@ -418,11 +418,11 @@ private struct OnboardingPage {
         OnboardingPage(
             eyebrow: "Find anything",
             title: "Search in an instant",
-            detail: "Jump straight to an item or explore recipes by category.",
+            detail: "Find any recipe by its name or by an ingredient you already have.",
             symbol: "magnifyingglass",
             highlights: [
-                Highlight(symbol: "line.3.horizontal.decrease.circle", text: "Filter categories to narrow the recipe list"),
-                Highlight(symbol: "arrow.triangle.branch", text: "Follow ingredients and nested recipes step by step")
+                Highlight(symbol: "line.3.horizontal.decrease.circle", text: "Choose whether to search names, ingredients, or both"),
+                Highlight(symbol: "clock.arrow.circlepath", text: "Quickly return to recipes from your recent searches")
             ]
         ),
         OnboardingPage(
@@ -432,7 +432,8 @@ private struct OnboardingPage {
             symbol: "shippingbox.fill",
             highlights: [
                 Highlight(symbol: "square.grid.3x3.fill", text: "Choose 27-slot or 54-slot chests for each project"),
-                Highlight(symbol: "paintbrush.pointed.fill", text: "Personalize every chest with a name and symbol")
+                Highlight(symbol: "paintbrush.pointed.fill", text: "Personalize every chest with a name and symbol"),
+                Highlight(symbol: "icloud.fill", text: "Sync your chest room through iCloud across your devices")
             ]
         ),
         OnboardingPage(
