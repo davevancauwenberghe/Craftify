@@ -29,6 +29,7 @@ struct AppAppearanceView: View {
     @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @State private var errorMessage: String?
     @State private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons
+    @State private var isChangingIcon = false
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 44
     @ScaledMetric(relativeTo: .body) private var swatchSize: CGFloat = 20
     @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
@@ -51,6 +52,11 @@ struct AppAppearanceView: View {
         .init(id: "pink", name: "Pink", color: .pink),
         .init(id: "yellow", name: "Yellow", color: .yellow)
     ]
+
+    private var selectedAccentColor: Color {
+        Self.accentColors.first { $0.id == accentColorPreference }?.color
+            ?? Self.accentColors[0].color
+    }
 
     var body: some View {
         List {
@@ -107,12 +113,12 @@ struct AppAppearanceView: View {
                                 Text(icon.name)
                                     .font(.headline)
                                     .minimumScaleFactor(0.8)
-                                    .foregroundColor(Color.userAccentColor)
+                                    .foregroundColor(selectedAccentColor)
                                 Spacer()
                                 if selectedAppIcon == icon.id {
                                     Image(systemName: "checkmark.circle.fill")
                                         .imageScale(.large)
-                                        .foregroundColor(Color.userAccentColor)
+                                        .foregroundColor(selectedAccentColor)
                                 }
                             }
                             .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical)
@@ -120,6 +126,7 @@ struct AppAppearanceView: View {
                         .accessibilityLabel("Select \(icon.name) icon")
                         .accessibilityHint(selectedAppIcon == icon.id ? "Currently selected" : "Double tap to select this icon")
                         .accessibilityAddTraits(.isButton)
+                        .disabled(isChangingIcon || selectedAppIcon == icon.id)
                     }
                 } else {
                     Text("Alternate icons aren’t available yet.")
@@ -137,6 +144,7 @@ struct AppAppearanceView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("App Appearance")
         .navigationBarTitleDisplayMode(.large)
+        .tint(selectedAccentColor)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
@@ -164,8 +172,11 @@ struct AppAppearanceView: View {
     }
 
     private func changeIcon(to: String?) {
+        guard !isChangingIcon, UIApplication.shared.alternateIconName != to else { return }
+        isChangingIcon = true
         UIApplication.shared.setAlternateIconName(to) { error in
             DispatchQueue.main.async {
+                isChangingIcon = false
                 if let err = error {
                     HapticFeedback.notification(.error)
                     errorMessage = "Failed to change icon: \(err.localizedDescription)"

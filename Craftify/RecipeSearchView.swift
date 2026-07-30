@@ -21,12 +21,15 @@ struct RecipeSearchView: View {
     @State private var navigationPath = NavigationPath()
     @State private var searchFilter: SearchFilter = .all
 
-    enum SearchFilter: String, CaseIterable {
-        case all = "All recipes"
-        case chests = "In Chests"
+    enum SearchFilter: String, CaseIterable, Identifiable {
+        case all = "Names & Ingredients"
+        case names = "Recipe Names"
+        case ingredients = "Ingredients"
+
+        var id: Self { self }
     }
 
-    // Computed property to get recent search recipes, filtered by searchFilter
+    // Resolve synced history names to recipes available on this device.
     private var recentSearchRecipes: [Recipe] {
         var recipes: [Recipe] = []
         for name in dataManager.recentSearchNames {
@@ -37,8 +40,7 @@ struct RecipeSearchView: View {
                 print("Skipping invalid recent search name: \(name) - no matching recipe found")
             }
         }
-        // Apply filter to recent searches, limit set to 10
-        return Array((searchFilter == .all ? recipes : recipes.filter { recipe in dataManager.chests.contains { $0.recipeIDs.contains(recipe.id) } }).prefix(10))
+        return Array(recipes.prefix(10))
     }
 
     // Save a new recent search using DataManager
@@ -52,14 +54,17 @@ struct RecipeSearchView: View {
     }
 
     private func updateFilteredRecipes() {
-        // Start with either all recipes or recipes stored in chests based on the filter
-        let baseRecipes = searchFilter == .all ? dataManager.recipes : dataManager.recipes.filter { recipe in dataManager.chests.contains { $0.recipeIDs.contains(recipe.id) } }
-
-        let filtered = searchText.isEmpty ? baseRecipes :
-            baseRecipes.filter { recipe in
-                recipe.name.localizedCaseInsensitiveContains(searchText) ||
-                recipe.category.localizedCaseInsensitiveContains(searchText) ||
-                recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
+        let filtered = searchText.isEmpty ? dataManager.recipes :
+            dataManager.recipes.filter { recipe in
+                switch searchFilter {
+                case .all:
+                    return recipe.name.localizedCaseInsensitiveContains(searchText)
+                        || recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
+                case .names:
+                    return recipe.name.localizedCaseInsensitiveContains(searchText)
+                case .ingredients:
+                    return recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
+                }
             }
 
         var groups = [String: [Recipe]]()
@@ -89,7 +94,7 @@ struct RecipeSearchView: View {
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
-                                Text("Find recipes by name, category, or ingredients.")
+                                Text("Find recipes by name or ingredients.")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
@@ -98,7 +103,7 @@ struct RecipeSearchView: View {
                             .padding(.vertical, 16)
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("Search for Recipes")
-                            .accessibilityHint("Enter a search term to find recipes by name, category, or ingredients")
+                            .accessibilityHint("Enter a search term to find recipes by name or ingredients")
                         } else {
                             // Show recent searches
                             VStack(alignment: .leading, spacing: 8) {
@@ -107,16 +112,6 @@ struct RecipeSearchView: View {
                                         .font(.title3)
                                         .fontWeight(.bold)
                                         .foregroundColor(.primary)
-
-                                    // Add filter indicator
-                                    Text(searchFilter == .all ? "All" : "Chests")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.gray.opacity(0.2))
-                                        .clipShape(Capsule())
 
                                     Spacer()
 
@@ -147,26 +142,10 @@ struct RecipeSearchView: View {
                             }
                             .padding(.vertical, 16)
                             .accessibilityElement(children: .combine)
-                            .accessibilityLabel("Recent Searches, filtered by \(searchFilter == .all ? "All recipes" : "Recipes in chests")")
-                            .accessibilityHint("Shows the last 10 recipes you searched for, filtered by \(searchFilter == .all ? "all recipes" : "recipes in chests")")
+                            .accessibilityLabel("Recent Searches")
+                            .accessibilityHint("Shows the last 10 recipes you opened from search")
                         }
                     } else {
-                        // Search filter picker (always visible when search is active)
-                        Picker("Search Filter", selection: $searchFilter) {
-                            ForEach(SearchFilter.allCases, id: \.self) { filter in
-                                Text(filter.rawValue).tag(filter)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal, horizontalSizeClass == .regular ? 24 : 16)
-                        .padding(.vertical, 8)
-                        .accessibilityLabel("Search Filter")
-                        .accessibilityHint("Choose to search all recipes or only recipes in chests")
-                        .onChange(of: searchFilter) { _, _ in
-                            updateFilteredRecipes()
-                            HapticFeedback.impact()
-                        }
-
                         if searchText.isEmpty {
                             // Show placeholder when search bar is tapped but no text is entered
                             VStack(spacing: 16) {
@@ -177,7 +156,7 @@ struct RecipeSearchView: View {
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
-                                Text("Enter a name, category, or ingredient to find recipes.")
+                                Text("Enter a recipe name or ingredient to start searching.")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
@@ -186,27 +165,7 @@ struct RecipeSearchView: View {
                             .padding(.vertical, 16)
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("Start Searching")
-                            .accessibilityHint("Enter a name, category, or ingredient to find recipes")
-                        } else if searchFilter == .chests && dataManager.chests.isEmpty {
-                            // Empty state when no stored recipes exist and the chest filter is selected
-                            VStack(spacing: 16) {
-                                Image(systemName: "shippingbox.fill")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(Color.userAccentColor.opacity(0.8))
-                                Text("No Recipes in Chests")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.primary)
-                                Text("You haven't stored any recipes yet.\nAdd recipes to a chest or switch to All recipes.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, horizontalSizeClass == .regular ? 48 : 32)
-                            }
-                            .padding(.vertical, 32)
-                            .accessibilityElement(children: .combine)
-                            .accessibilityLabel("No Recipes in Chests")
-                            .accessibilityHint("You haven't stored any recipes yet. Add recipes to a chest or switch to All recipes.")
+                            .accessibilityHint("Enter a recipe name or ingredient to find recipes")
                         } else if !searchText.isEmpty && filteredRecipes.isEmpty {
                             // Empty state when no recipes are found after searching
                             VStack(spacing: 16) {
@@ -217,7 +176,7 @@ struct RecipeSearchView: View {
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
-                                Text("Try adjusting your search term\(searchFilter == .chests ? " or switch to All recipes" : "").")
+                                Text("Try adjusting your search term or search in another field.")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
@@ -226,7 +185,7 @@ struct RecipeSearchView: View {
                             .padding(.vertical, 32)
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("No recipes found")
-                            .accessibilityHint("No recipes match your search term. Try adjusting your search\(searchFilter == .chests ? " or switch to All recipes" : "").")
+                            .accessibilityHint("No recipes match your search term. Try adjusting it or search in another field.")
                         } else {
                             // Search results
                             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
@@ -285,6 +244,25 @@ struct RecipeSearchView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        ForEach(SearchFilter.allCases) { filter in
+                            Button {
+                                searchFilter = filter
+                                updateFilteredRecipes()
+                                HapticFeedback.selection()
+                            } label: {
+                                Label(filter.rawValue, systemImage: searchFilter == filter ? "checkmark" : "magnifyingglass")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                    }
+                    .accessibilityLabel("Search in \(searchFilter.rawValue)")
+                    .accessibilityHint("Choose whether to search recipe names, ingredients, or both")
+                }
+            }
             .searchable(
                 text: $searchText,
                 isPresented: $isSearchActive,
