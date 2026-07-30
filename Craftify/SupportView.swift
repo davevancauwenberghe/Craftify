@@ -207,6 +207,7 @@ struct PrivacyPolicyContent: View {
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Chests: Names you enter, chest sizes and ordering, and stored recipe IDs are saved in iCloud to sync your chest room across your devices.")
+                            Text("• Legacy Favorites: If you used Favorites in an earlier version, its recipe IDs may remain in iCloud. Craftify no longer reads or imports them, and \"Clear All Data\" removes them.")
                             Text("• Recent Searches: Recipe names when you search for recipes, stored in iCloud to sync across your devices.")
                             Text("• Recipe Reports (Optional): When you report an issue, you may submit a recipe name, category, and description. These are stored in a private CloudKit database (accessible only to you) for the \"My Reports\" feature, allowing you to view and manage your reports across devices.")
                             Text("• Local Recipe Cache: Recipes are cached on your device for offline access but contain no personal data.")
@@ -248,7 +249,7 @@ struct PrivacyPolicyContent: View {
                             .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("• Chests and Recent Searches: Chest names, sizes, ordering, recipe IDs, and recent recipe names are stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
+                            Text("• Chests, Legacy Favorites, and Recent Searches: Chest names, sizes, ordering, recipe IDs (including Favorites saved by earlier versions), and recent recipe names are stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
                             Text("• Recipe Reports: Stored privately in a CloudKit database (accessible only to you via your iCloud account) for the \"My Reports\" feature.")
                             Text("• Local Recipe Cache: Stored on your device with no personal information.")
                         }
@@ -303,7 +304,7 @@ struct PrivacyPolicyContent: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Chests: Swipe a chest or a stored recipe to delete it. Use Edit to rearrange chests.")
                             Text("• Recent Searches: Tap \"Clear All\" in the Search tab to remove all recent searches.")
-                            Text("• Clear All Data: Tap \"Clear All Data\" in this section to delete everything, including Chests, Recent Searches, Recipe Reports, and the local cache.")
+                            Text("• Clear All Data: Tap \"Clear All Data\" in this section to delete everything, including Chests, legacy Favorites, Recent Searches, Recipe Reports, and the local cache.")
                             Text("• Clear Cache: Use \"Clear Cache\" in this section to remove the local cache, keeping iCloud data like Chests.")
                             Text("• Recipe Reports: In the \"My Reports\" section of \"Report Issue\", you can view and delete your reports, which also removes them from CloudKit.")
                         }
