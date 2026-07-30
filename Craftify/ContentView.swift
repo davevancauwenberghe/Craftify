@@ -287,6 +287,7 @@ struct CategoryFilterBar: View {
 }
 
 struct RecipeListView: View {
+    @EnvironmentObject private var dataManager: DataManager
     @Binding var recommendedRecipes: [Recipe]
     @Binding var isCraftifyPicksExpanded: Bool
     let filteredRecipes: [String: [Recipe]]
@@ -299,8 +300,12 @@ struct RecipeListView: View {
     @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+        Group {
+            if dataManager.recipes.isEmpty {
+                EmptyFavoritesView()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                 if !recommendedRecipes.isEmpty {
                     Section {
                         if isCraftifyPicksExpanded {
@@ -372,11 +377,12 @@ struct RecipeListView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color(.systemGroupedBackground))
                     }
+                    }
                 }
+                .scrollContentBackground(.hidden)
             }
         }
         .id(accentColorPreference)
-        .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
         .dynamicTypeSize(.xSmall ... .accessibility5)

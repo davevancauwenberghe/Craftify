@@ -3,6 +3,7 @@ import SwiftUI
 struct ChestsView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @AppStorage("hasSeenChestsTutorial") private var hasSeenTutorial = false
     @State private var navigationPath = NavigationPath()
     @State private var editor: ChestEditorContext?
@@ -58,6 +59,8 @@ struct ChestsView: View {
                 }
             }
             .background(Color(.systemGroupedBackground))
+            .id(accentColorPreference)
+            .tint(Color.userAccentColor)
             .navigationTitle("Chests")
             .navigationDestination(for: UUID.self) { id in
                 if let chest = dataManager.chests.first(where: { $0.id == id }) {
@@ -199,6 +202,7 @@ enum ChestEditorContext: Identifiable {
 struct ChestEditorView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let context: ChestEditorContext
     let recipeToAdd: Recipe?
     let onSave: (() -> Void)?
@@ -256,6 +260,8 @@ struct ChestEditorView: View {
             } message: {
                 Text("A small chest holds 27 recipes. Shrinking will permanently remove the last \(overflowCount) recipes from this chest and sync the change to iCloud.")
             }
+            .id(accentColorPreference)
+            .tint(Color.userAccentColor)
         }
     }
 
