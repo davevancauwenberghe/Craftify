@@ -39,13 +39,13 @@ struct ContentView: View {
                 .accessibilityLabel("Recipes tab")
                 .accessibilityHint("View all recipes")
 
-                FavoritesView()
+                ChestsView()
                     .tabItem {
-                        Label("Favorites", systemImage: "heart.fill")
+                        Label("Chests", systemImage: "shippingbox.fill")
                     }
                     .tag(1)
-                    .accessibilityLabel("Favorites tab")
-                    .accessibilityHint("View your favorite recipes")
+                    .accessibilityLabel("Chests tab")
+                    .accessibilityHint("Organize recipes in chests")
 
                 MoreView()
                     .tabItem {
@@ -116,7 +116,7 @@ struct ContentView: View {
     private func tabName(for tag: Int) -> String {
         switch tag {
         case 0: return "Recipes"
-        case 1: return "Favorites"
+        case 1: return "Chests"
         case 2: return "More"
         case 3: return "Search"
         default: return "Unknown"

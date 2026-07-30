@@ -79,6 +79,29 @@ struct Recipe: Codable, Identifiable, Equatable, Hashable {
     }
 }
 
+/// A user-created, iCloud-synced collection of crafting recipes.
+struct RecipeChest: Codable, Identifiable, Equatable, Hashable {
+    enum Size: Int, Codable, CaseIterable, Identifiable {
+        case small = 27
+        case large = 54
+
+        var id: Int { rawValue }
+        var title: String { self == .small ? "Small Chest" : "Large Chest" }
+    }
+
+    let id: UUID
+    var name: String
+    var size: Size
+    var recipeIDs: [Int]
+
+    init(id: UUID = UUID(), name: String, size: Size, recipeIDs: [Int] = []) {
+        self.id = id
+        self.name = name
+        self.size = size
+        self.recipeIDs = Array(recipeIDs.prefix(size.rawValue))
+    }
+}
+
 struct RecipeReport: Identifiable, Codable {
     let id: String
     let recordID: String?

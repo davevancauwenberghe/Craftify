@@ -52,9 +52,9 @@ struct SupportView: View {
                         trailing: horizontalSizeClass == .regular ? 16 : 12
                     ))
                     .accessibilityLabel("Clear All Data")
-                    .accessibilityHint("Clears all local and iCloud data, including favorites, recent searches, and recipe reports")
+                    .accessibilityHint("Clears all local and iCloud data, including chests, recent searches, and recipe reports")
 
-                    Text("This will permanently delete all your favorites, recent searches (stored in iCloud), recipe reports (stored in CloudKit), and the local recipe cache.")
+                    Text("This will permanently delete all your chests, recent searches (stored in iCloud), recipe reports (stored in CloudKit), and the local recipe cache.")
                         .font(horizontalSizeClass == .regular ? .body : .subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.leading)
@@ -62,7 +62,7 @@ struct SupportView: View {
                         .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                         .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
                         .accessibilityLabel("Clear All Data Note")
-                        .accessibilityHint("This will permanently delete all your favorites, recent searches, recipe reports, and the local recipe cache.")
+                        .accessibilityHint("This will permanently delete all your chests, recent searches, recipe reports, and the local recipe cache.")
 
                     Button(action: {
                         dataManager.clearCache { success in
@@ -85,9 +85,9 @@ struct SupportView: View {
                         trailing: horizontalSizeClass == .regular ? 16 : 12
                     ))
                     .accessibilityLabel("Clear Cache")
-                    .accessibilityHint("Clears the cached Minecraft recipes, keeping iCloud data like favorites")
+                    .accessibilityHint("Clears the cached Minecraft recipes, keeping iCloud data like chests")
 
-                    Text("This will permanently delete the local recipe cache, keeping iCloud data like favorites and recent searches.")
+                    Text("This will permanently delete the local recipe cache, keeping iCloud data like chests and recent searches.")
                         .font(horizontalSizeClass == .regular ? .body : .subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.leading)
@@ -95,7 +95,7 @@ struct SupportView: View {
                         .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                         .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
                         .accessibilityLabel("Clear Cache Note")
-                        .accessibilityHint("This will permanently delete the local recipe cache, keeping iCloud data like favorites and recent searches.")
+                        .accessibilityHint("This will permanently delete the local recipe cache, keeping iCloud data like chests and recent searches.")
                 }
 
                 Section(header: Text("Privacy").font(.headline).minimumScaleFactor(0.6)) {
@@ -138,7 +138,7 @@ struct SupportView: View {
             .alert(isPresented: $showClearDataAlert) {
                 Alert(
                     title: Text("Clear All Data"),
-                    message: Text("Are you sure? This will remove all your favorites, recent searches, recipe reports, and the local recipe cache. This action cannot be undone."),
+                    message: Text("Are you sure? This will remove all your chests, recent searches, recipe reports, and the local recipe cache. This action cannot be undone."),
                     primaryButton: .destructive(Text("Clear All Data")) {
                         dataManager.clearAllData { success in
                             if success {
@@ -301,10 +301,10 @@ struct PrivacyPolicyContent: View {
                             .minimumScaleFactor(0.6)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("• Favorites: Untoggle the heart icon to remove a recipe from Favorites.")
+                            Text("• Chests: Swipe a chest or a stored recipe to delete it. Use Edit to rearrange chests.")
                             Text("• Recent Searches: Tap \"Clear All\" in the Search tab to remove all recent searches.")
-                            Text("• Clear All Data: Tap \"Clear All Data\" in this section to delete everything, including Favorites, Recent Searches, Recipe Reports, and the local cache.")
-                            Text("• Clear Cache: Use \"Clear Cache\" in this section to remove the local cache, keeping iCloud data like Favorites.")
+                            Text("• Clear All Data: Tap \"Clear All Data\" in this section to delete everything, including Chests, Recent Searches, Recipe Reports, and the local cache.")
+                            Text("• Clear Cache: Use \"Clear Cache\" in this section to remove the local cache, keeping iCloud data like Chests.")
                             Text("• Recipe Reports: In the \"My Reports\" section of \"Report Issue\", you can view and delete your reports, which also removes them from CloudKit.")
                         }
                         .font(.body)

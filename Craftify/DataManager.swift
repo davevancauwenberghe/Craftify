@@ -15,6 +15,7 @@ import Network
 final class DataManager: ObservableObject {
     @Published var recipes: [Recipe] = []
     @Published var favorites: [Recipe] = []
+    @Published private(set) var chests: [RecipeChest] = []
     @Published var recentSearchNames: [String] = []
     @Published var selectedCategory: String? = nil
     @Published var lastUpdated: Date? = nil
@@ -30,6 +31,7 @@ final class DataManager: ObservableObject {
     @Published var consoleCommands: [ConsoleCommand] = []
 
     private let iCloudFavoritesKey = "favoriteRecipes"
+    private let iCloudChestsKey = "recipeChests.v1"
     private let iCloudRecentSearchesKey = "recentSearches"
     private var cancellables = Set<AnyCancellable>()
     private let reportStatusFetchInterval: TimeInterval = 30
@@ -106,6 +108,7 @@ final class DataManager: ObservableObject {
         }
 
         fetchConsoleCommands()
+        syncChests()
     }
 
     deinit {
@@ -118,6 +121,7 @@ final class DataManager: ObservableObject {
             guard let self else { return }
             NSUbiquitousKeyValueStore.default.synchronize()
             syncFavorites()
+            syncChests()
             syncRecentSearches()
         }
     }
@@ -168,9 +172,77 @@ final class DataManager: ObservableObject {
 
     func clearFavorites() {
         favorites = []
-        NSUbiquitousKeyValueStore.default.set(favorites.map { $0.id }, forKey: iCloudFavoritesKey)
+        chests = []
+        let store = NSUbiquitousKeyValueStore.default
+        store.set(favorites.map { $0.id }, forKey: iCloudFavoritesKey)
+        store.removeObject(forKey: iCloudChestsKey)
+        store.synchronize()
+        print("Cleared saved recipes and chests")
+    }
+
+    func createChest(name: String, size: RecipeChest.Size, adding recipe: Recipe? = nil) {
+        let cleanedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let recipeIDs = recipe.map { [$0.id] } ?? []
+        chests.append(RecipeChest(name: cleanedName.isEmpty ? "New Chest" : cleanedName, size: size, recipeIDs: recipeIDs))
+        saveChests()
+    }
+
+    func updateChest(_ chest: RecipeChest, name: String, size: RecipeChest.Size) {
+        guard let index = chests.firstIndex(where: { $0.id == chest.id }) else { return }
+        let cleanedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        chests[index].name = cleanedName.isEmpty ? chest.name : cleanedName
+        chests[index].size = size
+        chests[index].recipeIDs = Array(chests[index].recipeIDs.prefix(size.rawValue))
+        saveChests()
+    }
+
+    @discardableResult
+    func add(_ recipe: Recipe, to chest: RecipeChest) -> Bool {
+        guard let index = chests.firstIndex(where: { $0.id == chest.id }),
+              !chests[index].recipeIDs.contains(recipe.id),
+              chests[index].recipeIDs.count < chests[index].size.rawValue else { return false }
+        chests[index].recipeIDs.append(recipe.id)
+        saveChests()
+        return true
+    }
+
+    func removeRecipe(at offsets: IndexSet, from chestID: UUID) {
+        guard let index = chests.firstIndex(where: { $0.id == chestID }) else { return }
+        chests[index].recipeIDs.remove(atOffsets: offsets)
+        saveChests()
+    }
+
+    func deleteChests(at offsets: IndexSet) {
+        chests.remove(atOffsets: offsets)
+        saveChests()
+    }
+
+    func moveChests(from source: IndexSet, to destination: Int) {
+        chests.move(fromOffsets: source, toOffset: destination)
+        saveChests()
+    }
+
+    func recipes(in chest: RecipeChest) -> [Recipe] {
+        chest.recipeIDs.compactMap { id in recipes.first { $0.id == id } }
+    }
+
+    func syncChests() {
+        let store = NSUbiquitousKeyValueStore.default
+        if let data = store.data(forKey: iCloudChestsKey),
+           let decoded = try? JSONDecoder().decode([RecipeChest].self, from: data) {
+            chests = decoded
+        } else if chests.isEmpty,
+                  let favoriteIDs = store.array(forKey: iCloudFavoritesKey) as? [Int],
+                  !favoriteIDs.isEmpty {
+            chests = [RecipeChest(name: "Imported Favorites", size: favoriteIDs.count > 27 ? .large : .small, recipeIDs: favoriteIDs)]
+            saveChests()
+        }
+    }
+
+    private func saveChests() {
+        guard let data = try? JSONEncoder().encode(chests) else { return }
+        NSUbiquitousKeyValueStore.default.set(data, forKey: iCloudChestsKey)
         NSUbiquitousKeyValueStore.default.synchronize()
-        print("Cleared favorite recipes: \(favorites)")
     }
 
     func saveRecentSearch(_ recipe: Recipe) {
@@ -204,6 +276,7 @@ final class DataManager: ObservableObject {
         // before reading iCloud values or updating observable state.
         Task { @MainActor [weak self] in
             self?.syncFavorites()
+            self?.syncChests()
             self?.syncRecentSearches()
         }
     }

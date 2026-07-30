@@ -51,3 +51,18 @@ struct CraftifyTests {
         userDefaults.removePersistentDomain(forName: "testCraftify")
     }
 }
+
+extension CraftifyTests {
+    @Test func chestSizesMatchJavaEditionAndEnforceCapacity() throws {
+        #expect(RecipeChest.Size.small.rawValue == 27)
+        #expect(RecipeChest.Size.large.rawValue == 54)
+
+        let overflowingIDs = Array(0...60)
+        let chest = RecipeChest(name: "Build ideas", size: .large, recipeIDs: overflowingIDs)
+        #expect(chest.recipeIDs.count == 54)
+
+        let encoded = try JSONEncoder().encode(chest)
+        let decoded = try JSONDecoder().decode(RecipeChest.self, from: encoded)
+        #expect(decoded == chest)
+    }
+}
