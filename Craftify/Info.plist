@@ -20,6 +20,13 @@
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
+			<key>AlternateIcon3</key>
+			<dict>
+				<key>CFBundleIconName</key>
+				<string>AlternateIcon3</string>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
 		</dict>
 		<key>CFBundlePrimaryIcon</key>
 		<dict>
