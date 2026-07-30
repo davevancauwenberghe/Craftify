@@ -7,6 +7,8 @@ struct ChestsView: View {
     @State private var navigationPath = NavigationPath()
     @State private var editor: ChestEditorContext?
     @State private var showTutorial = false
+    @State private var chestPendingDeletion: RecipeChest?
+    @State private var editMode: EditMode = .inactive
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -24,16 +26,19 @@ struct ChestsView: View {
                     List {
                         Section {
                             ForEach(dataManager.chests) { chest in
-                                NavigationLink(value: chest.id) {
-                                    ChestRow(chest: chest)
-                                }
-                                .swipeActions(edge: .trailing) {
-                                    Button("Delete", role: .destructive) {
-                                        if let index = dataManager.chests.firstIndex(of: chest) {
-                                            dataManager.deleteChests(at: IndexSet(integer: index))
-                                            HapticFeedback.notification(.success)
-                                        }
+                                Group {
+                                    if editMode.isEditing {
+                                        Button { editor = .edit(chest) } label: { ChestRow(chest: chest) }
+                                            .buttonStyle(.plain)
+                                    } else {
+                                        NavigationLink(value: chest.id) { ChestRow(chest: chest) }
                                     }
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button("Delete", role: .destructive) {
+                                        chestPendingDeletion = chest
+                                    }
+                                    .tint(.red)
                                     Button("Edit") { editor = .edit(chest) }
                                         .tint(Color.userAccentColor)
                                 }
@@ -42,9 +47,11 @@ struct ChestsView: View {
                                 }
                             }
                             .onMove(perform: dataManager.moveChests)
-                            .onDelete(perform: dataManager.deleteChests)
-                        } header: {
-                            Text("Drag in Edit mode to arrange your chest room")
+                            .onDelete { offsets in
+                                if let index = offsets.first, dataManager.chests.indices.contains(index) {
+                                    chestPendingDeletion = dataManager.chests[index]
+                                }
+                            }
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -68,10 +75,21 @@ struct ChestsView: View {
                 ChestEditorView(context: context)
                     .environmentObject(dataManager)
                     .presentationDetents([.medium])
+                    .presentationSizing(.page)
             }
             .sheet(isPresented: $showTutorial) {
                 ChestsTutorialView()
                     .presentationDetents([.medium, .large])
+                    .presentationSizing(.page)
+            }
+            .alert("Delete \(chestPendingDeletion?.name ?? "chest")?", isPresented: Binding(
+                get: { chestPendingDeletion != nil },
+                set: { if !$0 { chestPendingDeletion = nil } }
+            )) {
+                Button("Cancel", role: .cancel) { chestPendingDeletion = nil }
+                Button("Delete Chest", role: .destructive) { deletePendingChest() }
+            } message: {
+                Text("This permanently removes the chest and its stored recipe list from iCloud.")
             }
             .onAppear {
                 dataManager.syncChests()
@@ -81,7 +99,16 @@ struct ChestsView: View {
                 }
             }
             .animation(reduceMotion ? nil : .snappy, value: dataManager.chests)
+            .environment(\.editMode, $editMode)
         }
+    }
+
+    private func deletePendingChest() {
+        guard let chest = chestPendingDeletion,
+              let index = dataManager.chests.firstIndex(of: chest) else { return }
+        dataManager.deleteChests(at: IndexSet(integer: index))
+        chestPendingDeletion = nil
+        HapticFeedback.notification(.success)
     }
 }
 
@@ -90,7 +117,7 @@ private struct ChestRow: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: chest.size == .large ? "shippingbox.fill" : "shippingbox")
+            Image(systemName: chest.displaySymbol)
                 .font(.title2)
                 .foregroundStyle(Color.userAccentColor)
                 .frame(width: 44, height: 44)
@@ -174,17 +201,20 @@ struct ChestEditorView: View {
     @Environment(\.dismiss) private var dismiss
     let context: ChestEditorContext
     let recipeToAdd: Recipe?
+    let onSave: (() -> Void)?
     @State private var name: String
     @State private var size: RecipeChest.Size
+    @State private var symbol: String?
     @State private var showShrinkConfirmation = false
 
-    init(context: ChestEditorContext, recipeToAdd: Recipe? = nil) {
+    init(context: ChestEditorContext, recipeToAdd: Recipe? = nil, onSave: (() -> Void)? = nil) {
         self.context = context
         self.recipeToAdd = recipeToAdd
+        self.onSave = onSave
         if case .edit(let chest) = context {
-            _name = State(initialValue: chest.name); _size = State(initialValue: chest.size)
+            _name = State(initialValue: chest.name); _size = State(initialValue: chest.size); _symbol = State(initialValue: chest.symbol)
         } else {
-            _name = State(initialValue: ""); _size = State(initialValue: .small)
+            _name = State(initialValue: ""); _size = State(initialValue: .small); _symbol = State(initialValue: nil)
         }
     }
 
@@ -198,8 +228,13 @@ struct ChestEditorView: View {
                             Text("\(size.title) · \(size.rawValue) slots").tag(size)
                         }
                     }
+                    Picker("Symbol", selection: $symbol) {
+                        Label("Automatic", systemImage: size == .large ? "shippingbox.fill" : "shippingbox").tag(String?.none)
+                        ForEach(Self.symbols, id: \.self) { symbol in
+                            Label(Self.symbolName(symbol), systemImage: symbol).tag(Optional(symbol))
+                        }
+                    }
                 }
-                Section { Text("Java Edition chests use 27 slots for a small chest and 54 for a large chest.") }
             }
             .navigationTitle(context.title)
             .navigationBarTitleDisplayMode(.inline)
@@ -233,17 +268,25 @@ struct ChestEditorView: View {
     private func saveChanges(removingOverflow: Bool = false) {
         switch context {
         case .new:
-            dataManager.createChest(name: name, size: size, adding: recipeToAdd)
+            dataManager.createChest(name: name, size: size, symbol: symbol, adding: recipeToAdd)
         case .edit(let chest):
             guard dataManager.updateChest(
                 chest,
                 name: name,
                 size: size,
+                symbol: symbol,
                 removingOverflow: removingOverflow
             ) else { return }
         }
         HapticFeedback.notification(.success)
         dismiss()
+        onSave?()
+    }
+
+    private static let symbols = ["archivebox.fill", "cube.fill", "shippingbox.and.arrow.backward.fill", "backpack.fill", "square.grid.3x3.fill", "building.columns.fill", "mountain.2.fill", "flame.fill", "diamond.fill", "hammer.fill"]
+
+    private static func symbolName(_ symbol: String) -> String {
+        ["archivebox.fill": "Storage", "cube.fill": "Block", "shippingbox.and.arrow.backward.fill": "Delivery", "backpack.fill": "Inventory", "square.grid.3x3.fill": "Crafting Grid", "building.columns.fill": "Stronghold", "mountain.2.fill": "Mountains", "flame.fill": "Nether", "diamond.fill": "Diamond", "hammer.fill": "Tools"][symbol] ?? symbol
     }
 }
 
@@ -261,7 +304,8 @@ struct ChestsTutorialView: View {
                         .font(.largeTitle.bold()).foregroundStyle(Color.userAccentColor)
                     TutorialStep(icon: "plus.circle.fill", title: "Collect recipes", text: "Tap + on a recipe and choose a chest, or create one without leaving the recipe.")
                     TutorialStep(icon: "square.grid.3x3.fill", title: "Minecraft-sized storage", text: "Small chests hold 27 recipes. Large chests hold 54, just like Java Edition.")
-                    TutorialStep(icon: "arrow.up.arrow.down", title: "Make it yours", text: "Use Edit to rearrange chests. Swipe a chest to rename or delete it.")
+                    TutorialStep(icon: "paintpalette.fill", title: "Make it yours", text: "Give every chest a name and a Minecraft-inspired symbol that fits what you store.")
+                    TutorialStep(icon: "arrow.up.arrow.down", title: "Arrange safely", text: "Use Edit to drag chests into order, or tap one to change its name, size, or symbol. Swipe for Edit and a confirmed Delete.")
                     Text("Your chest room syncs through iCloud, so its order, names, and recipes follow you across devices.")
                         .font(.callout).foregroundStyle(.secondary)
                 }.padding(24)

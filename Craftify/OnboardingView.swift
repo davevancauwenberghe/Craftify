@@ -276,7 +276,7 @@ private struct OnboardingPageView: View {
                 }
                 .frame(maxWidth: 520)
 
-                if page.title == "Keep favorites close" {
+                if page.title == "Choose your look" {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 14) {
                             Image(systemName: "paintpalette.fill")
@@ -426,13 +426,23 @@ private struct OnboardingPage {
             ]
         ),
         OnboardingPage(
-            eyebrow: "Make it yours",
-            title: "Keep favorites close",
-            detail: "Save the recipes you use most and personalize Craftify with your favorite accent.",
-            symbol: "heart.fill",
+            eyebrow: "Plan your projects",
+            title: "Build your chest room",
+            detail: "Collect recipes in Minecraft-sized chests so every build has an organized plan.",
+            symbol: "shippingbox.fill",
             highlights: [
-                Highlight(symbol: "heart.circle", text: "Build a personal shortlist for every project"),
-                Highlight(symbol: "icloud", text: "Favorites sync across all your devices")
+                Highlight(symbol: "square.grid.3x3.fill", text: "Choose 27-slot or 54-slot chests for each project"),
+                Highlight(symbol: "paintbrush.pointed.fill", text: "Personalize every chest with a name and symbol")
+            ]
+        ),
+        OnboardingPage(
+            eyebrow: "Your Craftify",
+            title: "Choose your look",
+            detail: "Pick an accent that feels like yours. You can change it whenever you like.",
+            symbol: "paintpalette.fill",
+            highlights: [
+                Highlight(symbol: "circle.hexagongrid.fill", text: "Preview your accent across the whole experience"),
+                Highlight(symbol: "accessibility", text: "Designed to stay clear in light and dark appearances")
             ]
         )
     ]

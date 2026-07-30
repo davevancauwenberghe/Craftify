@@ -176,7 +176,7 @@ private struct AddRecipeToChestView: View {
                                 }
                             } label: {
                                 HStack {
-                                    Label(chest.name, systemImage: "shippingbox")
+                                    Label(chest.name, systemImage: chest.displaySymbol)
                                     Spacer()
                                     Text("\(chest.recipeIDs.count)/\(chest.size.rawValue)")
                                         .foregroundStyle(.secondary)
@@ -192,9 +192,13 @@ private struct AddRecipeToChestView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
             .sheet(isPresented: $creatingChest) {
-                ChestEditorView(context: .new, recipeToAdd: recipe)
+                ChestEditorView(context: .new, recipeToAdd: recipe) {
+                    creatingChest = false
+                    dismiss()
+                }
                     .environmentObject(dataManager)
                     .presentationDetents([.medium])
+                    .presentationSizing(.page)
             }
             .alert("Couldn’t Add Recipe", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK", role: .cancel) { message = nil }

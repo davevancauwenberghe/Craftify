@@ -165,10 +165,10 @@ final class DataManager: ObservableObject {
         print("Cleared chests and legacy favorites")
     }
 
-    func createChest(name: String, size: RecipeChest.Size, adding recipe: Recipe? = nil) {
+    func createChest(name: String, size: RecipeChest.Size, symbol: String? = nil, adding recipe: Recipe? = nil) {
         let cleanedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let recipeIDs = recipe.map { [$0.id] } ?? []
-        chests.append(RecipeChest(name: cleanedName.isEmpty ? "New Chest" : cleanedName, size: size, recipeIDs: recipeIDs))
+        chests.append(RecipeChest(name: cleanedName.isEmpty ? "New Chest" : cleanedName, size: size, symbol: symbol, recipeIDs: recipeIDs))
         saveChests()
     }
 
@@ -177,6 +177,7 @@ final class DataManager: ObservableObject {
         _ chest: RecipeChest,
         name: String,
         size: RecipeChest.Size,
+        symbol: String?,
         removingOverflow: Bool = false
     ) -> Bool {
         guard let index = chests.firstIndex(where: { $0.id == chest.id }) else { return false }
@@ -185,6 +186,7 @@ final class DataManager: ObservableObject {
         let cleanedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         chests[index].name = cleanedName.isEmpty ? chest.name : cleanedName
         chests[index].size = size
+        chests[index].symbol = symbol
         if overflowCount > 0 {
             chests[index].recipeIDs.removeLast(overflowCount)
         }
