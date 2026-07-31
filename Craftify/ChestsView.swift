@@ -353,7 +353,6 @@ struct ChestDetailView: View {
 }
 
 private struct ChestDetailHeader: View {
-    @Environment(\.colorScheme) private var colorScheme
     let chest: RecipeChest
     let usedSlots: Int
     let isEditing: Bool
@@ -376,18 +375,7 @@ private struct ChestDetailHeader: View {
         .padding(.vertical, 24)
         .frame(maxWidth: .infinity)
         .background {
-            ZStack {
-                Color(.secondarySystemGroupedBackground)
-                LinearGradient(
-                    colors: [
-                        Color.userAccentColor.opacity(colorScheme == .dark ? 0.34 : 0.20),
-                        Color.userAccentColor.opacity(colorScheme == .dark ? 0.10 : 0.03)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
-            .ignoresSafeArea(edges: .top)
+            AppHeroBackground(additionalHeight: nil)
         }
         .accessibilityElement(children: isEditing ? .contain : .combine)
         .accessibilityLabel(isEditing ? "Chest details" : "\(chest.name), \(usedSlots) of \(chest.size.rawValue) slots used")
