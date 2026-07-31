@@ -366,7 +366,7 @@ private struct ChestRecipeCard: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 88)
                 .padding(12)
-                .background(Color.black.opacity(0.88))
+                .background(Color(.systemBackground))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
                 Text(recipe.name).font(.headline).foregroundStyle(.primary)
