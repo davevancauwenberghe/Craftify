@@ -1,3 +1,10 @@
+//
+//  ChestsView.swift
+//  Craftify
+//
+//  Created by Dave Van Cauwenberghe on 30/07/2026.
+//
+
 import SwiftUI
 
 struct ChestsView: View {
