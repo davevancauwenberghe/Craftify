@@ -82,14 +82,9 @@ struct ChestsView: View {
                     .presentationSizing(.page)
             }
             .sheet(isPresented: $showTutorial) {
-                ChestsTutorialView()
-                    .presentationDetents([.medium, .large])
-                    .presentationSizing(horizontalSizeClass == .regular ? .form : .page)
+                tutorialSheet
             }
-            .alert("Delete \(chestPendingDeletion?.name ?? "chest")?", isPresented: Binding(
-                get: { chestPendingDeletion != nil },
-                set: { if !$0 { chestPendingDeletion = nil } }
-            )) {
+            .alert("Delete \(pendingChestName)?", isPresented: isShowingDeleteConfirmation) {
                 Button("Cancel", role: .cancel) { chestPendingDeletion = nil }
                 Button("Delete Chest", role: .destructive) { deletePendingChest() }
             } message: {
@@ -104,6 +99,37 @@ struct ChestsView: View {
             }
             .animation(reduceMotion ? nil : .snappy, value: dataManager.chests)
             .environment(\.editMode, $editMode)
+        }
+    }
+
+    private var pendingChestName: String {
+        chestPendingDeletion?.name ?? "chest"
+    }
+
+    private var isShowingDeleteConfirmation: Binding<Bool> {
+        Binding(
+            get: { chestPendingDeletion != nil },
+            set: { isPresented in
+                if !isPresented {
+                    chestPendingDeletion = nil
+                }
+            }
+        )
+    }
+
+    /// The presentation sizing styles have different concrete types. Keeping
+    /// them in separate result-builder branches avoids asking the compiler to
+    /// infer a common type for `.form` and `.page` in a ternary expression.
+    @ViewBuilder
+    private var tutorialSheet: some View {
+        if horizontalSizeClass == .regular {
+            ChestsTutorialView()
+                .presentationDetents([.medium, .large])
+                .presentationSizing(.form)
+        } else {
+            ChestsTutorialView()
+                .presentationDetents([.medium, .large])
+                .presentationSizing(.page)
         }
     }
 
@@ -231,10 +257,8 @@ struct ChestDetailView: View {
                 .id(accentColorPreference).tint(Color.userAccentColor)
                 .navigationTitle(chest.name).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    Button(editMode.isEditing ? "Done" : "Edit") {
-                        HapticFeedback.impact()
-                        withAnimation(reduceMotion ? nil : .snappy) { editMode = editMode.isEditing ? .inactive : .active }
-                    }.disabled(storedRecipes.isEmpty)
+                    Button(editMode.isEditing ? "Done" : "Edit", action: toggleEditMode)
+                        .disabled(storedRecipes.isEmpty)
                 }
                 .environment(\.editMode, $editMode)
             } else {
@@ -243,6 +267,15 @@ struct ChestDetailView: View {
         }
         .navigationDestination(for: Recipe.self) { recipe in
             RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+        }
+    }
+
+    private func toggleEditMode() {
+        HapticFeedback.impact()
+        let animation: Animation? = reduceMotion ? nil : Animation.snappy
+        let nextEditMode: EditMode = editMode.isEditing ? .inactive : .active
+        withAnimation(animation) {
+            editMode = nextEditMode
         }
     }
 }
