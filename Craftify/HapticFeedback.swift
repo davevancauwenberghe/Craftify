@@ -1,3 +1,10 @@
+//
+//  HapticFeedback.swift
+//  Craftify
+//
+//  Created by Dave Van Cauwenberghe on 28/07/2026.
+//
+
 import UIKit
 
 /// A single, prepared entry point for tactile feedback throughout Craftify.

@@ -1,6 +1,12 @@
+//
+//  EmptyRecipeView.swift
+//  Craftify
+//
+//  Created by Dave Van Cauwenberghe on 31/07/2026.
+//
+
 import SwiftUI
 
-/// The recipe library's recovery state after its local data has been cleared.
 struct EmptyRecipeView: View {
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 36
     @ScaledMetric(relativeTo: .body) private var spacing: CGFloat = 12
