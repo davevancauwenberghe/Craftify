@@ -21,7 +21,13 @@ extension Color {
     static var userAccentColor: Color {
         let defaults = UserDefaults.standard
         let preference = defaults.string(forKey: "accentColorPreference") ?? "default"
-        
+
+        return userAccentColor(for: preference)
+    }
+
+    /// Resolves an accent directly from the observed preference. This avoids a
+    /// second UserDefaults read when a view is already driven by `@AppStorage`.
+    static func userAccentColor(for preference: String) -> Color {
         switch preference {
         case "blue":
             return .blue

@@ -305,10 +305,9 @@ struct CategoryFilterBar: View {
 }
 
 struct AppHeroBackground: View {
-    private static let navigationHeight: CGFloat = 112
-
-    /// The portion of the receiving view, below the navigation bar, that the
-    /// hero should cover. Most screens should use the navigation-only default.
+    /// The portion below the actual top safe area/navigation region that the
+    /// hero should cover. Passing `nil` fills the receiving view, which is
+    /// useful when a custom header is part of the hero.
     let additionalHeight: CGFloat?
 
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
@@ -318,21 +317,38 @@ struct AppHeroBackground: View {
     }
 
     var body: some View {
-        LinearGradient(
-            colors: [
-                Color.userAccentColor.opacity(0.42),
-                Color.userAccentColor.opacity(0.18),
-                Color(.systemGroupedBackground)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .frame(maxWidth: .infinity)
-        .frame(height: additionalHeight.map { Self.navigationHeight + $0 })
+        GeometryReader { geometry in
+            // Depending on its container, SwiftUI either reports the whole
+            // navigation region as a safe-area inset or positions the content
+            // below it. Taking the larger measurement handles both layouts,
+            // including taller Dynamic Island safe areas and large titles.
+            let navigationRegionHeight = max(
+                geometry.safeAreaInsets.top,
+                max(geometry.frame(in: .global).minY, 0)
+            )
+            let heroHeight = additionalHeight.map { navigationRegionHeight + $0 }
+                ?? (geometry.size.height + navigationRegionHeight)
+
+            ZStack(alignment: .top) {
+                // Lists and scroll views deliberately hide their native
+                // grouped background. Keep everything below the hero on the
+                // standard app surface rather than leaving it transparent.
+                Color(.systemBackground)
+
+                LinearGradient(
+                    colors: [
+                        Color.userAccentColor(for: accentColorPreference).opacity(0.42),
+                        Color.userAccentColor(for: accentColorPreference).opacity(0.18),
+                        Color(.systemBackground)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: heroHeight)
+            }
+        }
         .ignoresSafeArea(edges: .top)
-        // AppStorage makes the shared hero redraw as soon as the preference
-        // changes instead of waiting for its parent view to be recreated.
-        .id(accentColorPreference)
         .accessibilityHidden(true)
     }
 }
