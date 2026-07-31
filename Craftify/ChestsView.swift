@@ -167,6 +167,7 @@ private struct ChestListRow: View {
             }
             .contextMenu {
                 Button("Edit Chest", systemImage: "pencil", action: onEdit)
+                Button("Delete Chest", systemImage: "trash", role: .destructive, action: onDelete)
             }
     }
 
@@ -207,7 +208,7 @@ private struct ChestRow: View {
         .padding(.vertical, 5)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(chest.name), \(chest.size.title), \(chest.recipeIDs.count) of \(chest.size.rawValue) slots used")
-        .accessibilityHint("Open chest")
+        .accessibilityHint("Opens the chest")
     }
 }
 
@@ -215,20 +216,23 @@ struct ChestDetailView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let chestID: UUID
     @Binding var navigationPath: NavigationPath
     @State private var editMode: EditMode = .inactive
     @State private var chestName = ""
 
-    private let cardSpacing: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var pagePadding: CGFloat = 16
 
     private var gridColumns: [GridItem] {
-        let columnCount = dynamicTypeSize.isAccessibilitySize
-            ? 1
-            : (horizontalSizeClass == .regular ? 3 : 2)
-        return Array(repeating: GridItem(.flexible(), spacing: cardSpacing), count: columnCount)
+        if dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.flexible())]
+        }
+
+        // An adaptive grid keeps cards comfortably readable on iPhone while
+        // using the additional width available on iPad and in landscape.
+        return [GridItem(.adaptive(minimum: 156, maximum: 220), spacing: cardSpacing)]
     }
 
     private var chest: RecipeChest? { dataManager.chests.first { $0.id == chestID } }
@@ -238,34 +242,57 @@ struct ChestDetailView: View {
             if let chest {
                 let storedRecipes = dataManager.recipes(in: chest)
                 ScrollView {
-                    VStack(spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: 24) {
                         ChestDetailHeader(
                             chest: chest,
                             usedSlots: storedRecipes.count,
                             isEditing: editMode.isEditing,
                             name: $chestName
                         )
-                        LazyVGrid(
-                            columns: gridColumns,
-                            spacing: cardSpacing
-                        ) {
-                            ForEach(Array(storedRecipes.enumerated()), id: \.element.id) { slot, recipe in
-                                ZStack(alignment: .topTrailing) {
-                                    NavigationLink(value: recipe) { ChestRecipeCard(recipe: recipe, slot: slot + 1) }
-                                        .buttonStyle(.plain)
-                                    if editMode.isEditing {
-                                        Button("Remove \(recipe.name)", systemImage: "minus.circle.fill") {
-                                            dataManager.removeRecipes(withIDs: [recipe.id], from: chestID)
-                                            HapticFeedback.impact()
+                        if storedRecipes.isEmpty {
+                            ContentUnavailableView {
+                                Label("No Stored Recipes", systemImage: "square.grid.3x3")
+                            } description: {
+                                Text("Open a recipe and use the add button to store it in this chest.")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 36)
+                        } else {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Stored Recipes")
+                                    .font(.title2.bold())
+                                    .accessibilityAddTraits(.isHeader)
+
+                                LazyVGrid(columns: gridColumns, spacing: cardSpacing) {
+                                    ForEach(Array(storedRecipes.enumerated()), id: \.element.id) { slot, recipe in
+                                        ZStack(alignment: .topTrailing) {
+                                            NavigationLink(value: recipe) {
+                                                ChestRecipeCard(recipe: recipe, slot: slot + 1)
+                                            }
+                                            .buttonStyle(.plain)
+
+                                            if editMode.isEditing {
+                                                Button("Remove \(recipe.name)", systemImage: "minus.circle.fill") {
+                                                    dataManager.removeRecipes(withIDs: [recipe.id], from: chestID)
+                                                    HapticFeedback.impact()
+                                                }
+                                                .labelStyle(.iconOnly)
+                                                .font(.title2)
+                                                .foregroundStyle(.white, .red)
+                                                .frame(minWidth: 44, minHeight: 44)
+                                                .contentShape(Rectangle())
+                                                .accessibilityHint("Removes this recipe from \(chest.name)")
+                                                .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
+                                            }
                                         }
-                                        .labelStyle(.iconOnly).font(.title2).foregroundStyle(.white, .red).padding(8)
-                                        .accessibilityHint("Removes this recipe from \(chest.name)")
-                                        .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                                     }
                                 }
                             }
                         }
-                    }.padding()
+                    }
+                    .frame(maxWidth: 1200)
+                    .padding(pagePadding)
+                    .frame(maxWidth: .infinity)
                 }
                 .background(Color(.systemGroupedBackground))
                 .id(accentColorPreference).tint(Color.userAccentColor)
@@ -323,34 +350,76 @@ private struct ChestDetailHeader: View {
     @Binding var name: String
 
     var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: chest.displaySymbol)
-                .font(.system(.largeTitle, design: .rounded, weight: .semibold)).foregroundStyle(Color.userAccentColor)
-                .frame(width: 88, height: 88).background(Color.userAccentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .accessibilityHidden(true)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 20) {
+                chestIcon
+                details(centered: false)
+            }
+
+            VStack(spacing: 16) {
+                chestIcon
+                details(centered: true)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background {
+            ZStack {
+                Color(.secondarySystemGroupedBackground)
+                LinearGradient(
+                    colors: [Color.userAccentColor.opacity(0.20), Color.userAccentColor.opacity(0.03)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.userAccentColor.opacity(0.18))
+        }
+        .accessibilityElement(children: isEditing ? .contain : .combine)
+        .accessibilityLabel(isEditing ? "Chest details" : "\(chest.name), \(usedSlots) of \(chest.size.rawValue) slots used")
+    }
+
+    private var chestIcon: some View {
+        Image(systemName: chest.displaySymbol)
+            .font(.system(.largeTitle, design: .rounded, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 92, height: 92)
+            .background(Color.userAccentColor.gradient, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: Color.userAccentColor.opacity(0.25), radius: 14, y: 8)
+            .accessibilityHidden(true)
+    }
+
+    private func details(centered: Bool) -> some View {
+        VStack(alignment: centered ? .center : .leading, spacing: 10) {
             if isEditing {
                 TextField("Chest name", text: $name)
                     .font(.title.bold())
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(centered ? .center : .leading)
                     .textInputAutocapitalization(.words)
                     .submitLabel(.done)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.userAccentColor.opacity(0.45))
-                    }
-                    .frame(maxWidth: 360)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .frame(maxWidth: 400)
             } else {
-                Text(chest.name).font(.title.bold()).multilineTextAlignment(.center)
+                Text(chest.name)
+                    .font(.largeTitle.bold())
+                    .multilineTextAlignment(centered ? .center : .leading)
             }
-            Text("\(usedSlots) of \(chest.size.rawValue) slots used").font(.headline).foregroundStyle(.secondary)
-            ProgressView(value: Double(usedSlots), total: Double(chest.size.rawValue)).tint(Color.userAccentColor).frame(maxWidth: 360)
+
+            Label("\(usedSlots) of \(chest.size.rawValue) slots used", systemImage: "square.grid.3x3.fill")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            ProgressView(value: Double(usedSlots), total: Double(chest.size.rawValue))
+                .tint(Color.userAccentColor)
+                .frame(maxWidth: 400)
+                .accessibilityLabel("Chest capacity")
+                .accessibilityValue("\(usedSlots) of \(chest.size.rawValue) slots used")
         }
-        .frame(maxWidth: .infinity).padding(.vertical, 8)
-        .accessibilityElement(children: isEditing ? .contain : .combine)
-        .accessibilityLabel(isEditing ? "Chest details" : "\(chest.name), \(usedSlots) of \(chest.size.rawValue) slots used")
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 }
 
@@ -360,18 +429,24 @@ private struct ChestRecipeCard: View {
     let slot: Int
     var body: some View {
         VStack(spacing: 0) {
-            Image(recipe.image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity)
-                .frame(height: 88)
-                .padding(12)
-                .background(Color(.systemBackground))
-                .accessibilityHidden(true)
+            ZStack(alignment: .topLeading) {
+                Color(.systemBackground)
+                Image(recipe.image)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(18)
+                Text("\(slot)")
+                    .font(.caption2.monospacedDigit().weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .padding(8)
+            }
+            .aspectRatio(1.35, contentMode: .fit)
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
                 Text(recipe.name).font(.headline).foregroundStyle(.primary)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                Text(recipe.category).font(.caption.weight(.semibold))
+                Label(recipe.category, systemImage: "tag.fill")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.userAccentColor)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             }
@@ -381,7 +456,7 @@ private struct ChestRecipeCard: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.userAccentColor.opacity(0.4), lineWidth: 1) }
-        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+        .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Slot \(slot), \(recipe.name), \(recipe.category)")
         .accessibilityHint("Opens recipe details")
