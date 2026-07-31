@@ -303,7 +303,7 @@ private struct OnboardingPageView: View {
     }
 
     private var accentColorPicker: some View {
-        let columns = [GridItem(.adaptive(minimum: 44), spacing: 12, alignment: .leading)]
+        let columns = [GridItem(.adaptive(minimum: 72), spacing: 12, alignment: .leading)]
 
         return LazyVGrid(columns: columns, spacing: 12) {
             ForEach(AppAppearanceView.accentColors) { option in
@@ -319,16 +319,24 @@ private struct OnboardingPageView: View {
         return Button {
             selectAccentColor(option.id)
         } label: {
-            Circle()
-                .fill(option.color)
-                .frame(width: 34, height: 34)
-                .overlay {
-                    if isSelected {
-                        Image(systemName: "checkmark")
-                            .font(.caption.bold())
-                            .foregroundStyle(.white)
+            VStack(spacing: 6) {
+                Circle()
+                    .fill(option.color)
+                    .frame(width: 34, height: 34)
+                    .overlay {
+                        if isSelected {
+                            Image(systemName: "checkmark")
+                                .font(.caption.bold())
+                                .foregroundStyle(.white)
+                        }
                     }
-                }
+                Text(option.name)
+                    .font(.caption2)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(option.name)
