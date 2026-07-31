@@ -152,7 +152,7 @@ struct AppAppearanceView: View {
         .navigationTitle("App Appearance")
         .navigationBarTitleDisplayMode(.large)
         .tint(selectedAccentColor)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
         .alert("Error",

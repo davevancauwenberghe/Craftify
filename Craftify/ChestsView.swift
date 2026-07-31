@@ -47,6 +47,7 @@ struct ChestsView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
                 }
             }
             .background(alignment: .top) {
@@ -300,9 +301,6 @@ struct ChestDetailView: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .background(alignment: .top) {
-                    AppHeroBackground()
-                }
                 .id(accentColorPreference).tint(Color.userAccentColor)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
@@ -375,6 +373,9 @@ private struct ChestDetailHeader: View {
         .padding(.vertical, 24)
         .frame(maxWidth: .infinity)
         .background {
+            // The fill mode lets one uninterrupted hero extend from behind the
+            // navigation controls through the complete, dynamically sized
+            // chest header.
             AppHeroBackground(additionalHeight: nil)
         }
         .accessibilityElement(children: isEditing ? .contain : .combine)
