@@ -218,7 +218,7 @@ struct CategoryView: View {
             )
         }
         .background(alignment: .top) {
-            RecipesHeroBackground()
+            AppHeroBackground()
         }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
@@ -302,18 +302,22 @@ struct CategoryFilterBar: View {
     }
 }
 
-private struct RecipesHeroBackground: View {
+struct AppHeroBackground: View {
     var body: some View {
-        LinearGradient(
-            colors: [
-                Color.userAccentColor.opacity(0.42),
-                Color.userAccentColor.opacity(0.18),
-                Color(.systemGroupedBackground)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .frame(height: 190)
+        ZStack(alignment: .top) {
+            Color(.systemGroupedBackground)
+
+            LinearGradient(
+                colors: [
+                    Color.userAccentColor.opacity(0.42),
+                    Color.userAccentColor.opacity(0.18),
+                    Color(.systemGroupedBackground)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .frame(height: 190)
+        }
         .ignoresSafeArea(edges: .top)
         .accessibilityHidden(true)
     }

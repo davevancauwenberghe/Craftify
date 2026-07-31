@@ -49,12 +49,15 @@ struct ChestsView: View {
                     .listStyle(.insetGrouped)
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(alignment: .top) {
+                AppHeroBackground()
+            }
             .id(accentColorPreference)
             .tint(Color.userAccentColor)
             .navigationTitle("Chests")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { id in
                 if let chest = dataManager.chests.first(where: { $0.id == id }) {
                     ChestDetailView(chestID: chest.id, navigationPath: $navigationPath)
@@ -297,11 +300,12 @@ struct ChestDetailView: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .background(Color(.systemGroupedBackground))
+                .background(alignment: .top) {
+                    AppHeroBackground()
+                }
                 .id(accentColorPreference).tint(Color.userAccentColor)
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-                .toolbarBackground(.automatic, for: .navigationBar)
+                .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
                     Button(editMode.isEditing ? "Done" : "Edit", action: toggleEditMode)
                 }
