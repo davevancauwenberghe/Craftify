@@ -299,7 +299,9 @@ struct ChestDetailView: View {
                 }
                 .background(Color(.systemGroupedBackground))
                 .id(accentColorPreference).tint(Color.userAccentColor)
-                .toolbarBackground(.hidden, for: .navigationBar)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+                .toolbarBackground(.automatic, for: .navigationBar)
                 .toolbar {
                     Button(editMode.isEditing ? "Done" : "Edit", action: toggleEditMode)
                 }
