@@ -37,6 +37,16 @@ extension Color {
             return .pink
         case "yellow":
             return .yellow
+        case "indigo":
+            return .indigo
+        case "mint":
+            return .mint
+        case "cyan":
+            return .cyan
+        case "brown":
+            return .brown
+        case "slate":
+            return Color(hex: "607D8B")
         case "default":
             fallthrough
         default:

@@ -50,7 +50,12 @@ struct AppAppearanceView: View {
         .init(id: "red", name: "Red", color: .red),
         .init(id: "teal", name: "Teal", color: .teal),
         .init(id: "pink", name: "Pink", color: .pink),
-        .init(id: "yellow", name: "Yellow", color: .yellow)
+        .init(id: "yellow", name: "Yellow", color: .yellow),
+        .init(id: "indigo", name: "Indigo", color: .indigo),
+        .init(id: "mint", name: "Mint", color: .mint),
+        .init(id: "cyan", name: "Cyan", color: .cyan),
+        .init(id: "brown", name: "Brown", color: .brown),
+        .init(id: "slate", name: "Slate", color: Color(hex: "607D8B"))
     ]
 
     private var selectedAccentColor: Color {
@@ -86,6 +91,7 @@ struct AppAppearanceView: View {
                         .tag(option.id)
                     }
                 }
+                .id(accentColorPreference)
                 .accessibilityLabel("Accent Color")
                 .accessibilityHint("Choose the accent color for the app")
                 .onChange(of: accentColorPreference) { _, _ in HapticFeedback.selection() }
