@@ -141,7 +141,10 @@ struct RecipesTabView: View {
             .navigationTitle("Craftify")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            // Let the home hero continue behind the system title and controls.
+            // The title remains system-managed (and therefore accessible), while
+            // hiding only the bar's background prevents a stacked-header look.
+            .toolbarBackground(.hidden, for: .navigationBar)
             .overlay {
                 if dataManager.isLoading && dataManager.recipes.isEmpty {
                     VStack(spacing: 12) {
@@ -214,7 +217,9 @@ struct CategoryView: View {
                 accentColorPreference: accentColorPreference
             )
         }
-        .background(Color(.systemGroupedBackground))
+        .background(alignment: .top) {
+            RecipesHeroBackground()
+        }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
@@ -251,9 +256,13 @@ struct CategoryFilterBar: View {
                         .fontWeight(.bold)
                         .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
                         .padding(.vertical, buttonPaddingVertical)
-                        .background(selectedCategory == nil ? Color.userAccentColor : Color.gray.opacity(0.2))
+                        .background(selectedCategory == nil ? Color.userAccentColor : Color(.secondarySystemBackground).opacity(0.88))
                         .foregroundStyle(selectedCategory == nil ? Color.white : Color.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(Color.primary.opacity(selectedCategory == nil ? 0 : 0.12), lineWidth: 1)
+                        }
                 }
                 .accessibilityLabel("Show all recipes")
                 .accessibilityHint("Displays recipes from all categories")
@@ -268,9 +277,13 @@ struct CategoryFilterBar: View {
                             .fontWeight(.bold)
                             .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
                             .padding(.vertical, buttonPaddingVertical)
-                            .background(selectedCategory == category ? Color.userAccentColor : Color.gray.opacity(0.2))
+                            .background(selectedCategory == category ? Color.userAccentColor : Color(.secondarySystemBackground).opacity(0.88))
                             .foregroundStyle(selectedCategory == category ? Color.white : Color.primary)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(Color.primary.opacity(selectedCategory == category ? 0 : 0.12), lineWidth: 1)
+                            }
                     }
                     .accessibilityLabel("Show \(category) recipes")
                     .accessibilityHint("Filters recipes to show only \(category) category")
@@ -281,8 +294,28 @@ struct CategoryFilterBar: View {
             .padding(.vertical, buttonPaddingVertical)
         }
         .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-        .background(Color(.systemGroupedBackground))
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .bottom) {
+            Divider().opacity(0.35)
+        }
         .dynamicTypeSize(.xSmall ... .accessibility5)
+    }
+}
+
+private struct RecipesHeroBackground: View {
+    var body: some View {
+        LinearGradient(
+            colors: [
+                Color.userAccentColor.opacity(0.42),
+                Color.userAccentColor.opacity(0.18),
+                Color(.systemGroupedBackground)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .frame(height: 190)
+        .ignoresSafeArea(edges: .top)
+        .accessibilityHidden(true)
     }
 }
 
