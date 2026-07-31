@@ -3,6 +3,7 @@ import SwiftUI
 struct ChestsView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @AppStorage("hasSeenChestsTutorial") private var hasSeenTutorial = false
     @State private var navigationPath = NavigationPath()
@@ -20,7 +21,10 @@ struct ChestsView: View {
                     } description: {
                         Text("Create a chest, then fill its slots with recipes you want to craft.")
                     } actions: {
-                        Button("Create a Chest") { editor = .new }
+                        Button("Create a Chest") {
+                            HapticFeedback.impact()
+                            editor = .new
+                        }
                             .buttonStyle(.borderedProminent)
                     }
                 } else {
@@ -62,6 +66,8 @@ struct ChestsView: View {
             .id(accentColorPreference)
             .tint(Color.userAccentColor)
             .navigationTitle("Chests")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar(.visible, for: .navigationBar)
             .navigationDestination(for: UUID.self) { id in
                 if let chest = dataManager.chests.first(where: { $0.id == id }) {
                     ChestDetailView(chestID: chest.id, navigationPath: $navigationPath)
@@ -69,9 +75,22 @@ struct ChestsView: View {
             }
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button("About Chests", systemImage: "questionmark.circle") { showTutorial = true }
-                    if !dataManager.chests.isEmpty { EditButton() }
-                    Button("New Chest", systemImage: "plus") { editor = .new }
+                    Button("About Chests", systemImage: "questionmark.circle") {
+                        HapticFeedback.impact()
+                        showTutorial = true
+                    }
+                    if !dataManager.chests.isEmpty {
+                        Button(editMode.isEditing ? "Done" : "Edit") {
+                            HapticFeedback.impact()
+                            withAnimation(reduceMotion ? nil : .default) {
+                                editMode = editMode.isEditing ? .inactive : .active
+                            }
+                        }
+                    }
+                    Button("New Chest", systemImage: "plus") {
+                        HapticFeedback.impact()
+                        editor = .new
+                    }
                 }
             }
             .sheet(item: $editor) { context in
@@ -83,7 +102,7 @@ struct ChestsView: View {
             .sheet(isPresented: $showTutorial) {
                 ChestsTutorialView()
                     .presentationDetents([.medium, .large])
-                    .presentationSizing(.page)
+                    .presentationSizing(horizontalSizeClass == .regular ? .form : .page)
             }
             .alert("Delete \(chestPendingDeletion?.name ?? "chest")?", isPresented: Binding(
                 get: { chestPendingDeletion != nil },
@@ -143,6 +162,9 @@ private struct ChestRow: View {
 
 struct ChestDetailView: View {
     @EnvironmentObject private var dataManager: DataManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let chestID: UUID
     @Binding var navigationPath: NavigationPath
     @State private var editMode: EditMode = .inactive
@@ -153,35 +175,42 @@ struct ChestDetailView: View {
         Group {
             if let chest {
                 let storedRecipes = dataManager.recipes(in: chest)
-                List {
-                    Section("\(storedRecipes.count) of \(chest.size.rawValue) slots used") {
-                        ForEach(storedRecipes) { recipe in
-                            NavigationLink(value: recipe) {
-                                HStack(spacing: 14) {
-                                    Image(recipe.image).resizable().scaledToFit().frame(width: 44, height: 44)
-                                        .accessibilityHidden(true)
-                                    VStack(alignment: .leading) {
-                                        Text(recipe.name).font(.headline)
-                                        Text(recipe.category).font(.caption).foregroundStyle(.secondary)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        ChestDetailHeader(chest: chest, usedSlots: storedRecipes.count)
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: horizontalSizeClass == .regular ? 3 : 2), spacing: 14) {
+                            ForEach(0..<chest.size.rawValue, id: \.self) { slot in
+                                if storedRecipes.indices.contains(slot) {
+                                    let recipe = storedRecipes[slot]
+                                    ZStack(alignment: .topTrailing) {
+                                        NavigationLink(value: recipe) { ChestRecipeCard(recipe: recipe, slot: slot + 1) }
+                                            .buttonStyle(.plain)
+                                        if editMode.isEditing {
+                                            Button("Remove \(recipe.name)", systemImage: "minus.circle.fill") {
+                                                dataManager.removeRecipes(withIDs: [recipe.id], from: chestID)
+                                                HapticFeedback.impact()
+                                            }
+                                            .labelStyle(.iconOnly).font(.title2).foregroundStyle(.white, .red).padding(8)
+                                            .accessibilityHint("Removes this recipe from \(chest.name)")
+                                            .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
+                                        }
                                     }
+                                } else {
+                                    EmptyChestSlot(slot: slot + 1)
                                 }
                             }
                         }
-                        .onDelete { offsets in
-                            let recipeIDs = Set(offsets.compactMap { index in
-                                storedRecipes.indices.contains(index) ? storedRecipes[index].id : nil
-                            })
-                            dataManager.removeRecipes(withIDs: recipeIDs, from: chestID)
-                            HapticFeedback.impact()
-                        }
-                    }
-                    if storedRecipes.isEmpty {
-                        Text("Tap + on any recipe to place it in this chest.")
-                            .foregroundStyle(.secondary)
-                    }
+                    }.padding()
                 }
-                .navigationTitle(chest.name)
-                .toolbar { EditButton() }
+                .background(Color(.systemGroupedBackground))
+                .id(accentColorPreference).tint(Color.userAccentColor)
+                .navigationTitle(chest.name).navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    Button(editMode.isEditing ? "Done" : "Edit") {
+                        HapticFeedback.impact()
+                        withAnimation(reduceMotion ? nil : .snappy) { editMode = editMode.isEditing ? .inactive : .active }
+                    }.disabled(storedRecipes.isEmpty)
+                }
                 .environment(\.editMode, $editMode)
             } else {
                 ContentUnavailableView("Chest Not Found", systemImage: "shippingbox")
@@ -190,6 +219,63 @@ struct ChestDetailView: View {
         .navigationDestination(for: Recipe.self) { recipe in
             RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
         }
+    }
+}
+
+private struct ChestDetailHeader: View {
+    let chest: RecipeChest
+    let usedSlots: Int
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: chest.displaySymbol)
+                .font(.system(.largeTitle, design: .rounded, weight: .semibold)).foregroundStyle(Color.userAccentColor)
+                .frame(width: 88, height: 88).background(Color.userAccentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .accessibilityHidden(true)
+            Text(chest.name).font(.title.bold()).multilineTextAlignment(.center)
+            Text("\(usedSlots) of \(chest.size.rawValue) slots used").font(.headline).foregroundStyle(.secondary)
+            ProgressView(value: Double(usedSlots), total: Double(chest.size.rawValue)).tint(Color.userAccentColor).frame(maxWidth: 360)
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(chest.name), \(usedSlots) of \(chest.size.rawValue) slots used")
+    }
+}
+
+private struct ChestRecipeCard: View {
+    let recipe: Recipe
+    let slot: Int
+    var body: some View {
+        VStack(spacing: 0) {
+            Image(recipe.image).resizable().scaledToFit().frame(maxWidth: .infinity).frame(minHeight: 112).padding(18)
+                .background(Color.black.opacity(0.88)).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(recipe.name).font(.headline).foregroundStyle(.primary).lineLimit(2)
+                Label(recipe.category, systemImage: "square.grid.2x2.fill").font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.userAccentColor).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color(.secondarySystemGroupedBackground))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.userAccentColor.opacity(0.4), lineWidth: 1) }
+        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Slot \(slot), \(recipe.name), \(recipe.category)")
+        .accessibilityHint("Opens recipe details")
+    }
+}
+
+private struct EmptyChestSlot: View {
+    let slot: Int
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "plus").font(.title2.weight(.semibold))
+            Text("Slot \(slot)").font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(Color.userAccentColor.opacity(0.7)).frame(maxWidth: .infinity).frame(minHeight: 176)
+        .background(Color.userAccentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.userAccentColor.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [6])) }
+        .accessibilityElement(children: .ignore).accessibilityLabel("Slot \(slot), empty")
+        .accessibilityHint("Add a recipe with the plus button on a recipe page")
     }
 }
 

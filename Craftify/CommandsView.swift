@@ -215,6 +215,7 @@ struct CommandsView: View {
                             ForEach(EditionFilter.allCases) { filter in
                                 Button(action: {
                                     editionFilter = filter
+                                    HapticFeedback.selection()
                                 }) {
                                     HStack {
                                         Text(filter.rawValue)
@@ -229,6 +230,7 @@ struct CommandsView: View {
                             Image(systemName: "line.3.horizontal.decrease.circle")
                                 .imageScale(.large)
                         }
+                        .simultaneousGesture(TapGesture().onEnded { HapticFeedback.impact() })
                         .accessibilityLabel("Filter commands by edition")
                         .accessibilityHint("Choose All Editions, Bedrock Edition, or Java Edition")
                     }

@@ -422,7 +422,7 @@ private struct OnboardingPage {
             symbol: "magnifyingglass",
             highlights: [
                 Highlight(symbol: "line.3.horizontal.decrease.circle", text: "Choose whether to search names, ingredients, or both"),
-                Highlight(symbol: "clock.arrow.circlepath", text: "Quickly return to recipes from your recent searches")
+                Highlight(symbol: "icloud.fill", text: "Recent searches sync through iCloud across your devices")
             ]
         ),
         OnboardingPage(

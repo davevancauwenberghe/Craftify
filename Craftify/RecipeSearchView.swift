@@ -259,6 +259,7 @@ struct RecipeSearchView: View {
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                     }
+                    .simultaneousGesture(TapGesture().onEnded { HapticFeedback.impact() })
                     .accessibilityLabel("Search in \(searchFilter.rawValue)")
                     .accessibilityHint("Choose whether to search recipe names, ingredients, or both")
                 }
