@@ -40,8 +40,8 @@ struct RecipeDetailView: View {
 
     var body: some View {
         ZStack {
-            AppHeroBackground()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
 
             RecipeDetailContent(
                 recipe: recipe,
@@ -67,7 +67,7 @@ struct RecipeDetailView: View {
         .navigationTitle(recipe.name)
         .navigationBarTitleDisplayMode(.large)
         .toolbar(.visible, for: .navigationBar)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {

@@ -81,13 +81,11 @@ struct MoreView: View {
             .listStyle(.insetGrouped)
             .listSectionSpacing(24)
             .scrollContentBackground(.hidden)
-            .background(alignment: .top) {
-                AppHeroBackground()
-            }
+            .background(Color(.systemGroupedBackground))
             .tint(Color.userAccentColor)
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .alert("Unable to Sync", isPresented: errorBinding) {
                 Button("OK", role: .cancel) { dataManager.errorMessage = nil }
             } message: {
@@ -277,13 +275,11 @@ struct AboutView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(alignment: .top) {
-            AppHeroBackground()
-        }
+        .background(Color(.systemGroupedBackground))
         .tint(Color.userAccentColor)
         .navigationTitle("About Craftify")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
     }
 
     private func accentLabel(_ title: String, systemImage: String) -> some View {
