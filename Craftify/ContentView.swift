@@ -302,7 +302,7 @@ struct RecipeListView: View {
     var body: some View {
         Group {
             if dataManager.recipes.isEmpty {
-                EmptyFavoritesView()
+                EmptyRecipeView()
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
