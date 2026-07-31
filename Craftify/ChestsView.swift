@@ -31,25 +31,12 @@ struct ChestsView: View {
                     List {
                         Section {
                             ForEach(dataManager.chests) { chest in
-                                Group {
-                                    if editMode.isEditing {
-                                        Button { editor = .edit(chest) } label: { ChestRow(chest: chest) }
-                                            .buttonStyle(.plain)
-                                    } else {
-                                        NavigationLink(value: chest.id) { ChestRow(chest: chest) }
-                                    }
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button("Delete", role: .destructive) {
-                                        chestPendingDeletion = chest
-                                    }
-                                    .tint(.red)
-                                    Button("Edit") { editor = .edit(chest) }
-                                        .tint(Color.userAccentColor)
-                                }
-                                .contextMenu {
-                                    Button("Edit Chest", systemImage: "pencil") { editor = .edit(chest) }
-                                }
+                                ChestListRow(
+                                    chest: chest,
+                                    isEditing: editMode.isEditing,
+                                    onEdit: { editor = .edit(chest) },
+                                    onDelete: { chestPendingDeletion = chest }
+                                )
                             }
                             .onMove(perform: dataManager.moveChests)
                             .onDelete { offsets in
@@ -131,6 +118,40 @@ struct ChestsView: View {
         dataManager.deleteChests(at: IndexSet(integer: index))
         chestPendingDeletion = nil
         HapticFeedback.notification(.success)
+    }
+}
+
+private struct ChestListRow: View {
+    let chest: RecipeChest
+    let isEditing: Bool
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        rowContent
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button("Delete", role: .destructive, action: onDelete)
+                    .tint(.red)
+                Button("Edit", action: onEdit)
+                    .tint(Color.userAccentColor)
+            }
+            .contextMenu {
+                Button("Edit Chest", systemImage: "pencil", action: onEdit)
+            }
+    }
+
+    @ViewBuilder
+    private var rowContent: some View {
+        if isEditing {
+            Button(action: onEdit) {
+                ChestRow(chest: chest)
+            }
+            .buttonStyle(.plain)
+        } else {
+            NavigationLink(value: chest.id) {
+                ChestRow(chest: chest)
+            }
+        }
     }
 }
 
