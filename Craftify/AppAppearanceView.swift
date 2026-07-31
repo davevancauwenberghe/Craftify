@@ -146,7 +146,9 @@ struct AppAppearanceView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground))
+        .background(alignment: .top) {
+            AppHeroBackground()
+        }
         .navigationTitle("App Appearance")
         .navigationBarTitleDisplayMode(.large)
         .tint(selectedAccentColor)

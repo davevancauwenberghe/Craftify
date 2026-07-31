@@ -218,7 +218,9 @@ struct CategoryView: View {
             )
         }
         .background(alignment: .top) {
-            AppHeroBackground()
+            // Keep the category controls visually connected to the navigation
+            // hero. Other screens use the navigation-only default height.
+            AppHeroBackground(additionalHeight: 64)
         }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
@@ -303,22 +305,34 @@ struct CategoryFilterBar: View {
 }
 
 struct AppHeroBackground: View {
-    var body: some View {
-        ZStack(alignment: .top) {
-            Color(.systemGroupedBackground)
+    private static let navigationHeight: CGFloat = 112
 
-            LinearGradient(
-                colors: [
-                    Color.userAccentColor.opacity(0.42),
-                    Color.userAccentColor.opacity(0.18),
-                    Color(.systemGroupedBackground)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .frame(height: 190)
-        }
+    /// The portion of the receiving view, below the navigation bar, that the
+    /// hero should cover. Most screens should use the navigation-only default.
+    let additionalHeight: CGFloat?
+
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
+
+    init(additionalHeight: CGFloat? = 0) {
+        self.additionalHeight = additionalHeight
+    }
+
+    var body: some View {
+        LinearGradient(
+            colors: [
+                Color.userAccentColor.opacity(0.42),
+                Color.userAccentColor.opacity(0.18),
+                Color(.systemGroupedBackground)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .frame(maxWidth: .infinity)
+        .frame(height: additionalHeight.map { Self.navigationHeight + $0 })
         .ignoresSafeArea(edges: .top)
+        // AppStorage makes the shared hero redraw as soon as the preference
+        // changes instead of waiting for its parent view to be recreated.
+        .id(accentColorPreference)
         .accessibilityHidden(true)
     }
 }
