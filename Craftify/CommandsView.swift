@@ -203,7 +203,9 @@ struct CommandsView: View {
                     dataManager.fetchConsoleCommands()
                 }
                 .scrollContentBackground(.hidden)
-                .background(Color(UIColor.systemGroupedBackground))
+                .background(alignment: .top) {
+                    AppHeroBackground()
+                }
                 .searchable(
                     text: $searchText,
                     placement: .navigationBarDrawer(displayMode: .always),
@@ -237,7 +239,7 @@ struct CommandsView: View {
                 }
                 .navigationTitle("Console Commands")
                 .navigationBarTitleDisplayMode(.large)
-                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+                .toolbarBackground(.hidden, for: .navigationBar)
                 .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
                 .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
                 .preferredColorScheme(

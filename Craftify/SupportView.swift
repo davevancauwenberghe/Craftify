@@ -124,8 +124,10 @@ struct SupportView: View {
             .scrollContentBackground(.hidden)
             .navigationTitle("Support & Privacy")
             .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .background(Color(UIColor.systemGroupedBackground))
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .background(alignment: .top) {
+                AppHeroBackground()
+            }
             .alert(isPresented: $showErrorAlert) {
                 Alert(
                     title: Text("Error"),

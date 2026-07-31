@@ -77,7 +77,8 @@ struct ReportRecipeView: View {
     private var isSubmissionOnCooldown: Bool { remainingSubmissionCooldown > 0 }
     var body: some View {
         ZStack {
-            Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+            AppHeroBackground()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             ScrollView {
                 LazyVStack(spacing: 20) {
@@ -135,7 +136,7 @@ struct ReportRecipeView: View {
         }
         .navigationTitle("Report a Recipe")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .alert("Delete report?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 if let reportToDelete { deleteReport(reportToDelete) }
