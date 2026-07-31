@@ -67,12 +67,7 @@ struct ChestsView: View {
                         showTutorial = true
                     }
                     if !dataManager.chests.isEmpty {
-                        Button(editMode.isEditing ? "Done" : "Edit") {
-                            HapticFeedback.impact()
-                            withAnimation(reduceMotion ? nil : .default) {
-                                editMode = editMode.isEditing ? .inactive : .active
-                            }
-                        }
+                        Button(editMode.isEditing ? "Done" : "Edit", action: toggleEditMode)
                     }
                     Button("New Chest", systemImage: "plus") {
                         HapticFeedback.impact()
@@ -118,6 +113,15 @@ struct ChestsView: View {
         dataManager.deleteChests(at: IndexSet(integer: index))
         chestPendingDeletion = nil
         HapticFeedback.notification(.success)
+    }
+
+    private func toggleEditMode() {
+        HapticFeedback.impact()
+        let animation: Animation? = reduceMotion ? nil : Animation.default
+        let nextEditMode: EditMode = editMode.isEditing ? .inactive : .active
+        withAnimation(animation) {
+            editMode = nextEditMode
+        }
     }
 }
 
