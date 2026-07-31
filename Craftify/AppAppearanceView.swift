@@ -52,8 +52,7 @@ struct AppAppearanceView: View {
         .init(id: "pink", name: "Pink", color: .pink),
         .init(id: "yellow", name: "Yellow", color: .yellow),
         .init(id: "indigo", name: "Indigo", color: .indigo),
-        .init(id: "mint", name: "Mint", color: .mint),
-        .init(id: "cyan", name: "Cyan", color: .cyan),
+        .init(id: "forest", name: "Forest", color: Color(hex: "287A3D")),
         .init(id: "brown", name: "Brown", color: .brown),
         .init(id: "slate", name: "Slate", color: Color(hex: "607D8B"))
     ]
