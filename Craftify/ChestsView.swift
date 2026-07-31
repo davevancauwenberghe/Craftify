@@ -47,18 +47,14 @@ struct ChestsView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
                 }
             }
-            .background(alignment: .top) {
-                AppHeroBackground()
-            }
+            .background(Color(.systemGroupedBackground))
             .id(accentColorPreference)
             .tint(Color.userAccentColor)
             .navigationTitle("Chests")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { id in
                 if let chest = dataManager.chests.first(where: { $0.id == id }) {
                     ChestDetailView(chestID: chest.id, navigationPath: $navigationPath)
@@ -253,53 +249,54 @@ struct ChestDetailView: View {
                             isEditing: editMode.isEditing,
                             name: $chestName
                         )
-                        Group {
-                            if storedRecipes.isEmpty {
-                                ContentUnavailableView {
-                                    Label("No Stored Recipes", systemImage: "square.grid.3x3")
-                                } description: {
-                                    Text("Open a recipe and use the add button to store it in this chest.")
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 36)
-                            } else {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Stored Recipes")
-                                        .font(.title2.bold())
-                                        .accessibilityAddTraits(.isHeader)
+                        if storedRecipes.isEmpty {
+                            ContentUnavailableView {
+                                Label("No Stored Recipes", systemImage: "square.grid.3x3")
+                            } description: {
+                                Text("Open a recipe and use the add button to store it in this chest.")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 36)
+                        } else {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Stored Recipes")
+                                    .font(.title2.bold())
+                                    .accessibilityAddTraits(.isHeader)
 
-                                    LazyVGrid(columns: gridColumns, spacing: cardSpacing) {
-                                        ForEach(Array(storedRecipes.enumerated()), id: \.element.id) { slot, recipe in
-                                            ZStack(alignment: .topTrailing) {
-                                                NavigationLink(value: recipe) {
-                                                    ChestRecipeCard(recipe: recipe, slot: slot + 1)
-                                                }
-                                                .buttonStyle(.plain)
+                                LazyVGrid(columns: gridColumns, spacing: cardSpacing) {
+                                    ForEach(Array(storedRecipes.enumerated()), id: \.element.id) { slot, recipe in
+                                        ZStack(alignment: .topTrailing) {
+                                            NavigationLink(value: recipe) {
+                                                ChestRecipeCard(recipe: recipe, slot: slot + 1)
+                                            }
+                                            .buttonStyle(.plain)
 
-                                                if editMode.isEditing {
-                                                    Button("Remove \(recipe.name)", systemImage: "minus.circle.fill") {
-                                                        dataManager.removeRecipes(withIDs: [recipe.id], from: chestID)
-                                                        HapticFeedback.impact()
-                                                    }
-                                                    .labelStyle(.iconOnly)
-                                                    .font(.title2)
-                                                    .foregroundStyle(.white, .red)
-                                                    .frame(minWidth: 44, minHeight: 44)
-                                                    .contentShape(Rectangle())
-                                                    .accessibilityHint("Removes this recipe from \(chest.name)")
-                                                    .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
+                                            if editMode.isEditing {
+                                                Button("Remove \(recipe.name)", systemImage: "minus.circle.fill") {
+                                                    dataManager.removeRecipes(withIDs: [recipe.id], from: chestID)
+                                                    HapticFeedback.impact()
                                                 }
+                                                .labelStyle(.iconOnly)
+                                                .font(.title2)
+                                                .foregroundStyle(.white, .red)
+                                                .frame(minWidth: 44, minHeight: 44)
+                                                .contentShape(Rectangle())
+                                                .accessibilityHint("Removes this recipe from \(chest.name)")
+                                                .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                        .frame(maxWidth: 1200)
-                        .padding(.horizontal, pagePadding)
-                        .padding(.bottom, pagePadding)
-                        .frame(maxWidth: .infinity)
                     }
+                    .frame(maxWidth: 1200)
+                    .padding(pagePadding)
+                    .frame(maxWidth: .infinity)
+                }
+                .background {
+                    ChestDetailBackground()
+                        .ignoresSafeArea()
                 }
                 .id(accentColorPreference).tint(Color.userAccentColor)
                 .navigationBarTitleDisplayMode(.inline)
@@ -368,16 +365,8 @@ private struct ChestDetailHeader: View {
                 details(centered: true)
             }
         }
-        .frame(maxWidth: 1200)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 24)
+        .padding(20)
         .frame(maxWidth: .infinity)
-        .background {
-            // The fill mode lets one uninterrupted hero extend from behind the
-            // navigation controls through the complete, dynamically sized
-            // chest header.
-            AppHeroBackground(additionalHeight: nil)
-        }
         .accessibilityElement(children: isEditing ? .contain : .combine)
         .accessibilityLabel(isEditing ? "Chest details" : "\(chest.name), \(usedSlots) of \(chest.size.rawValue) slots used")
     }
@@ -420,6 +409,22 @@ private struct ChestDetailHeader: View {
                 .accessibilityValue("\(usedSlots) of \(chest.size.rawValue) slots used")
         }
         .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+    }
+}
+
+private struct ChestDetailBackground: View {
+    var body: some View {
+        ZStack {
+            Color(.systemBackground)
+            LinearGradient(
+                colors: [
+                    Color.userAccentColor.opacity(0.20),
+                    Color.userAccentColor.opacity(0.03)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
     }
 }
 

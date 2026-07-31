@@ -146,13 +146,11 @@ struct AppAppearanceView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(alignment: .top) {
-            AppHeroBackground()
-        }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("App Appearance")
         .navigationBarTitleDisplayMode(.large)
         .tint(selectedAccentColor)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .safeAreaInset(edge: .top, content: { Color.clear.frame(height: 0) })
         .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
         .alert("Error",

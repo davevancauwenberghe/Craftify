@@ -221,9 +221,7 @@ struct RecipeSearchView: View {
                 .safeAreaInset(edge: .bottom, content: { Color.clear.frame(height: 0) })
             }
             .scrollContentBackground(.hidden)
-            .background(alignment: .top) {
-                AppHeroBackground()
-            }
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .id(accentColorPreference)
             .overlay {
                 if dataManager.isLoading && dataManager.recipes.isEmpty {
@@ -245,7 +243,7 @@ struct RecipeSearchView: View {
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
-            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {

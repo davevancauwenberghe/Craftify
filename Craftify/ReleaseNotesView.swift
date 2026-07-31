@@ -75,12 +75,10 @@ struct ReleaseNotesView: View {
         .id(accentColorPreference)
         .listStyle(InsetGroupedListStyle())
         .scrollContentBackground(.hidden)
-        .background(alignment: .top) {
-            AppHeroBackground()
-        }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("Release Notes")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }
