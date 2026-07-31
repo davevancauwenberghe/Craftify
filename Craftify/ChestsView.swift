@@ -214,11 +214,14 @@ private struct ChestRow: View {
 struct ChestDetailView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let chestID: UUID
     @Binding var navigationPath: NavigationPath
     @State private var editMode: EditMode = .inactive
+    @State private var chestName = ""
+
+    private let cardSpacing: CGFloat = 14
+    private let minimumCardWidth: CGFloat = 160
 
     private var chest: RecipeChest? { dataManager.chests.first { $0.id == chestID } }
 
@@ -228,26 +231,29 @@ struct ChestDetailView: View {
                 let storedRecipes = dataManager.recipes(in: chest)
                 ScrollView {
                     VStack(spacing: 24) {
-                        ChestDetailHeader(chest: chest, usedSlots: storedRecipes.count)
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: horizontalSizeClass == .regular ? 3 : 2), spacing: 14) {
-                            ForEach(0..<chest.size.rawValue, id: \.self) { slot in
-                                if storedRecipes.indices.contains(slot) {
-                                    let recipe = storedRecipes[slot]
-                                    ZStack(alignment: .topTrailing) {
-                                        NavigationLink(value: recipe) { ChestRecipeCard(recipe: recipe, slot: slot + 1) }
-                                            .buttonStyle(.plain)
-                                        if editMode.isEditing {
-                                            Button("Remove \(recipe.name)", systemImage: "minus.circle.fill") {
-                                                dataManager.removeRecipes(withIDs: [recipe.id], from: chestID)
-                                                HapticFeedback.impact()
-                                            }
-                                            .labelStyle(.iconOnly).font(.title2).foregroundStyle(.white, .red).padding(8)
-                                            .accessibilityHint("Removes this recipe from \(chest.name)")
-                                            .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
+                        ChestDetailHeader(
+                            chest: chest,
+                            usedSlots: storedRecipes.count,
+                            isEditing: editMode.isEditing,
+                            name: $chestName
+                        )
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: minimumCardWidth), spacing: cardSpacing)],
+                            spacing: cardSpacing
+                        ) {
+                            ForEach(Array(storedRecipes.enumerated()), id: \.element.id) { slot, recipe in
+                                ZStack(alignment: .topTrailing) {
+                                    NavigationLink(value: recipe) { ChestRecipeCard(recipe: recipe, slot: slot + 1) }
+                                        .buttonStyle(.plain)
+                                    if editMode.isEditing {
+                                        Button("Remove \(recipe.name)", systemImage: "minus.circle.fill") {
+                                            dataManager.removeRecipes(withIDs: [recipe.id], from: chestID)
+                                            HapticFeedback.impact()
                                         }
+                                        .labelStyle(.iconOnly).font(.title2).foregroundStyle(.white, .red).padding(8)
+                                        .accessibilityHint("Removes this recipe from \(chest.name)")
+                                        .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                                     }
-                                } else {
-                                    EmptyChestSlot(slot: slot + 1)
                                 }
                             }
                         }
@@ -258,9 +264,12 @@ struct ChestDetailView: View {
                 .navigationTitle(chest.name).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     Button(editMode.isEditing ? "Done" : "Edit", action: toggleEditMode)
-                        .disabled(storedRecipes.isEmpty)
                 }
                 .environment(\.editMode, $editMode)
+                .onAppear { chestName = chest.name }
+                .onChange(of: chest.name) { _, newName in
+                    if !editMode.isEditing { chestName = newName }
+                }
             } else {
                 ContentUnavailableView("Chest Not Found", systemImage: "shippingbox")
             }
@@ -272,6 +281,21 @@ struct ChestDetailView: View {
 
     private func toggleEditMode() {
         HapticFeedback.impact()
+        if editMode.isEditing, let chest {
+            let cleanedName = chestName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if cleanedName.isEmpty {
+                chestName = chest.name
+            } else if cleanedName != chest.name {
+                _ = dataManager.updateChest(
+                    chest,
+                    name: cleanedName,
+                    size: chest.size,
+                    symbol: chest.symbol
+                )
+                chestName = cleanedName
+                HapticFeedback.notification(.success)
+            }
+        }
         let animation: Animation? = reduceMotion ? nil : Animation.snappy
         let nextEditMode: EditMode = editMode.isEditing ? .inactive : .active
         withAnimation(animation) {
@@ -283,19 +307,38 @@ struct ChestDetailView: View {
 private struct ChestDetailHeader: View {
     let chest: RecipeChest
     let usedSlots: Int
+    let isEditing: Bool
+    @Binding var name: String
+
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: chest.displaySymbol)
                 .font(.system(.largeTitle, design: .rounded, weight: .semibold)).foregroundStyle(Color.userAccentColor)
                 .frame(width: 88, height: 88).background(Color.userAccentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .accessibilityHidden(true)
-            Text(chest.name).font(.title.bold()).multilineTextAlignment(.center)
+            if isEditing {
+                TextField("Chest name", text: $name)
+                    .font(.title.bold())
+                    .multilineTextAlignment(.center)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.done)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.userAccentColor.opacity(0.45))
+                    }
+                    .frame(maxWidth: 360)
+            } else {
+                Text(chest.name).font(.title.bold()).multilineTextAlignment(.center)
+            }
             Text("\(usedSlots) of \(chest.size.rawValue) slots used").font(.headline).foregroundStyle(.secondary)
             ProgressView(value: Double(usedSlots), total: Double(chest.size.rawValue)).tint(Color.userAccentColor).frame(maxWidth: 360)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 8)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(chest.name), \(usedSlots) of \(chest.size.rawValue) slots used")
+        .accessibilityElement(children: isEditing ? .contain : .combine)
+        .accessibilityLabel(isEditing ? "Chest details" : "\(chest.name), \(usedSlots) of \(chest.size.rawValue) slots used")
     }
 }
 
@@ -304,14 +347,22 @@ private struct ChestRecipeCard: View {
     let slot: Int
     var body: some View {
         VStack(spacing: 0) {
-            Image(recipe.image).resizable().scaledToFit().frame(maxWidth: .infinity).frame(minHeight: 112).padding(18)
-                .background(Color.black.opacity(0.88)).accessibilityHidden(true)
+            Image(recipe.image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity)
+                .frame(height: 88)
+                .padding(12)
+                .background(Color.black.opacity(0.88))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
                 Text(recipe.name).font(.headline).foregroundStyle(.primary).lineLimit(2)
-                Label(recipe.category, systemImage: "square.grid.2x2.fill").font(.caption.weight(.semibold))
+                Text(recipe.category).font(.caption.weight(.semibold))
                     .foregroundStyle(Color.userAccentColor).lineLimit(1)
             }
-            .frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color(.secondarySystemGroupedBackground))
+            .frame(maxWidth: .infinity, height: 68, alignment: .topLeading)
+            .padding(12)
+            .background(Color(.secondarySystemGroupedBackground))
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.userAccentColor.opacity(0.4), lineWidth: 1) }
@@ -319,21 +370,6 @@ private struct ChestRecipeCard: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Slot \(slot), \(recipe.name), \(recipe.category)")
         .accessibilityHint("Opens recipe details")
-    }
-}
-
-private struct EmptyChestSlot: View {
-    let slot: Int
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "plus").font(.title2.weight(.semibold))
-            Text("Slot \(slot)").font(.caption.weight(.semibold))
-        }
-        .foregroundStyle(Color.userAccentColor.opacity(0.7)).frame(maxWidth: .infinity).frame(minHeight: 176)
-        .background(Color.userAccentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.userAccentColor.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [6])) }
-        .accessibilityElement(children: .ignore).accessibilityLabel("Slot \(slot), empty")
-        .accessibilityHint("Add a recipe with the plus button on a recipe page")
     }
 }
 
