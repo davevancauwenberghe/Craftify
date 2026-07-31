@@ -219,6 +219,7 @@ private struct OnboardingPageView: View {
     let page: OnboardingPage
     let isCurrent: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
     var body: some View {
@@ -303,7 +304,9 @@ private struct OnboardingPageView: View {
     }
 
     private var accentColorPicker: some View {
-        let columns = [GridItem(.adaptive(minimum: 72), spacing: 12, alignment: .leading)]
+        let columns = dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible(), alignment: .leading)]
+            : [GridItem(.adaptive(minimum: 72), spacing: 12, alignment: .leading)]
 
         return LazyVGrid(columns: columns, spacing: 12) {
             ForEach(AppAppearanceView.accentColors) { option in

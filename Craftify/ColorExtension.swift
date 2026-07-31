@@ -39,10 +39,8 @@ extension Color {
             return .yellow
         case "indigo":
             return .indigo
-        case "mint":
-            return .mint
-        case "cyan":
-            return .cyan
+        case "forest":
+            return Color(hex: "287A3D")
         case "brown":
             return .brown
         case "slate":

@@ -214,6 +214,8 @@ private struct ChestRow: View {
 struct ChestDetailView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let chestID: UUID
     @Binding var navigationPath: NavigationPath
@@ -221,7 +223,13 @@ struct ChestDetailView: View {
     @State private var chestName = ""
 
     private let cardSpacing: CGFloat = 14
-    private let minimumCardWidth: CGFloat = 160
+
+    private var gridColumns: [GridItem] {
+        let columnCount = dynamicTypeSize.isAccessibilitySize
+            ? 1
+            : (horizontalSizeClass == .regular ? 3 : 2)
+        return Array(repeating: GridItem(.flexible(), spacing: cardSpacing), count: columnCount)
+    }
 
     private var chest: RecipeChest? { dataManager.chests.first { $0.id == chestID } }
 
@@ -238,7 +246,7 @@ struct ChestDetailView: View {
                             name: $chestName
                         )
                         LazyVGrid(
-                            columns: [GridItem(.adaptive(minimum: minimumCardWidth), spacing: cardSpacing)],
+                            columns: gridColumns,
                             spacing: cardSpacing
                         ) {
                             ForEach(Array(storedRecipes.enumerated()), id: \.element.id) { slot, recipe in
@@ -266,7 +274,11 @@ struct ChestDetailView: View {
                     Button(editMode.isEditing ? "Done" : "Edit", action: toggleEditMode)
                 }
                 .environment(\.editMode, $editMode)
-                .onAppear { chestName = chest.name }
+                .onAppear {
+                    if !editMode.isEditing {
+                        chestName = chest.name
+                    }
+                }
                 .onChange(of: chest.name) { _, newName in
                     if !editMode.isEditing { chestName = newName }
                 }
@@ -343,6 +355,7 @@ private struct ChestDetailHeader: View {
 }
 
 private struct ChestRecipeCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let recipe: Recipe
     let slot: Int
     var body: some View {
@@ -356,11 +369,13 @@ private struct ChestRecipeCard: View {
                 .background(Color.black.opacity(0.88))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
-                Text(recipe.name).font(.headline).foregroundStyle(.primary).lineLimit(2)
+                Text(recipe.name).font(.headline).foregroundStyle(.primary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 Text(recipe.category).font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.userAccentColor).lineLimit(1)
+                    .foregroundStyle(Color.userAccentColor)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             }
-            .frame(maxWidth: .infinity, height: 68, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .padding(12)
             .background(Color(.secondarySystemGroupedBackground))
         }
