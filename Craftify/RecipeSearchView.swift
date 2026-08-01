@@ -309,8 +309,7 @@ struct RecentSearchItem: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            Image(recipe.image)
-                .resizable()
+            CraftImage(key: recipe.image)
                 .scaledToFit()
                 .frame(width: horizontalSizeClass == .regular ? 40 : 32, height: horizontalSizeClass == .regular ? 40 : 32)
                 .cornerRadius(6)
