@@ -51,7 +51,7 @@ struct MoreView: View {
                 Section {
                     Button(action: syncRecipes) {
                         Label {
-                            Text(dataManager.isLoading ? "Syncing Recipes…" : "Sync Recipes")
+                            Text(dataManager.isLoading ? "Syncing Recipes & Images…" : "Sync Recipes & Images")
                                 .foregroundStyle(.primary)
                         } icon: {
                             if dataManager.isLoading {
@@ -74,7 +74,7 @@ struct MoreView: View {
                         Text("Sync is available again in \(remainingCooldownTime) second\(remainingCooldownTime == 1 ? "" : "s").")
                             .contentTransition(.numericText())
                     } else if !dataManager.isConnected {
-                        Text("Connect to the internet to sync recipes. Craftify will keep your existing recipes available offline.")
+                        Text("Connect to the internet to sync recipes and images. Craftify will keep your existing data available offline.")
                     }
                 }
             }
@@ -101,7 +101,7 @@ struct MoreView: View {
     private var syncHint: String {
         if !dataManager.isConnected { return "Unavailable while offline" }
         if remainingCooldownTime > 0 { return "Available in \(remainingCooldownTime) seconds" }
-        return "Fetch the latest Minecraft recipes"
+        return "Fetch the latest Minecraft recipes and images"
     }
 
     @ViewBuilder
