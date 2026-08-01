@@ -179,3 +179,60 @@ extension CraftifyTests {
         )
     }
 }
+
+
+extension CraftifyTests {
+    @MainActor
+    @Test func downloadedImagesMigrateToPersistentStorageAndClearCompletely() throws {
+        let fileManager = FileManager.default
+        let root = fileManager.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+            isDirectory: true
+        )
+        let persistentDirectory = root.appendingPathComponent(
+            "ApplicationSupportImages",
+            isDirectory: true
+        )
+        let legacyDirectory = root.appendingPathComponent(
+            "LegacyCacheImages",
+            isDirectory: true
+        )
+        try fileManager.createDirectory(
+            at: legacyDirectory,
+            withIntermediateDirectories: true
+        )
+        defer { try? fileManager.removeItem(at: root) }
+
+        let assetKey = "Blue Candle"
+        let fileName = CraftImageAssetKey.recordName(for: assetKey)
+        let legacyFile = legacyDirectory.appendingPathComponent(fileName)
+        try Data("image-data".utf8).write(to: legacyFile)
+
+        let suiteName = "CraftImageStoreTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let versionKey = "craft-image.version.\(fileName)"
+        defaults.set(4, forKey: versionKey)
+
+        let imageStore = CraftImageStore(
+            fileManager: fileManager,
+            defaults: defaults,
+            storageDirectory: persistentDirectory,
+            legacyCacheDirectory: legacyDirectory
+        )
+        let migratedFile = persistentDirectory.appendingPathComponent(fileName)
+
+        #expect(fileManager.fileExists(atPath: migratedFile.path))
+        #expect(!fileManager.fileExists(atPath: legacyFile.path))
+
+        try imageStore.clearDownloadedImages()
+
+        let remainingFiles = try fileManager.contentsOfDirectory(
+            at: persistentDirectory,
+            includingPropertiesForKeys: nil
+        )
+        #expect(remainingFiles.isEmpty)
+        #expect(defaults.object(forKey: versionKey) == nil)
+    }
+}
