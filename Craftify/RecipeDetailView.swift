@@ -356,28 +356,13 @@ struct IngredientDetailPopup: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 8) {
-                Group {
-                    if UIImage(named: detail) != nil {
-                        Image(detail)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: horizontalSizeClass == .regular ? 90 : 80, height: horizontalSizeClass == .regular ? 90 : 80)
-                            .padding(8)
-                            .background(Color(.systemGray5))
-                            .cornerRadius(12)
-                            .accessibilityLabel("Image of \(detail)")
-                    } else {
-                        Image(systemName: "photo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: horizontalSizeClass == .regular ? 90 : 80, height: horizontalSizeClass == .regular ? 90 : 80)
-                            .padding(8)
-                            .foregroundColor(.gray)
-                            .background(Color(.systemGray5))
-                            .cornerRadius(12)
-                            .accessibilityLabel("Image unavailable")
-                    }
-                }
+                CraftImage(key: detail)
+                    .scaledToFit()
+                    .frame(width: horizontalSizeClass == .regular ? 90 : 80, height: horizontalSizeClass == .regular ? 90 : 80)
+                    .padding(8)
+                    .background(Color(.systemGray5))
+                    .cornerRadius(12)
+                    .accessibilityLabel("Image of \(detail)")
                 Text(detail)
                     .font(.title2)
                     .fontWeight(.bold)
@@ -501,18 +486,9 @@ struct RemarkAndCategoryView: View {
                                     }
                                 }
                             )
-                        if UIImage(named: imageRemark) != nil {
-                            Image(imageRemark)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: horizontalSizeClass == .regular ? 28 : 24, height: horizontalSizeClass == .regular ? 28 : 24)
-                        } else {
-                            Image(systemName: "photo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: horizontalSizeClass == .regular ? 28 : 24, height: horizontalSizeClass == .regular ? 28 : 24)
-                                .foregroundColor(.gray)
-                        }
+                        CraftImage(key: imageRemark)
+                            .scaledToFit()
+                            .frame(width: horizontalSizeClass == .regular ? 28 : 24, height: horizontalSizeClass == .regular ? 28 : 24)
                     }
                     .scaleEffect(animateRemark ? 1.15 : 1.0)
                     .accessibilityLabel("Remark image")
@@ -613,18 +589,9 @@ struct GridView: View {
                                 : nil
                             )
 
-                        if UIImage(named: recipe.image) != nil {
-                            Image(recipe.image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: horizontalSizeClass == .regular ? 70 : 60, height: horizontalSizeClass == .regular ? 70 : 60)
-                        } else {
-                            Image(systemName: "photo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: horizontalSizeClass == .regular ? 70 : 60, height: horizontalSizeClass == .regular ? 70 : 60)
-                                .foregroundColor(.gray)
-                        }
+                        CraftImage(key: recipe.image)
+                            .scaledToFit()
+                            .frame(width: horizontalSizeClass == .regular ? 70 : 60, height: horizontalSizeClass == .regular ? 70 : 60)
                     }
                     .accessibilityLabel("Output: \(recipe.name)")
                     .accessibilityHint("Tap to view details")
@@ -765,18 +732,9 @@ struct GridCell: View {
                 )
 
             if !ingredient.isEmpty {
-                if UIImage(named: ingredient) != nil {
-                    Image(ingredient)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: cellSize - 10, height: cellSize - 10)
-                } else {
-                    Image(systemName: "photo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: cellSize - 10, height: cellSize - 10)
-                        .foregroundColor(.gray)
-                }
+                CraftImage(key: ingredient)
+                    .scaledToFit()
+                    .frame(width: cellSize - 10, height: cellSize - 10)
             }
         }
         .accessibilityLabel(!ingredient.isEmpty ? "Ingredient: \(ingredient)" : "Empty slot")
