@@ -332,14 +332,15 @@ struct AppHeroBackground: View {
             ZStack(alignment: .top) {
                 // Lists and scroll views deliberately hide their native
                 // grouped background. Keep everything below the hero on the
-                // standard app surface rather than leaving it transparent.
-                Color(.systemBackground)
+                // shared accent-tinted app surface rather than leaving it
+                // transparent.
+                AppBackground()
 
                 LinearGradient(
                     colors: [
                         Color.userAccentColor(for: accentColorPreference).opacity(0.42),
                         Color.userAccentColor(for: accentColorPreference).opacity(0.18),
-                        Color(.systemBackground)
+                        Color.clear
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

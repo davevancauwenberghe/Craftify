@@ -51,7 +51,7 @@ struct ReleaseNotesView: View {
                 .accessibilityValue("\(appVersion). Stay updated with the latest improvements, fixes, and new features.")
                 .accessibilityHint("Release notes overview")
             }
-            .listRowBackground(Color(UIColor.systemBackground))
+            .listRowBackground(AppBackground())
             
             ForEach(releaseNotes, id: \.version) { note in
                 Section(header: Text(note.version)

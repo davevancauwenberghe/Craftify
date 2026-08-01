@@ -18,7 +18,7 @@ struct CraftifyApp: App {
                 tabBarAppearance.configureWithTransparentBackground()
                 let blurEffect = UIBlurEffect(style: .systemUltraThinMaterial)
                 tabBarAppearance.backgroundEffect = blurEffect
-                tabBarAppearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.1)
+                tabBarAppearance.backgroundColor = .clear
         } else {
             tabBarAppearance.configureWithDefaultBackground()
         }
