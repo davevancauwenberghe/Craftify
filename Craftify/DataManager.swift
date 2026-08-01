@@ -49,6 +49,7 @@ final class DataManager: ObservableObject {
     private let networkMonitor = NWPathMonitor()
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
     private let keyValueStore: any KeyValueStore
+    private let imageStore: CraftImageStore
 
     enum ErrorType: String {
         case network = "Network issue, please try again later."
@@ -59,8 +60,12 @@ final class DataManager: ObservableObject {
         case unknown = "An unexpected error occurred. Please try again later."
     }
 
-    init(keyValueStore: any KeyValueStore = NSUbiquitousKeyValueStore.default) {
+    init(
+        keyValueStore: any KeyValueStore = NSUbiquitousKeyValueStore.default,
+        imageStore: CraftImageStore = .shared
+    ) {
         self.keyValueStore = keyValueStore
+        self.imageStore = imageStore
         keyValueStore.synchronize()
 
         networkMonitor.pathUpdateHandler = { [weak self] path in
@@ -114,7 +119,7 @@ final class DataManager: ObservableObject {
             print("Loaded \(localRecipes.count) recipes from local cache.")
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncRecentSearches()
-            CraftImageStore.shared.prefetch(recipes: localRecipes)
+            imageStore.prefetch(recipes: localRecipes)
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
         }
@@ -320,9 +325,9 @@ final class DataManager: ObservableObject {
                 syncRecentSearches()
                 saveRecipesToLocalCache(fetchedRecipes)
                 if isManual {
-                    await CraftImageStore.shared.refresh(recipes: fetchedRecipes)
+                    await imageStore.refresh(recipes: fetchedRecipes)
                 } else {
-                    CraftImageStore.shared.prefetch(recipes: fetchedRecipes)
+                    imageStore.prefetch(recipes: fetchedRecipes)
                 }
                 lastUpdated = Date()
                 lastRecipeFetch = Date()
@@ -515,12 +520,7 @@ final class DataManager: ObservableObject {
         Task {
             do {
                 let database = CKContainer(identifier: "iCloud.craftifydb").publicCloudDatabase
-                let (_, deleteResults) = try await database.modifyRecords(saving: [], deleting: recordIDs)
-                for result in deleteResults.values {
-                    if case .failure(let error) = result {
-                        throw error
-                    }
-                }
+                try await deleteRecipeReportRecords(recordIDs, from: database)
                 accessibilityAnnouncement = "All reports deleted successfully"
                 completion(true)
             } catch {
@@ -534,15 +534,23 @@ final class DataManager: ObservableObject {
 
     func clearCache(completion: @escaping (Bool) -> Void) {
         let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
+
         do {
-            try FileManager.default.removeItem(at: fileURL)
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                try FileManager.default.removeItem(at: fileURL)
+            }
+            try imageStore.clearDownloadedImages()
+
             recipes = []
-            cacheClearedMessage = "Cache cleared successfully."
-            accessibilityAnnouncement = "Cache cleared successfully."
+            lastRecipeFetch = nil
+            lastUpdated = nil
+            cacheClearedMessage = "Recipe and image data cleared successfully."
+            accessibilityAnnouncement = cacheClearedMessage
             completion(true)
         } catch {
+            errorMessage = "Failed to clear local recipe and image data: \(error.localizedDescription)"
             cacheClearedMessage = "Failed to clear cache."
-            accessibilityAnnouncement = "Failed to clear cache."
+            accessibilityAnnouncement = errorMessage
             completion(false)
         }
     }
@@ -551,15 +559,67 @@ final class DataManager: ObservableObject {
         clearCache { cacheSuccess in
             self.clearChestsAndLegacyFavorites()
             self.clearRecentSearches()
+            self.lastReportStatusFetchTime = nil
 
-            if cacheSuccess {
-                self.cacheClearedMessage = "All data cleared successfully."
-                self.accessibilityAnnouncement = "All data cleared successfully."
-                completion(true)
-            } else {
-                self.cacheClearedMessage = "Failed to clear all data."
-                self.accessibilityAnnouncement = "Failed to clear all data."
+            guard self.isConnected else {
+                self.errorMessage = ErrorType.network.rawValue
+                self.cacheClearedMessage = "Local data cleared, but recipe reports could not be deleted while offline."
+                self.accessibilityAnnouncement = self.cacheClearedMessage
                 completion(false)
+                return
+            }
+
+            Task {
+                do {
+                    try await self.deleteAllCurrentUserRecipeReports()
+                    if cacheSuccess {
+                        self.cacheClearedMessage = "All data cleared successfully."
+                        self.accessibilityAnnouncement = "All data cleared successfully."
+                        completion(true)
+                    } else {
+                        self.cacheClearedMessage = "Recipe reports were deleted, but some local data could not be cleared."
+                        self.accessibilityAnnouncement = self.cacheClearedMessage
+                        completion(false)
+                    }
+                } catch {
+                    let type = self.errorType(for: error)
+                    self.errorMessage = "Local data was cleared, but recipe reports could not be deleted: \(type.rawValue)"
+                    self.cacheClearedMessage = "Failed to clear all data."
+                    self.accessibilityAnnouncement = self.errorMessage
+                    completion(false)
+                }
+            }
+        }
+    }
+
+    private func deleteAllCurrentUserRecipeReports() async throws {
+        let container = CKContainer(identifier: "iCloud.craftifydb")
+        let userRecordID = try await container.userRecordID()
+        let userReference = CKRecord.Reference(recordID: userRecordID, action: .none)
+        let predicate = NSPredicate(format: "___createdBy == %@", userReference)
+        let query = CKQuery(recordType: "PublicRecipeReport", predicate: predicate)
+        let database = container.publicCloudDatabase
+        let records = try await fetchAllRecords(matching: query, from: database)
+        try await deleteRecipeReportRecords(records.map(\.recordID), from: database)
+    }
+
+    private func deleteRecipeReportRecords(
+        _ recordIDs: [CKRecord.ID],
+        from database: CKDatabase
+    ) async throws {
+        let batchSize = 200
+        for start in stride(from: 0, to: recordIDs.count, by: batchSize) {
+            let end = min(start + batchSize, recordIDs.count)
+            let batch = Array(recordIDs[start..<end])
+            let (_, deleteResults) = try await database.modifyRecords(
+                saving: [],
+                deleting: batch
+            )
+
+            for result in deleteResults.values {
+                if case .failure(let error) = result {
+                    throw error
+                }
             }
         }
     }
