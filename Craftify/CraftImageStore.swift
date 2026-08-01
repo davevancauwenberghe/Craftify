@@ -87,6 +87,10 @@ final class CraftImageStore: ObservableObject {
         await synchronize(keys: [assetKey])
     }
 
+    func refresh(recipes: [Recipe]) async {
+        await synchronize(keys: Self.imageKeys(in: recipes), force: true)
+    }
+
     static func imageKeys(in recipes: [Recipe]) -> Set<String> {
         var keys: Set<String> = []
 
@@ -118,13 +122,14 @@ final class CraftImageStore: ObservableObject {
         return keys
     }
 
-    private func synchronize(keys: Set<String>) async {
+    private func synchronize(keys: Set<String>, force: Bool = false) async {
         let usableKeys = Set(keys.filter {
             !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         })
         let now = Date()
         let dueKeys = usableKeys.filter { key in
             guard !loadingKeys.contains(key) else { return false }
+            if force { return true }
             guard let checked = lastChecked[key] else { return true }
             return now.timeIntervalSince(checked) >= refreshInterval
         }
