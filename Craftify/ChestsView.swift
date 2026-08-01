@@ -427,8 +427,7 @@ private struct ChestRecipeCard: View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
                 AppBackground()
-                Image(recipe.image)
-                    .resizable()
+                CraftImage(key: recipe.image)
                     .scaledToFit()
                     .padding(18)
                 Text("\(slot)")

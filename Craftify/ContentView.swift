@@ -472,8 +472,7 @@ struct RecipeCell: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(recipe.image)
-                .resizable()
+            CraftImage(key: recipe.image)
                 .scaledToFit()
                 .frame(
                     width: isCraftifyPick

@@ -114,6 +114,7 @@ final class DataManager: ObservableObject {
             print("Loaded \(localRecipes.count) recipes from local cache.")
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncRecentSearches()
+            CraftImageStore.shared.prefetch(recipes: localRecipes)
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
         }
@@ -318,6 +319,7 @@ final class DataManager: ObservableObject {
                 recipes = fetchedRecipes.sorted { $0.name < $1.name }
                 syncRecentSearches()
                 saveRecipesToLocalCache(fetchedRecipes)
+                CraftImageStore.shared.prefetch(recipes: fetchedRecipes)
                 lastUpdated = Date()
                 lastRecipeFetch = Date()
                 isLoading = false
