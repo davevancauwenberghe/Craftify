@@ -319,7 +319,11 @@ final class DataManager: ObservableObject {
                 recipes = fetchedRecipes.sorted { $0.name < $1.name }
                 syncRecentSearches()
                 saveRecipesToLocalCache(fetchedRecipes)
-                CraftImageStore.shared.prefetch(recipes: fetchedRecipes)
+                if isManual {
+                    await CraftImageStore.shared.refresh(recipes: fetchedRecipes)
+                } else {
+                    CraftImageStore.shared.prefetch(recipes: fetchedRecipes)
+                }
                 lastUpdated = Date()
                 lastRecipeFetch = Date()
                 isLoading = false
