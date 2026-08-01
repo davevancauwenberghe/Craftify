@@ -138,3 +138,44 @@ extension CraftifyTests {
         #expect(decoded == chest)
     }
 }
+
+
+extension CraftifyTests {
+    @Test func imageAssetRecordNamesAreStableAndCloudKitSafe() {
+        #expect(
+            CraftImageAssetKey.recordName(for: "Oak Planks")
+                == "asset-T2FrIFBsYW5rcw"
+        )
+        #expect(
+            CraftImageAssetKey.recordName(for: "Oak Planks")
+                != CraftImageAssetKey.recordName(for: "Oak Log")
+        )
+    }
+
+    @MainActor
+    @Test func recipeImageKeysIncludeOutputsAlternatesAndRemarks() {
+        let recipe = Recipe(
+            id: 42,
+            name: "Test Recipe",
+            image: "Output",
+            ingredients: ["Ingredient", ""],
+            alternateIngredients: ["Alternate"],
+            alternateIngredients1: nil,
+            alternateIngredients2: nil,
+            alternateIngredients3: nil,
+            output: 1,
+            alternateOutput: nil,
+            alternateOutput1: nil,
+            alternateOutput2: nil,
+            alternateOutput3: nil,
+            category: "Test",
+            imageremark: "Crafting Table",
+            remarks: nil
+        )
+
+        #expect(
+            CraftImageStore.imageKeys(in: [recipe])
+                == ["Output", "Ingredient", "Alternate", "Crafting Table"]
+        )
+    }
+}
