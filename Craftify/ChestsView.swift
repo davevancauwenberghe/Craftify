@@ -302,7 +302,7 @@ struct ChestDetailView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .background {
-                    ChestDetailBackground()
+                    AppBackground()
                         .ignoresSafeArea()
                 }
                 .id(accentColorPreference).tint(Color.userAccentColor)
@@ -419,22 +419,6 @@ private struct ChestDetailHeader: View {
     }
 }
 
-private struct ChestDetailBackground: View {
-    var body: some View {
-        ZStack {
-            Color(.systemBackground)
-            LinearGradient(
-                colors: [
-                    Color.userAccentColor.opacity(0.20),
-                    Color.userAccentColor.opacity(0.03)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
-}
-
 private struct ChestRecipeCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let recipe: Recipe
@@ -442,7 +426,7 @@ private struct ChestRecipeCard: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
-                Color(.systemBackground)
+                AppBackground()
                 Image(recipe.image)
                     .resizable()
                     .scaledToFit()
