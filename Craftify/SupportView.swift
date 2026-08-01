@@ -52,9 +52,9 @@ struct SupportView: View {
                         trailing: horizontalSizeClass == .regular ? 16 : 12
                     ))
                     .accessibilityLabel("Clear All Data")
-                    .accessibilityHint("Clears all local and iCloud data, including chests, recent searches, and recipe reports")
+                    .accessibilityHint("Clears local recipe data, downloaded images, chests, recent searches, and recipe reports")
 
-                    Text("This will permanently delete all your chests, recent searches (stored in iCloud), recipe reports (stored in CloudKit), and the local recipe cache.")
+                    Text("This will permanently delete your chests, recent searches, CloudKit recipe reports, local recipe data, and downloaded recipe images.")
                         .font(horizontalSizeClass == .regular ? .body : .subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.leading)
@@ -62,7 +62,7 @@ struct SupportView: View {
                         .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                         .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
                         .accessibilityLabel("Clear All Data Note")
-                        .accessibilityHint("This will permanently delete all your chests, recent searches, recipe reports, and the local recipe cache.")
+                        .accessibilityHint("This will permanently delete your chests, recent searches, recipe reports, local recipe data, and downloaded recipe images.")
 
                     Button(action: {
                         dataManager.clearCache { success in
@@ -85,9 +85,9 @@ struct SupportView: View {
                         trailing: horizontalSizeClass == .regular ? 16 : 12
                     ))
                     .accessibilityLabel("Clear Cache")
-                    .accessibilityHint("Clears the cached Minecraft recipes, keeping iCloud data like chests")
+                    .accessibilityHint("Clears local Minecraft recipes and downloaded images, keeping iCloud data like chests")
 
-                    Text("This will permanently delete the local recipe cache, keeping iCloud data like chests and recent searches.")
+                    Text("This will permanently delete local recipe data and downloaded recipe images, keeping iCloud data like chests and recent searches.")
                         .font(horizontalSizeClass == .regular ? .body : .subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.leading)
@@ -95,7 +95,7 @@ struct SupportView: View {
                         .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
                         .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
                         .accessibilityLabel("Clear Cache Note")
-                        .accessibilityHint("This will permanently delete the local recipe cache, keeping iCloud data like chests and recent searches.")
+                        .accessibilityHint("This will permanently delete local recipe data and downloaded recipe images, keeping iCloud data like chests and recent searches.")
                 }
 
                 Section(header: Text("Privacy").font(.headline).minimumScaleFactor(0.6)) {
@@ -138,7 +138,7 @@ struct SupportView: View {
             .alert(isPresented: $showClearDataAlert) {
                 Alert(
                     title: Text("Clear All Data"),
-                    message: Text("Are you sure? This will remove all your chests, recent searches, recipe reports, and the local recipe cache. This action cannot be undone."),
+                    message: Text("Are you sure? This will remove your chests, recent searches, CloudKit recipe reports, local recipe data, and downloaded recipe images. This action cannot be undone."),
                     primaryButton: .destructive(Text("Clear All Data")) {
                         dataManager.clearAllData { success in
                             if success {
@@ -183,7 +183,7 @@ struct PrivacyPolicyContent: View {
                 .minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
 
-            Text("Last updated: 30 July 2026")
+            Text("Last updated: 1 August 2026")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .minimumScaleFactor(0.6)
@@ -210,7 +210,7 @@ struct PrivacyPolicyContent: View {
                             Text("• Legacy Favorites: If you used Favorites in an earlier version, its recipe IDs may remain in iCloud. Craftify no longer reads or imports them, and \"Clear All Data\" removes them.")
                             Text("• Recent Searches: Recipe names when you search for recipes, stored in iCloud to sync across your devices.")
                             Text("• Recipe Reports (Optional): When you report an issue, you may submit a recipe name, category, and description. These are stored in a private CloudKit database (accessible only to you) for the \"My Reports\" feature, allowing you to view and manage your reports across devices.")
-                            Text("• Local Recipe Cache: Recipes are cached on your device for offline access but contain no personal data.")
+                            Text("• Local Recipe and Image Data: Recipes and downloaded CloudKit images are stored on your device for reliable offline access but contain no personal data.")
                         }
                         .font(.body)
                         .minimumScaleFactor(0.6)
@@ -251,7 +251,7 @@ struct PrivacyPolicyContent: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Chests, Legacy Favorites, and Recent Searches: Chest names, sizes, ordering, recipe IDs (including Favorites saved by earlier versions), and recent recipe names are stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
                             Text("• Recipe Reports: Stored privately in a CloudKit database (accessible only to you via your iCloud account) for the \"My Reports\" feature.")
-                            Text("• Local Recipe Cache: Stored on your device with no personal information.")
+                            Text("• Local Recipe and Image Data: Stored persistently on your device, excluded from device backups, and contains no personal information.")
                         }
                         .font(.body)
                         .minimumScaleFactor(0.6)
@@ -304,8 +304,8 @@ struct PrivacyPolicyContent: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Chests: Swipe a chest or a stored recipe to delete it. Use Edit to rearrange chests.")
                             Text("• Recent Searches: Tap \"Clear All\" in the Search tab to remove all recent searches.")
-                            Text("• Clear All Data: Tap \"Clear All Data\" in this section to delete everything, including Chests, legacy Favorites, Recent Searches, Recipe Reports, and the local cache.")
-                            Text("• Clear Cache: Use \"Clear Cache\" in this section to remove the local cache, keeping iCloud data like Chests.")
+                            Text("• Clear All Data: Tap \"Clear All Data\" in this section to delete Chests, legacy Favorites, Recent Searches, CloudKit Recipe Reports, local recipe data, and downloaded images.")
+                            Text("• Clear Cache: Use \"Clear Cache\" in this section to remove local recipe data and downloaded images while keeping iCloud data like Chests.")
                             Text("• Recipe Reports: In the \"My Reports\" section of \"Report Issue\", you can view and delete your reports, which also removes them from CloudKit.")
                         }
                         .font(.body)
