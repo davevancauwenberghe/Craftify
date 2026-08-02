@@ -108,6 +108,18 @@ final class CraftImageStore: ObservableObject {
         )
     }
 
+    func prepare(
+        recipes: [Recipe],
+        progress: @escaping (Int, Int) -> Void
+    ) async {
+        let generation = storageGeneration
+        await synchronize(
+            keys: Self.imageKeys(in: recipes),
+            generation: generation,
+            progress: progress
+        )
+    }
+
     static func imageKeys(in recipes: [Recipe]) -> Set<String> {
         var keys: Set<String> = []
 
@@ -142,7 +154,8 @@ final class CraftImageStore: ObservableObject {
     private func synchronize(
         keys: Set<String>,
         force: Bool = false,
-        generation: Int
+        generation: Int,
+        progress: ((Int, Int) -> Void)? = nil
     ) async {
         guard generation == storageGeneration else { return }
 
@@ -157,6 +170,10 @@ final class CraftImageStore: ObservableObject {
             return now.timeIntervalSince(checked) >= refreshInterval
         }
 
+        let total = usableKeys.count
+        var prepared = total - dueKeys.count
+        progress?(prepared, total)
+
         guard !dueKeys.isEmpty else { return }
 
         let requestedKeys = Set(dueKeys)
@@ -169,6 +186,9 @@ final class CraftImageStore: ObservableObject {
             let end = min(start + queryBatchSize, sortedKeys.count)
             let batch = Array(sortedKeys[start..<end])
             await synchronize(batch: batch, generation: generation)
+            guard generation == storageGeneration else { return }
+            prepared += batch.count
+            progress?(prepared, total)
         }
     }
 
