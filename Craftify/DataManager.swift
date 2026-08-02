@@ -50,6 +50,7 @@ final class DataManager: ObservableObject {
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
     private let keyValueStore: any KeyValueStore
     private let imageStore: CraftImageStore
+    private var recipeFetchGeneration = 0
 
     enum ErrorType: String {
         case network = "Network issue, please try again later."
@@ -297,8 +298,9 @@ final class DataManager: ObservableObject {
     }
 
     func loadData(isManual: Bool = false, completion: @escaping () -> Void) {
+        let generation = recipeFetchGeneration
         Task {
-            await loadData(isManual: isManual)
+            await loadData(isManual: isManual, generation: generation)
             completion()
         }
     }
@@ -309,7 +311,9 @@ final class DataManager: ObservableObject {
         }
     }
 
-    private func loadData(isManual: Bool) async {
+    private func loadData(isManual: Bool, generation: Int) async {
+        guard generation == recipeFetchGeneration else { return }
+
         isLoading = true
         if isManual { isManualSyncing = true }
         errorMessage = nil
@@ -318,14 +322,19 @@ final class DataManager: ObservableObject {
         let query = CKQuery(recordType: "Recipe", predicate: NSPredicate(value: true))
 
         for retryCount in 0...3 {
+            guard generation == recipeFetchGeneration else { return }
+
             do {
                 let records = try await fetchAllRecords(matching: query, from: database)
+                guard generation == recipeFetchGeneration else { return }
+
                 let fetchedRecipes = records.compactMap(convertRecordToRecipe)
                 recipes = fetchedRecipes.sorted { $0.name < $1.name }
                 syncRecentSearches()
                 saveRecipesToLocalCache(fetchedRecipes)
                 if isManual {
                     await imageStore.refresh(recipes: fetchedRecipes)
+                    guard generation == recipeFetchGeneration else { return }
                 } else {
                     imageStore.prefetch(recipes: fetchedRecipes)
                 }
@@ -335,8 +344,11 @@ final class DataManager: ObservableObject {
                 isManualSyncing = false
                 return
             } catch {
+                guard generation == recipeFetchGeneration else { return }
+
                 if let ckError = error as? CKError, ckError.isRetryable, retryCount < 3 {
                     try? await Task.sleep(for: .seconds(3))
+                    guard generation == recipeFetchGeneration else { return }
                     continue
                 }
                 let type = errorType(for: error)
@@ -533,6 +545,10 @@ final class DataManager: ObservableObject {
     }
 
     func clearCache(completion: @escaping (Bool) -> Void) {
+        recipeFetchGeneration += 1
+        isLoading = false
+        isManualSyncing = false
+
         let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
 
         do {
