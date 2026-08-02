@@ -124,10 +124,13 @@ struct OnboardingView: View {
     @ViewBuilder
     private var recipeBookProgressView: some View {
         VStack(spacing: 12) {
+            ProgressView()
+                .controlSize(.large)
+                .tint(Color.userAccentColor)
+                .accessibilityHidden(true)
+
             switch dataManager.recipeBookLoadingPhase {
             case .idle:
-                ProgressView()
-                    .controlSize(.large)
                 Text("Building your recipe book…")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(.secondary)
@@ -141,6 +144,7 @@ struct OnboardingView: View {
                         total: Double(max(displayedTotal, 1))
                     )
                     .progressViewStyle(.linear)
+                    .accessibilityHidden(true)
                     Text("Downloading recipes \(downloaded) / \(displayedTotal)")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.secondary)
@@ -150,8 +154,6 @@ struct OnboardingView: View {
                             "\(downloaded) of \(displayedTotal) recipes downloaded"
                         )
                 } else {
-                    ProgressView()
-                        .controlSize(.large)
                     Text("Downloading recipes… \(downloaded)")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.secondary)
@@ -166,6 +168,7 @@ struct OnboardingView: View {
                     total: Double(max(total, 1))
                 )
                 .progressViewStyle(.linear)
+                .accessibilityHidden(true)
                 Text("Preparing images \(prepared) / \(total)")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(.secondary)
@@ -475,6 +478,16 @@ private struct OnboardingPage {
             highlights: [
                 Highlight(symbol: "square.grid.2x2", text: "Browse a complete, organized recipe library"),
                 Highlight(symbol: "sparkles", text: "Discover a fresh selection of Craftify Picks")
+            ]
+        ),
+        OnboardingPage(
+            eyebrow: "Ready anywhere",
+            title: "Craft anywhere",
+            detail: "Your downloaded recipe book stays on this device, so you can keep crafting without an internet connection.",
+            symbol: "wifi.slash",
+            highlights: [
+                Highlight(symbol: "hammer.fill", text: "No signal? No crafting-table crisis—your recipes and images remain ready offline"),
+                Highlight(symbol: "icloud.and.arrow.down.fill", text: "Connect now and then to collect new recipes and image updates")
             ]
         ),
         OnboardingPage(
