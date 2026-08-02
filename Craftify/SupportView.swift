@@ -183,7 +183,7 @@ struct PrivacyPolicyContent: View {
                 .minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
 
-            Text("Last updated: 1 August 2026")
+            Text("Last updated: 2 August 2026")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .minimumScaleFactor(0.6)
@@ -251,7 +251,8 @@ struct PrivacyPolicyContent: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("• Chests, Legacy Favorites, and Recent Searches: Chest names, sizes, ordering, recipe IDs (including Favorites saved by earlier versions), and recent recipe names are stored in your iCloud account, protected by Apple’s encryption. We cannot access this data.")
                             Text("• Recipe Reports: Stored privately in a CloudKit database (accessible only to you via your iCloud account) for the \"My Reports\" feature.")
-                            Text("• Local Recipe and Image Data: Stored persistently on your device, excluded from device backups, and contains no personal information.")
+                            Text("• Local Recipe Data: Stored on your device and contains no personal information.")
+                            Text("• Downloaded Recipe Images: Stored persistently on your device, excluded from device backups, and contain no personal information.")
                         }
                         .font(.body)
                         .minimumScaleFactor(0.6)
