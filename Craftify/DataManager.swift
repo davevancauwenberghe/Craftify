@@ -24,6 +24,12 @@ extension NSUbiquitousKeyValueStore: KeyValueStore {}
 
 @MainActor
 final class DataManager: ObservableObject {
+    enum RecipeBookLoadingPhase: Equatable {
+        case idle
+        case downloadingRecipes(downloaded: Int, total: Int?)
+        case preparingImages(prepared: Int, total: Int)
+    }
+
     @Published var recipes: [Recipe] = []
     @Published private(set) var chests: [RecipeChest] = []
     @Published var recentSearchNames: [String] = []
@@ -39,6 +45,7 @@ final class DataManager: ObservableObject {
     @Published var lastRecipeFetch: Date?
     @Published var isConnected: Bool = true
     @Published var consoleCommands: [ConsoleCommand] = []
+    @Published private(set) var recipeBookLoadingPhase: RecipeBookLoadingPhase = .idle
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudChestsKey = "recipeChests.v1"
@@ -51,6 +58,10 @@ final class DataManager: ObservableObject {
     private let keyValueStore: any KeyValueStore
     private let imageStore: CraftImageStore
     private var recipeFetchGeneration = 0
+    private var shouldPersistRecipeBookLoadingError = false
+
+    private static let catalogRecordName = "craftify-catalog-current"
+    private static let catalogRecipeCountField = "recipeCount"
 
     enum ErrorType: String {
         case network = "Network issue, please try again later."
@@ -98,6 +109,9 @@ final class DataManager: ObservableObject {
             .sink { [weak self] message in
                 if message != nil {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        guard self?.shouldPersistRecipeBookLoadingError != true else {
+                            return
+                        }
                         self?.errorMessage = nil
                     }
                 }
@@ -279,8 +293,15 @@ final class DataManager: ObservableObject {
         }
     }
 
-    func fetchRecipes(isManual: Bool = false, completion: @escaping () -> Void = {}) {
+    func fetchRecipes(
+        isManual: Bool = false,
+        waitForImages: Bool = false,
+        completion: @escaping () -> Void = {}
+    ) {
+        shouldPersistRecipeBookLoadingError = false
+
         if !isConnected {
+            shouldPersistRecipeBookLoadingError = waitForImages
             errorMessage = "No internet connection. Try again later."
             accessibilityAnnouncement = errorMessage
             completion()
@@ -294,52 +315,123 @@ final class DataManager: ObservableObject {
             return
         }
 
-        loadData(isManual: isManual, completion: completion)
+        loadData(
+            isManual: isManual,
+            waitForImages: waitForImages,
+            completion: completion
+        )
     }
 
-    func loadData(isManual: Bool = false, completion: @escaping () -> Void) {
+    func loadData(
+        isManual: Bool = false,
+        waitForImages: Bool = false,
+        completion: @escaping () -> Void
+    ) {
         let generation = recipeFetchGeneration
         Task {
-            await loadData(isManual: isManual, generation: generation)
+            await loadData(
+                isManual: isManual,
+                waitForImages: waitForImages,
+                generation: generation
+            )
             completion()
         }
     }
 
-    func loadDataAsync(isManual: Bool = false) async {
+    func loadDataAsync(isManual: Bool = false, waitForImages: Bool = false) async {
         await withCheckedContinuation { continuation in
-            loadData(isManual: isManual) { continuation.resume() }
+            loadData(isManual: isManual, waitForImages: waitForImages) {
+                continuation.resume()
+            }
         }
     }
 
-    private func loadData(isManual: Bool, generation: Int) async {
+    private func loadData(
+        isManual: Bool,
+        waitForImages: Bool,
+        generation: Int
+    ) async {
         guard generation == recipeFetchGeneration else { return }
 
         isLoading = true
         if isManual { isManualSyncing = true }
+        shouldPersistRecipeBookLoadingError = false
         errorMessage = nil
 
         let database = CKContainer(identifier: "iCloud.craftifydb").publicCloudDatabase
         let query = CKQuery(recordType: "Recipe", predicate: NSPredicate(value: true))
 
+        recipeBookLoadingPhase = .downloadingRecipes(downloaded: 0, total: nil)
+        let catalogRecipeCount = await fetchCatalogRecipeCount(from: database)
+        guard generation == recipeFetchGeneration else { return }
+        recipeBookLoadingPhase = .downloadingRecipes(
+            downloaded: 0,
+            total: catalogRecipeCount
+        )
+
         for retryCount in 0...3 {
             guard generation == recipeFetchGeneration else { return }
 
             do {
-                let records = try await fetchAllRecords(matching: query, from: database)
+                let records = try await fetchAllRecords(
+                    matching: query,
+                    from: database
+                ) { [weak self] downloaded in
+                    guard let self, generation == self.recipeFetchGeneration else {
+                        return
+                    }
+                    self.recipeBookLoadingPhase = .downloadingRecipes(
+                        downloaded: downloaded,
+                        total: catalogRecipeCount.map { max($0, downloaded) }
+                    )
+                }
                 guard generation == recipeFetchGeneration else { return }
 
                 let fetchedRecipes = records.compactMap(convertRecordToRecipe)
+                let actualRecipeCount = fetchedRecipes.count
+                recipeBookLoadingPhase = .downloadingRecipes(
+                    downloaded: actualRecipeCount,
+                    total: max(catalogRecipeCount ?? 0, actualRecipeCount)
+                )
                 recipes = fetchedRecipes.sorted { $0.name < $1.name }
                 syncRecentSearches()
                 saveRecipesToLocalCache(fetchedRecipes)
+
                 if isManual {
                     await imageStore.refresh(recipes: fetchedRecipes)
                     guard generation == recipeFetchGeneration else { return }
+                } else if waitForImages {
+                    let imageCount = CraftImageStore.imageKeys(in: fetchedRecipes).count
+                    recipeBookLoadingPhase = .preparingImages(
+                        prepared: 0,
+                        total: imageCount
+                    )
+                    let allImagesPrepared = await imageStore.prepare(
+                        recipes: fetchedRecipes
+                    ) { [weak self] prepared, total in
+                        guard let self, generation == self.recipeFetchGeneration else {
+                            return
+                        }
+                        self.recipeBookLoadingPhase = .preparingImages(
+                            prepared: prepared,
+                            total: total
+                        )
+                    }
+                    guard generation == recipeFetchGeneration else { return }
+                    guard allImagesPrepared else {
+                        shouldPersistRecipeBookLoadingError = true
+                        errorMessage = "Some recipe images couldn’t be downloaded. Please try again."
+                        accessibilityAnnouncement = errorMessage
+                        isLoading = false
+                        isManualSyncing = false
+                        return
+                    }
                 } else {
                     imageStore.prefetch(recipes: fetchedRecipes)
                 }
                 lastUpdated = Date()
                 lastRecipeFetch = Date()
+                shouldPersistRecipeBookLoadingError = false
                 isLoading = false
                 isManualSyncing = false
                 return
@@ -352,6 +444,7 @@ final class DataManager: ObservableObject {
                     continue
                 }
                 let type = errorType(for: error)
+                shouldPersistRecipeBookLoadingError = waitForImages
                 errorMessage = type.rawValue
                 accessibilityAnnouncement = type.rawValue
                 isLoading = false
@@ -733,12 +826,34 @@ final class DataManager: ObservableObject {
         }
     }
 
-    private func fetchAllRecords(matching query: CKQuery, from database: CKDatabase) async throws -> [CKRecord] {
+    private func fetchCatalogRecipeCount(from database: CKDatabase) async -> Int? {
+        do {
+            let recordID = CKRecord.ID(recordName: Self.catalogRecordName)
+            let record = try await database.record(for: recordID)
+            guard let count = record[Self.catalogRecipeCountField] as? Int64,
+                  count >= 0 else {
+                return nil
+            }
+            return Int(count)
+        } catch {
+            if (error as? CKError)?.code != .unknownItem {
+                print("Could not fetch recipe catalog: \(error.localizedDescription)")
+            }
+            return nil
+        }
+    }
+
+    private func fetchAllRecords(
+        matching query: CKQuery,
+        from database: CKDatabase,
+        progress: ((Int) -> Void)? = nil
+    ) async throws -> [CKRecord] {
         var page = try await database.records(
             matching: query,
             resultsLimit: CKQueryOperation.maximumResults
         )
         var fetchedRecords = records(from: page.matchResults)
+        progress?(fetchedRecords.count)
 
         while let cursor = page.queryCursor {
             page = try await database.records(
@@ -746,6 +861,7 @@ final class DataManager: ObservableObject {
                 resultsLimit: CKQueryOperation.maximumResults
             )
             fetchedRecords.append(contentsOf: records(from: page.matchResults))
+            progress?(fetchedRecords.count)
         }
 
         return fetchedRecords

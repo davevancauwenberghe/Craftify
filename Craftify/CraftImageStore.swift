@@ -108,6 +108,20 @@ final class CraftImageStore: ObservableObject {
         )
     }
 
+    func prepare(
+        recipes: [Recipe],
+        progress: @escaping (Int, Int) -> Void
+    ) async -> Bool {
+        let generation = storageGeneration
+        return await synchronize(
+            keys: Self.imageKeys(in: recipes),
+            force: true,
+            generation: generation,
+            stopOnFailure: true,
+            progress: progress
+        )
+    }
+
     static func imageKeys(in recipes: [Recipe]) -> Set<String> {
         var keys: Set<String> = []
 
@@ -139,12 +153,15 @@ final class CraftImageStore: ObservableObject {
         return keys
     }
 
+    @discardableResult
     private func synchronize(
         keys: Set<String>,
         force: Bool = false,
-        generation: Int
-    ) async {
-        guard generation == storageGeneration else { return }
+        generation: Int,
+        stopOnFailure: Bool = false,
+        progress: ((Int, Int) -> Void)? = nil
+    ) async -> Bool {
+        guard generation == storageGeneration else { return false }
 
         let usableKeys = Set(keys.filter {
             !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -157,23 +174,41 @@ final class CraftImageStore: ObservableObject {
             return now.timeIntervalSince(checked) >= refreshInterval
         }
 
-        guard !dueKeys.isEmpty else { return }
+        let total = usableKeys.count
+        var prepared = total - dueKeys.count
+        progress?(prepared, total)
+
+        guard !dueKeys.isEmpty else { return true }
 
         let requestedKeys = Set(dueKeys)
         loadingKeys.formUnion(requestedKeys)
         defer { loadingKeys.subtract(requestedKeys) }
 
+        var allSucceeded = true
         let sortedKeys = requestedKeys.sorted()
         for start in stride(from: 0, to: sortedKeys.count, by: queryBatchSize) {
-            guard generation == storageGeneration else { return }
+            guard generation == storageGeneration else { return false }
             let end = min(start + queryBatchSize, sortedKeys.count)
             let batch = Array(sortedKeys[start..<end])
-            await synchronize(batch: batch, generation: generation)
+            let batchSucceeded = await synchronize(
+                batch: batch,
+                generation: generation
+            )
+            guard generation == storageGeneration else { return false }
+
+            if !batchSucceeded {
+                allSucceeded = false
+                if stopOnFailure { return false }
+            } else {
+                prepared += batch.count
+                progress?(prepared, total)
+            }
         }
+        return allSucceeded
     }
 
-    private func synchronize(batch: [String], generation: Int) async {
-        guard generation == storageGeneration else { return }
+    private func synchronize(batch: [String], generation: Int) async -> Bool {
+        guard generation == storageGeneration else { return false }
         let predicate = NSPredicate(
             format: "%K IN %@",
             CraftImageAssetKey.assetKeyField,
@@ -192,7 +227,7 @@ final class CraftImageStore: ObservableObject {
                     CraftImageAssetKey.versionField
                 ]
             )
-            guard generation == storageGeneration else { return }
+            guard generation == storageGeneration else { return false }
 
             let metadata = metadataRecords.reduce(into: [String: Int64]()) { result, record in
                 guard let key = record[CraftImageAssetKey.assetKeyField] as? String else {
@@ -233,7 +268,7 @@ final class CraftImageStore: ObservableObject {
                         CraftImageAssetKey.versionField
                     ]
                 )
-                guard generation == storageGeneration else { return }
+                guard generation == storageGeneration else { return false }
 
                 for record in assetRecords {
                     if try store(record: record) {
@@ -248,12 +283,14 @@ final class CraftImageStore: ObservableObject {
             if cacheChanged {
                 objectWillChange.send()
             }
+            return true
         } catch {
-            guard generation == storageGeneration else { return }
+            guard generation == storageGeneration else { return false }
 
             let checkedAt = Date()
             batch.forEach { lastChecked[$0] = checkedAt }
             print("Craft image sync failed: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -266,7 +303,7 @@ final class CraftImageStore: ObservableObject {
             desiredKeys: desiredKeys,
             resultsLimit: CKQueryOperation.maximumResults
         )
-        var records = successfulRecords(from: page.matchResults)
+        var records = try successfulRecords(from: page.matchResults)
 
         while let cursor = page.queryCursor {
             page = try await database.records(
@@ -274,7 +311,7 @@ final class CraftImageStore: ObservableObject {
                 desiredKeys: desiredKeys,
                 resultsLimit: CKQueryOperation.maximumResults
             )
-            records.append(contentsOf: successfulRecords(from: page.matchResults))
+            records.append(contentsOf: try successfulRecords(from: page.matchResults))
         }
 
         return records
@@ -282,9 +319,9 @@ final class CraftImageStore: ObservableObject {
 
     private func successfulRecords(
         from results: [(CKRecord.ID, Result<CKRecord, Error>)]
-    ) -> [CKRecord] {
-        results.compactMap { _, result in
-            try? result.get()
+    ) throws -> [CKRecord] {
+        try results.map { _, result in
+            try result.get()
         }
     }
 
