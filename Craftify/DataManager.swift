@@ -30,6 +30,11 @@ final class DataManager: ObservableObject {
         case preparingImages(prepared: Int, total: Int)
     }
 
+    struct NewRecipeAnnouncement: Identifiable, Equatable {
+        let id = UUID()
+        let recipeCount: Int
+    }
+
     @Published var recipes: [Recipe] = []
     @Published private(set) var chests: [RecipeChest] = []
     @Published var recentSearchNames: [String] = []
@@ -46,6 +51,7 @@ final class DataManager: ObservableObject {
     @Published var isConnected: Bool = true
     @Published var consoleCommands: [ConsoleCommand] = []
     @Published private(set) var recipeBookLoadingPhase: RecipeBookLoadingPhase = .idle
+    @Published private(set) var newRecipeAnnouncement: NewRecipeAnnouncement?
 
     private let iCloudFavoritesKey = "favoriteRecipes"
     private let iCloudChestsKey = "recipeChests.v1"
@@ -57,11 +63,13 @@ final class DataManager: ObservableObject {
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
     private let keyValueStore: any KeyValueStore
     private let imageStore: CraftImageStore
+    private let defaults: UserDefaults
     private var recipeFetchGeneration = 0
     private var shouldPersistRecipeBookLoadingError = false
 
     private static let catalogRecordName = "craftify-catalog-current"
     private static let catalogRecipeCountField = "recipeCount"
+    private static let knownRecipeIDsDefaultsKey = "knownRecipeIDs.v1"
 
     enum ErrorType: String {
         case network = "Network issue, please try again later."
@@ -74,10 +82,12 @@ final class DataManager: ObservableObject {
 
     init(
         keyValueStore: any KeyValueStore = NSUbiquitousKeyValueStore.default,
-        imageStore: CraftImageStore = .shared
+        imageStore: CraftImageStore = .shared,
+        defaults: UserDefaults = .standard
     ) {
         self.keyValueStore = keyValueStore
         self.imageStore = imageStore
+        self.defaults = defaults
         keyValueStore.synchronize()
 
         networkMonitor.pathUpdateHandler = { [weak self] path in
@@ -134,6 +144,7 @@ final class DataManager: ObservableObject {
             print("Loaded \(localRecipes.count) recipes from local cache.")
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
             self.syncRecentSearches()
+            seedKnownRecipeIDsIfNeeded(from: localRecipes)
             imageStore.prefetch(recipes: localRecipes)
         } else {
             print("No local cache found; will fetch from CloudKit on first view load.")
@@ -429,6 +440,7 @@ final class DataManager: ObservableObject {
                 } else {
                     imageStore.prefetch(recipes: fetchedRecipes)
                 }
+                recordSuccessfulRecipeLibrary(fetchedRecipes)
                 lastUpdated = Date()
                 lastRecipeFetch = Date()
                 shouldPersistRecipeBookLoadingError = false
@@ -451,6 +463,43 @@ final class DataManager: ObservableObject {
                 isManualSyncing = false
                 return
             }
+        }
+    }
+
+    func dismissNewRecipeAnnouncement() {
+        newRecipeAnnouncement = nil
+    }
+
+    private func seedKnownRecipeIDsIfNeeded(from recipes: [Recipe]) {
+        guard storedKnownRecipeIDs() == nil else { return }
+        saveKnownRecipeIDs(Set(recipes.map(\.id)))
+    }
+
+    private func recordSuccessfulRecipeLibrary(_ recipes: [Recipe]) {
+        let fetchedIDs = Set(recipes.map(\.id))
+        defer { saveKnownRecipeIDs(fetchedIDs) }
+
+        guard let knownIDs = storedKnownRecipeIDs() else { return }
+        let addedCount = fetchedIDs.subtracting(knownIDs).count
+        guard addedCount > 0 else { return }
+
+        newRecipeAnnouncement = NewRecipeAnnouncement(recipeCount: addedCount)
+    }
+
+    private func storedKnownRecipeIDs() -> Set<Int>? {
+        guard let data = defaults.data(forKey: Self.knownRecipeIDsDefaultsKey),
+              let ids = try? JSONDecoder().decode([Int].self, from: data) else {
+            return nil
+        }
+        return Set(ids)
+    }
+
+    private func saveKnownRecipeIDs(_ ids: Set<Int>) {
+        do {
+            let data = try JSONEncoder().encode(ids.sorted())
+            defaults.set(data, forKey: Self.knownRecipeIDsDefaultsKey)
+        } catch {
+            print("Could not save known recipe IDs: \(error.localizedDescription)")
         }
     }
 
@@ -651,6 +700,7 @@ final class DataManager: ObservableObject {
             try imageStore.clearDownloadedImages()
 
             recipes = []
+            newRecipeAnnouncement = nil
             lastRecipeFetch = nil
             lastUpdated = nil
             cacheClearedMessage = "Recipe and image data cleared successfully."
