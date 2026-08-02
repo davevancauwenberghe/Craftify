@@ -89,8 +89,11 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 113-119", changes: [
-        "New: Chests replaced favorites",
+    ReleaseNote(version: "Version 1.0 - Build 113-120", changes: [
+        "New feature: Chests. Organise your recipes the way you prefer",
+        "New feature: Fully cloud-based recipe database",
+        "New app colours added",
+        "Experimental: UI overhaul",
         "Search updated to filter on recipes/ingredients or both",
         "UI improvements"
     ]),

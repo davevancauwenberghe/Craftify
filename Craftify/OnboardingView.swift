@@ -486,18 +486,8 @@ private struct OnboardingPage {
             detail: "Your downloaded recipe book stays on this device, so you can keep crafting without an internet connection.",
             symbol: "wifi.slash",
             highlights: [
-                Highlight(symbol: "hammer.fill", text: "No signal? No crafting-table crisis—your recipes and images remain ready offline"),
+                Highlight(symbol: "hammer.fill", text: "No signal? Your recipes and images remain ready offline"),
                 Highlight(symbol: "icloud.and.arrow.down.fill", text: "Connect now and then to collect new recipes and image updates")
-            ]
-        ),
-        OnboardingPage(
-            eyebrow: "Find anything",
-            title: "Search in an instant",
-            detail: "Find any recipe by its name or by an ingredient you already have.",
-            symbol: "magnifyingglass",
-            highlights: [
-                Highlight(symbol: "line.3.horizontal.decrease.circle", text: "Choose whether to search names, ingredients, or both"),
-                Highlight(symbol: "icloud.fill", text: "Recent searches sync through iCloud across your devices")
             ]
         ),
         OnboardingPage(
@@ -509,6 +499,16 @@ private struct OnboardingPage {
                 Highlight(symbol: "square.grid.3x3.fill", text: "Choose 27-slot or 54-slot chests for each project"),
                 Highlight(symbol: "paintbrush.pointed.fill", text: "Personalize every chest with a name and symbol"),
                 Highlight(symbol: "icloud.fill", text: "Sync your chest room through iCloud across your devices")
+            ]
+        ),
+        OnboardingPage(
+            eyebrow: "Find anything",
+            title: "Search in an instant",
+            detail: "Find any recipe by its name or by an ingredient you already have.",
+            symbol: "magnifyingglass",
+            highlights: [
+                Highlight(symbol: "line.3.horizontal.decrease.circle", text: "Choose whether to search names, ingredients, or both"),
+                Highlight(symbol: "icloud.fill", text: "Recent searches sync through iCloud across your devices")
             ]
         ),
         OnboardingPage(
