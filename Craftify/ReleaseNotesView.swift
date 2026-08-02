@@ -95,6 +95,7 @@ let releaseNotes: [ReleaseNote] = [
         "New app colours added",
         "Experimental: UI overhaul",
         "Search updated to filter on recipes/ingredients or both",
+        "Privacy policy updated",
         "UI improvements"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 111-112", changes: [
