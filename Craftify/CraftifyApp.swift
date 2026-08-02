@@ -51,7 +51,10 @@ struct CraftifyApp: App {
                             showOnboarding = false
                         },
                         onRetry: {
-                            dataManager.fetchRecipes(isManual: false)
+                            dataManager.fetchRecipes(
+                                isManual: false,
+                                waitForImages: !hasLaunchedBefore
+                            )
                         },
                         horizontalSizeClass: UIDevice.current.userInterfaceIdiom == .pad ? .regular : .compact
                     )
@@ -71,7 +74,10 @@ struct CraftifyApp: App {
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Craftify App")
             .onAppear {
-                dataManager.fetchRecipes(isManual: false)
+                dataManager.fetchRecipes(
+                    isManual: false,
+                    waitForImages: !hasLaunchedBefore
+                )
                 if !hasLaunchedBefore {
                     dismissOnboardingAfterLoading = true
                     showOnboarding = true
