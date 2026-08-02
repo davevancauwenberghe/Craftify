@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct OnboardingView: View {
+    @EnvironmentObject private var dataManager: DataManager
+
     let title: String
     let message: String
     @Binding var isLoading: Bool
@@ -106,15 +108,7 @@ struct OnboardingView: View {
                     .accessibilityHint("Retries loading the Craftify recipe library")
                 }
             } else {
-                VStack(spacing: 12) {
-                    ProgressView()
-                        .controlSize(.large)
-                    Text("Building your recipe book…")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Loading recipes")
+                recipeBookProgressView
             }
 
             Spacer()
@@ -125,6 +119,63 @@ struct OnboardingView: View {
         .padding(.horizontal, pagePadding)
         .padding(.vertical, 28)
         .frame(maxWidth: 620)
+    }
+
+    @ViewBuilder
+    private var recipeBookProgressView: some View {
+        VStack(spacing: 12) {
+            switch dataManager.recipeBookLoadingPhase {
+            case .idle:
+                ProgressView()
+                    .controlSize(.large)
+                Text("Building your recipe book…")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Building your recipe book")
+
+            case .downloadingRecipes(let downloaded, let total):
+                if let total {
+                    let displayedTotal = max(total, downloaded)
+                    ProgressView(
+                        value: Double(downloaded),
+                        total: Double(max(displayedTotal, 1))
+                    )
+                    .progressViewStyle(.linear)
+                    Text("Downloading recipes \(downloaded) / \(displayedTotal)")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .accessibilityLabel(
+                            "\(downloaded) of \(displayedTotal) recipes downloaded"
+                        )
+                } else {
+                    ProgressView()
+                        .controlSize(.large)
+                    Text("Downloading recipes… \(downloaded)")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .accessibilityLabel("\(downloaded) recipes downloaded")
+                }
+
+            case .preparingImages(let prepared, let total):
+                ProgressView(
+                    value: Double(total == 0 ? 1 : prepared),
+                    total: Double(max(total, 1))
+                )
+                .progressViewStyle(.linear)
+                Text("Preparing images \(prepared) / \(total)")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .accessibilityLabel("\(prepared) of \(total) images prepared")
+            }
+        }
+        .frame(maxWidth: 320)
+        .animation(.easeInOut(duration: 0.25), value: dataManager.recipeBookLoadingPhase)
     }
 
     private var onboardingPages: some View {
