@@ -58,6 +58,7 @@ final class DataManager: ObservableObject {
     private let keyValueStore: any KeyValueStore
     private let imageStore: CraftImageStore
     private var recipeFetchGeneration = 0
+    private var shouldPersistRecipeBookLoadingError = false
 
     private static let catalogRecordName = "craftify-catalog-current"
     private static let catalogRecipeCountField = "recipeCount"
@@ -108,6 +109,9 @@ final class DataManager: ObservableObject {
             .sink { [weak self] message in
                 if message != nil {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        guard self?.shouldPersistRecipeBookLoadingError != true else {
+                            return
+                        }
                         self?.errorMessage = nil
                     }
                 }
@@ -294,7 +298,10 @@ final class DataManager: ObservableObject {
         waitForImages: Bool = false,
         completion: @escaping () -> Void = {}
     ) {
+        shouldPersistRecipeBookLoadingError = false
+
         if !isConnected {
+            shouldPersistRecipeBookLoadingError = waitForImages
             errorMessage = "No internet connection. Try again later."
             accessibilityAnnouncement = errorMessage
             completion()
@@ -348,6 +355,7 @@ final class DataManager: ObservableObject {
 
         isLoading = true
         if isManual { isManualSyncing = true }
+        shouldPersistRecipeBookLoadingError = false
         errorMessage = nil
 
         let database = CKContainer(identifier: "iCloud.craftifydb").publicCloudDatabase
@@ -398,7 +406,9 @@ final class DataManager: ObservableObject {
                         prepared: 0,
                         total: imageCount
                     )
-                    await imageStore.prepare(recipes: fetchedRecipes) { [weak self] prepared, total in
+                    let allImagesPrepared = await imageStore.prepare(
+                        recipes: fetchedRecipes
+                    ) { [weak self] prepared, total in
                         guard let self, generation == self.recipeFetchGeneration else {
                             return
                         }
@@ -408,11 +418,20 @@ final class DataManager: ObservableObject {
                         )
                     }
                     guard generation == recipeFetchGeneration else { return }
+                    guard allImagesPrepared else {
+                        shouldPersistRecipeBookLoadingError = true
+                        errorMessage = "Some recipe images couldn’t be downloaded. Please try again."
+                        accessibilityAnnouncement = errorMessage
+                        isLoading = false
+                        isManualSyncing = false
+                        return
+                    }
                 } else {
                     imageStore.prefetch(recipes: fetchedRecipes)
                 }
                 lastUpdated = Date()
                 lastRecipeFetch = Date()
+                shouldPersistRecipeBookLoadingError = false
                 isLoading = false
                 isManualSyncing = false
                 return
@@ -425,6 +444,7 @@ final class DataManager: ObservableObject {
                     continue
                 }
                 let type = errorType(for: error)
+                shouldPersistRecipeBookLoadingError = waitForImages
                 errorMessage = type.rawValue
                 accessibilityAnnouncement = type.rawValue
                 isLoading = false
