@@ -86,19 +86,26 @@ final class CraftImageStore: ObservableObject {
 
     func prefetch(recipes: [Recipe]) {
         let keys = Self.imageKeys(in: recipes)
+        let generation = storageGeneration
         Task { [weak self] in
-            await self?.synchronize(keys: keys)
+            await self?.synchronize(keys: keys, generation: generation)
         }
     }
 
     func load(_ assetKey: String) async {
         let trimmed = assetKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        await synchronize(keys: [assetKey])
+        let generation = storageGeneration
+        await synchronize(keys: [assetKey], generation: generation)
     }
 
     func refresh(recipes: [Recipe]) async {
-        await synchronize(keys: Self.imageKeys(in: recipes), force: true)
+        let generation = storageGeneration
+        await synchronize(
+            keys: Self.imageKeys(in: recipes),
+            force: true,
+            generation: generation
+        )
     }
 
     static func imageKeys(in recipes: [Recipe]) -> Set<String> {
@@ -132,8 +139,13 @@ final class CraftImageStore: ObservableObject {
         return keys
     }
 
-    private func synchronize(keys: Set<String>, force: Bool = false) async {
-        let generation = storageGeneration
+    private func synchronize(
+        keys: Set<String>,
+        force: Bool = false,
+        generation: Int
+    ) async {
+        guard generation == storageGeneration else { return }
+
         let usableKeys = Set(keys.filter {
             !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         })
@@ -237,6 +249,8 @@ final class CraftImageStore: ObservableObject {
                 objectWillChange.send()
             }
         } catch {
+            guard generation == storageGeneration else { return }
+
             let checkedAt = Date()
             batch.forEach { lastChecked[$0] = checkedAt }
             print("Craft image sync failed: \(error.localizedDescription)")
