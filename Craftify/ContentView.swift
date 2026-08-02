@@ -93,6 +93,20 @@ struct ContentView: View {
                 )
                 .opacity(1)
                 .animation(.easeInOut(duration: 0.3), value: dataManager.isManualSyncing)
+                .zIndex(2)
+            }
+
+            if !dataManager.isManualSyncing,
+               let announcement = dataManager.newRecipeAnnouncement {
+                NewRecipesOverlayView(
+                    horizontalSizeClass: horizontalSizeClass,
+                    recipeCount: announcement.recipeCount
+                ) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        dataManager.dismissNewRecipeAnnouncement()
+                    }
+                }
+                .zIndex(3)
             }
         }
         // 4) nav-bar material
@@ -103,6 +117,7 @@ struct ContentView: View {
                     .ignoresSafeArea()
             }
         }
+        .sensoryFeedback(.success, trigger: dataManager.newRecipeAnnouncement?.id)
         .onChange(of: selectedTab) { _, newValue in
             HapticFeedback.selection()
             UIAccessibility.post(
