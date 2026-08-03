@@ -31,18 +31,45 @@ struct SyncOverlayView: View {
 }
 
 struct NewRecipesOverlayView: View {
+    private enum Page: Equatable {
+        case summary
+        case recipeList
+    }
+
     let horizontalSizeClass: UserInterfaceSizeClass?
-    let recipeCount: Int
+    let recipes: [Recipe]
     let onDismiss: () -> Void
 
+    @State private var page: Page = .summary
+
+    private var recipeCount: Int {
+        recipes.count
+    }
+
     private var title: String {
-        recipeCount == 1 ? "A New Recipe Arrived!" : "\(recipeCount) New Recipes Arrived!"
+        switch page {
+        case .summary:
+            recipeCount == 1
+                ? "A New Recipe Arrived!"
+                : "\(recipeCount) New Recipes Arrived!"
+        case .recipeList:
+            recipeCount == 1 ? "Meet the New Recipe" : "Meet the New Recipes"
+        }
     }
 
     private var detail: String {
-        recipeCount == 1
-            ? "A fresh crafting idea just landed in your recipe book."
-            : "Fresh crafting ideas just landed in your recipe book."
+        switch page {
+        case .summary:
+            recipeCount == 1
+                ? "A fresh crafting idea just landed in your recipe book."
+                : "Fresh crafting ideas just landed in your recipe book."
+        case .recipeList:
+            "Added since your last successful recipe sync."
+        }
+    }
+
+    private var reviewButtonTitle: String {
+        recipeCount == 1 ? "Review New Recipe" : "Review New Recipes"
     }
 
     var body: some View {
@@ -51,20 +78,131 @@ struct NewRecipesOverlayView: View {
             title: title,
             detail: detail,
             symbol: "book.closed.fill",
-            badgeSymbol: "sparkles"
+            badgeSymbol: page == .summary ? "sparkles" : "list.bullet",
+            showsIllustration: page == .summary
         ) {
-            Button(action: onDismiss) {
-                Label("Explore Recipes", systemImage: "hammer.fill")
+            switch page {
+            case .summary:
+                summaryActions
+            case .recipeList:
+                recipeListContent
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: page)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
+    }
+
+    private var summaryActions: some View {
+        VStack(spacing: 10) {
+            exploreButton
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    page = .recipeList
+                }
+            } label: {
+                Label(reviewButtonTitle, systemImage: "list.bullet")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.bordered)
             .controlSize(.large)
             .tint(Color.userAccentColor)
-            .accessibilityHint("Dismisses this message and opens your recipe library")
+            .accessibilityHint("Shows the names and record IDs of the newly added recipes")
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityAddTraits(.isModal)
+    }
+
+    private var recipeListContent: some View {
+        VStack(spacing: 12) {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(recipes) { recipe in
+                        NewRecipeAnnouncementRow(recipe: recipe)
+
+                        if recipe.id != recipes.last?.id {
+                            Divider()
+                                .padding(.leading, 64)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .frame(maxHeight: 280)
+            .background(
+                Color.primary.opacity(0.045),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            }
+            .accessibilityLabel("New recipes")
+
+            exploreButton
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    page = .summary
+                }
+            } label: {
+                Label("Back", systemImage: "chevron.left")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .tint(Color.userAccentColor)
+            .accessibilityHint("Returns to the new recipe summary")
+        }
+    }
+
+    private var exploreButton: some View {
+        Button(action: onDismiss) {
+            Label("Explore Recipes", systemImage: "hammer.fill")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .tint(Color.userAccentColor)
+        .accessibilityHint("Dismisses this message and opens your recipe library")
+    }
+}
+
+private struct NewRecipeAnnouncementRow: View {
+    let recipe: Recipe
+
+    private var metadata: String {
+        recipe.category.isEmpty
+            ? "Record ID \(recipe.id)"
+            : "Record ID \(recipe.id) • \(recipe.category)"
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            CraftImage(key: recipe.image)
+                .scaledToFit()
+                .frame(width: 44, height: 44)
+                .padding(4)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(recipe.name)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+
+                Text(metadata)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(recipe.name), \(metadata)")
     }
 }
 
@@ -74,6 +212,7 @@ private struct CraftifyOverlayCard<Footer: View>: View {
     let detail: String
     let symbol: String
     let badgeSymbol: String
+    let showsIllustration: Bool
     let footer: Footer
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -85,6 +224,7 @@ private struct CraftifyOverlayCard<Footer: View>: View {
         detail: String,
         symbol: String,
         badgeSymbol: String,
+        showsIllustration: Bool = true,
         @ViewBuilder footer: () -> Footer
     ) {
         self.horizontalSizeClass = horizontalSizeClass
@@ -92,6 +232,7 @@ private struct CraftifyOverlayCard<Footer: View>: View {
         self.detail = detail
         self.symbol = symbol
         self.badgeSymbol = badgeSymbol
+        self.showsIllustration = showsIllustration
         self.footer = footer()
     }
 
@@ -105,7 +246,9 @@ private struct CraftifyOverlayCard<Footer: View>: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {
-                illustration
+                if showsIllustration {
+                    illustration
+                }
 
                 VStack(spacing: 7) {
                     Text(title)
