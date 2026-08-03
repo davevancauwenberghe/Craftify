@@ -100,12 +100,13 @@ struct ContentView: View {
                let announcement = dataManager.newRecipeAnnouncement {
                 NewRecipesOverlayView(
                     horizontalSizeClass: horizontalSizeClass,
-                    recipeCount: announcement.recipeCount
+                    recipes: announcement.recipes
                 ) {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         dataManager.dismissNewRecipeAnnouncement()
                     }
                 }
+                .id(announcement.id)
                 .zIndex(3)
             }
         }

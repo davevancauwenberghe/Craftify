@@ -236,3 +236,51 @@ extension CraftifyTests {
         #expect(defaults.object(forKey: versionKey) == nil)
     }
 }
+
+extension CraftifyTests {
+    @MainActor
+    @Test func newRecipeAnnouncementContainsExactRecipesSortedByRecordID() {
+        let recipes = [
+            announcementRecipe(id: 351, name: "Spruce Chest Boat"),
+            announcementRecipe(id: 12, name: "Existing Recipe"),
+            announcementRecipe(id: 349, name: "Oak Boat with Chest")
+        ]
+
+        let addedRecipes = DataManager.newlyAddedRecipes(
+            in: recipes,
+            comparedTo: [12]
+        )
+
+        #expect(addedRecipes.map(\.id) == [349, 351])
+        #expect(
+            addedRecipes.map(\.name)
+                == ["Oak Boat with Chest", "Spruce Chest Boat"]
+        )
+
+        let announcement = DataManager.NewRecipeAnnouncement(
+            recipes: addedRecipes
+        )
+        #expect(announcement.recipeCount == 2)
+    }
+
+    private func announcementRecipe(id: Int, name: String) -> Recipe {
+        Recipe(
+            id: id,
+            name: name,
+            image: name,
+            ingredients: ["Oak Planks"],
+            alternateIngredients: nil,
+            alternateIngredients1: nil,
+            alternateIngredients2: nil,
+            alternateIngredients3: nil,
+            output: 1,
+            alternateOutput: nil,
+            alternateOutput1: nil,
+            alternateOutput2: nil,
+            alternateOutput3: nil,
+            category: "Test",
+            imageremark: nil,
+            remarks: nil
+        )
+    }
+}
