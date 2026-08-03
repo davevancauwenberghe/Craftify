@@ -32,7 +32,11 @@ final class DataManager: ObservableObject {
 
     struct NewRecipeAnnouncement: Identifiable, Equatable {
         let id = UUID()
-        let recipeCount: Int
+        let recipes: [Recipe]
+
+        var recipeCount: Int {
+            recipes.count
+        }
     }
 
     @Published var recipes: [Recipe] = []
@@ -480,10 +484,23 @@ final class DataManager: ObservableObject {
         defer { saveKnownRecipeIDs(fetchedIDs) }
 
         guard let knownIDs = storedKnownRecipeIDs() else { return }
-        let addedCount = fetchedIDs.subtracting(knownIDs).count
-        guard addedCount > 0 else { return }
+        let addedRecipes = Self.newlyAddedRecipes(
+            in: recipes,
+            comparedTo: knownIDs
+        )
+        guard !addedRecipes.isEmpty else { return }
 
-        newRecipeAnnouncement = NewRecipeAnnouncement(recipeCount: addedCount)
+        newRecipeAnnouncement = NewRecipeAnnouncement(recipes: addedRecipes)
+    }
+
+    static func newlyAddedRecipes(
+        in recipes: [Recipe],
+        comparedTo knownIDs: Set<Int>
+    ) -> [Recipe] {
+        let addedIDs = Set(recipes.map(\.id)).subtracting(knownIDs)
+        return recipes
+            .filter { addedIDs.contains($0.id) }
+            .sorted { $0.id < $1.id }
     }
 
     private func storedKnownRecipeIDs() -> Set<Int>? {
