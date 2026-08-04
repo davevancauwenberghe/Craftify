@@ -1,7 +1,7 @@
 name: Craftify iOS CI
+
 permissions:
   contents: read
-  pull-requests: write
 
 on:
   push:
@@ -12,70 +12,67 @@ on:
 
 jobs:
   build-and-test:
-    name: Build and Test Craftify on iPhone 15 Simulator (iOS 18.0)
-    runs-on: macos-latest
+    name: Build and test Craftify on iOS/iPadOS 26
+    runs-on: macos-26
     timeout-minutes: 30
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v5
 
-      - name: Select Xcode Version
+      - name: Show Apple toolchain
         run: |
-          # List available Xcode installations
-          ls -ld /Applications/Xcode*.app
-          # Try common Xcode paths
-          XCODE_PATH=$(find /Applications -maxdepth 1 -name "Xcode*.app" | head -n 1)
-          if [ -z "$XCODE_PATH" ]; then
-            echo "No Xcode installation found"
+          xcodebuild -version
+          echo "iOS Simulator SDK: $(xcrun --sdk iphonesimulator --show-sdk-version)"
+
+      - name: Select an available iOS Simulator
+        run: |
+          SIMULATOR_ID="$(
+            xcrun simctl list devices available -j |
+              jq -r '
+                .devices
+                | to_entries[]
+                | select(.key | contains("iOS"))
+                | .value[]
+                | select(.isAvailable == true)
+                | .udid
+              ' |
+              head -n 1
+          )"
+
+          if [ -z "$SIMULATOR_ID" ]; then
+            echo "No available iOS Simulator was found."
             exit 1
           fi
-          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
-          xcodebuild -version
-          echo "Selected Xcode at $XCODE_PATH"
 
-      - name: Build
-        env:
-          SCHEME: Craftify
-          PLATFORM: iOS Simulator
-          DESTINATION: platform=iOS Simulator,name=iPhone 15,OS=18.0
-        run: |
-          xcodebuild clean build-for-testing \
-            -scheme "$SCHEME" \
-            -project "Craftify.xcodeproj" \
-            -destination "$DESTINATION" \
-            CODE_SIGNING_ALLOWED=NO | xcpretty
-          echo "Build completed successfully"
+          echo "SIMULATOR_DESTINATION=platform=iOS Simulator,id=$SIMULATOR_ID" >> "$GITHUB_ENV"
 
-      - name: Test
-        env:
-          SCHEME: Craftify
-          PLATFORM: iOS Simulator
-          DESTINATION: platform=iOS Simulator,name=iPhone 15,OS=18.0
+      - name: Build and run unit tests
         run: |
           xcodebuild test \
-            -scheme "$SCHEME" \
             -project "Craftify.xcodeproj" \
-            -destination "$DESTINATION" \
-            -enableSwiftTesting \
-            -testProductsPath "CraftifyTests" \
-            -testProductsPath "CraftifyUITests" \
+            -scheme "Craftify" \
+            -destination "$SIMULATOR_DESTINATION" \
+            -derivedDataPath "$RUNNER_TEMP/CraftifyDerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/CraftifyTests.xcresult" \
             -enableCodeCoverage YES \
-            CODE_SIGNING_ALLOWED=NO | xcpretty
-          echo "Tests completed successfully"
+            -skip-testing:CraftifyUITests \
+            IPHONEOS_DEPLOYMENT_TARGET=18.0 \
+            ENABLE_PREVIEWS=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
-      - name: Archive Code Coverage
-        if: always()
+      - name: Create code coverage report
         run: |
-          xcrun xccov view --report --only-covered-files \
-            $(find DerivedData -name "*.xcresult" -type d) \
-            > coverage.txt
-          echo "Coverage report generated"
-        continue-on-error: true
+          if [ -d "$RUNNER_TEMP/CraftifyTests.xcresult" ]; then
+            xcrun xccov view \
+              --report \
+              "$RUNNER_TEMP/CraftifyTests.xcresult" \
+              > coverage.txt
+          fi
 
-      - name: Upload Coverage Artifact
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Upload code coverage
+        uses: actions/upload-artifact@v6
         with:
           name: code-coverage-report
           path: coverage.txt
+          if-no-files-found: ignore
