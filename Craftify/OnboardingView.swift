@@ -182,48 +182,57 @@ struct OnboardingView: View {
     }
 
     private var onboardingPages: some View {
-        VStack(spacing: 0) {
+        // ForEach content can be evaluated by SwiftUI's asynchronous renderer.
+        // Capture actor-isolated state before constructing either collection.
+        let pageItems = pages
+        let currentStep = step
+        let accentColor = Color.userAccentColor(for: accentColorPreference)
+        let animation = pageAnimation
+
+        return VStack(spacing: 0) {
             TabView(selection: $step) {
-                ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                    OnboardingPageView(page: page, isCurrent: step == index)
+                ForEach(Array(pageItems.enumerated()), id: \.offset) { index, page in
+                    OnboardingPageView(page: page, isCurrent: currentStep == index)
                         .tag(index)
                         .padding(.horizontal, pagePadding)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .accessibilityLabel("Craftify introduction")
-            .accessibilityValue("Page \(step + 1) of \(pages.count): \(pages[step].title)")
+            .accessibilityValue(
+                "Page \(currentStep + 1) of \(pageItems.count): \(pageItems[currentStep].title)"
+            )
 
             VStack(spacing: 18) {
                 HStack(spacing: 8) {
-                    ForEach(pages.indices, id: \.self) { index in
+                    ForEach(pageItems.indices, id: \.self) { index in
                         Capsule()
-                            .fill(index == step ? Color.userAccentColor : Color.secondary.opacity(0.22))
-                            .frame(width: index == step ? 28 : 8, height: 8)
-                            .animation(pageAnimation, value: step)
+                            .fill(index == currentStep ? accentColor : Color.secondary.opacity(0.22))
+                            .frame(width: index == currentStep ? 28 : 8, height: 8)
+                            .animation(animation, value: currentStep)
                     }
                 }
                 .accessibilityHidden(true)
 
                 HStack(spacing: 12) {
-                    if step > 0 {
+                    if currentStep > 0 {
                         Button("Back") {
-                            move(to: step - 1)
+                            move(to: currentStep - 1)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.large)
                         .accessibilityHint("Shows the previous introduction page")
                     }
 
-                    Button(step == pages.count - 1 ? "Start Crafting" : "Continue") {
-                        if step == pages.count - 1 {
+                    Button(currentStep == pageItems.count - 1 ? "Start Crafting" : "Continue") {
+                        if currentStep == pageItems.count - 1 {
                             finishOnboarding()
                         } else {
-                            move(to: step + 1)
+                            move(to: currentStep + 1)
                         }
                     }
                     .buttonStyle(CraftifyPrimaryButtonStyle())
-                    .accessibilityHint(step == pages.count - 1
+                    .accessibilityHint(currentStep == pageItems.count - 1
                         ? "Opens your Craftify recipe library"
                         : "Shows the next introduction page")
                 }
