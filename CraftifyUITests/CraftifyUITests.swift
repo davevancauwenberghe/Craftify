@@ -8,17 +8,18 @@
 import XCTest
 
 final class CraftifyUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
     @MainActor
     func testTextSizePickerInContentView() throws {
+        continueAfterFailure = false
+
         let app = XCUIApplication()
         app.launch()
 
         let moreTab = app.tabBars.buttons["More"]
-        XCTAssertTrue(moreTab.waitForExistence(timeout: 5), "More tab should exist")
+        XCTAssertTrue(
+            moreTab.waitForExistence(timeout: 5),
+            "More tab should exist"
+        )
         moreTab.tap()
 
         let appearanceCell = app.tables.cells.staticTexts["App Appearance"]

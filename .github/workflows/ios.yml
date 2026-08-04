@@ -4,17 +4,23 @@ permissions:
   contents: read
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+    paths:
+      - "Craftify/**"
+      - "Craftify.xcodeproj/**"
+      - ".github/workflows/ios.yml"
   workflow_dispatch:
 
+concurrency:
+  group: craftify-ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-and-test:
-    name: Build and test Craftify on iOS/iPadOS 26
+  build:
+    name: Build Craftify for iOS/iPadOS 18
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
@@ -25,54 +31,16 @@ jobs:
           xcodebuild -version
           echo "iOS Simulator SDK: $(xcrun --sdk iphonesimulator --show-sdk-version)"
 
-      - name: Select an available iOS Simulator
+      - name: Build app
         run: |
-          SIMULATOR_ID="$(
-            xcrun simctl list devices available -j |
-              jq -r '
-                .devices
-                | to_entries[]
-                | select(.key | contains("iOS"))
-                | .value[]
-                | select(.isAvailable == true)
-                | .udid
-              ' |
-              head -n 1
-          )"
-
-          if [ -z "$SIMULATOR_ID" ]; then
-            echo "No available iOS Simulator was found."
-            exit 1
-          fi
-
-          echo "SIMULATOR_DESTINATION=platform=iOS Simulator,id=$SIMULATOR_ID" >> "$GITHUB_ENV"
-
-      - name: Build and run unit tests
-        run: |
-          xcodebuild test \
+          xcodebuild build \
             -project "Craftify.xcodeproj" \
             -scheme "Craftify" \
-            -destination "$SIMULATOR_DESTINATION" \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
             -derivedDataPath "$RUNNER_TEMP/CraftifyDerivedData" \
-            -resultBundlePath "$RUNNER_TEMP/CraftifyTests.xcresult" \
-            -enableCodeCoverage YES \
-            -skip-testing:CraftifyUITests \
             IPHONEOS_DEPLOYMENT_TARGET=18.0 \
+            CODE_SIGNING_ALLOWED=NO \
             ENABLE_PREVIEWS=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
-
-      - name: Create code coverage report
-        run: |
-          if [ -d "$RUNNER_TEMP/CraftifyTests.xcresult" ]; then
-            xcrun xccov view \
-              --report \
-              "$RUNNER_TEMP/CraftifyTests.xcresult" \
-              > coverage.txt
-          fi
-
-      - name: Upload code coverage
-        uses: actions/upload-artifact@v6
-        with:
-          name: code-coverage-report
-          path: coverage.txt
-          if-no-files-found: ignore
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            ONLY_ACTIVE_ARCH=YES

@@ -35,7 +35,7 @@ final class CraftImageStore: ObservableObject {
     private let defaults: UserDefaults
     private let imageDirectory: URL
     private let legacyCacheDirectory: URL
-    private let dataCache = NSCache<NSString, NSData>()
+    private let imageCache = NSCache<NSString, UIImage>()
     private var loadingKeys: Set<String> = []
     private var lastChecked: [String: Date] = [:]
     private var storageGeneration = 0
@@ -67,29 +67,21 @@ final class CraftImageStore: ObservableObject {
             .appendingPathComponent("CraftImageAssets", isDirectory: true)
 
         prepareStorage()
-        dataCache.countLimit = 300
-        dataCache.totalCostLimit = 64 * 1_024 * 1_024
+        imageCache.countLimit = 300
     }
 
-    func imageData(for assetKey: String) -> Data? {
+    func image(for assetKey: String) -> UIImage? {
         let cacheKey = assetKey as NSString
-        if let cachedData = dataCache.object(forKey: cacheKey) {
-            return cachedData as Data
+        if let image = imageCache.object(forKey: cacheKey) {
+            return image
         }
 
-        guard
-            let data = try? Data(contentsOf: cachedFileURL(for: assetKey)),
-            CraftImageData.isValidImage(data)
-        else {
-            return nil
+        if let image = UIImage(contentsOfFile: cachedFileURL(for: assetKey).path) {
+            imageCache.setObject(image, forKey: cacheKey)
+            return image
         }
 
-        dataCache.setObject(
-            data as NSData,
-            forKey: cacheKey,
-            cost: data.count
-        )
-        return data
+        return UIImage(named: assetKey)
     }
 
     func prefetch(recipes: [Recipe]) {
@@ -254,7 +246,7 @@ final class CraftImageStore: ObservableObject {
             }
 
             let outdatedKeys = metadata.compactMap { key, remoteVersion -> String? in
-                let hasValidFile = imageData(for: key) != nil
+                let hasValidFile = UIImage(contentsOfFile: cachedFileURL(for: key).path) != nil
                 return localVersion(for: key) < remoteVersion || !hasValidFile ? key : nil
             }
 
@@ -342,16 +334,12 @@ final class CraftImageStore: ObservableObject {
         }
 
         let data = try Data(contentsOf: sourceURL)
-        guard CraftImageData.isValidImage(data) else {
+        guard let image = UIImage(data: data) else {
             throw CraftImageStoreError.invalidImageData
         }
 
         try data.write(to: cachedFileURL(for: assetKey), options: .atomic)
-        dataCache.setObject(
-            data as NSData,
-            forKey: assetKey as NSString,
-            cost: data.count
-        )
+        imageCache.setObject(image, forKey: assetKey as NSString)
 
         let version = record[CraftImageAssetKey.versionField] as? Int64 ?? 1
         defaults.set(Int(version), forKey: versionDefaultsKey(for: assetKey))
@@ -377,7 +365,7 @@ final class CraftImageStore: ObservableObject {
         storageGeneration += 1
         loadingKeys.removeAll()
         lastChecked.removeAll()
-        dataCache.removeAllObjects()
+        imageCache.removeAllObjects()
 
         defaults.dictionaryRepresentation().keys
             .filter { $0.hasPrefix(Self.versionDefaultsPrefix) }
@@ -464,7 +452,7 @@ final class CraftImageStore: ObservableObject {
 
     private func removeCachedRemoteImage(for assetKey: String) {
         try? fileManager.removeItem(at: cachedFileURL(for: assetKey))
-        dataCache.removeObject(forKey: assetKey as NSString)
+        imageCache.removeObject(forKey: assetKey as NSString)
         defaults.removeObject(forKey: versionDefaultsKey(for: assetKey))
     }
 }
@@ -495,10 +483,8 @@ struct CraftImage: View {
 
     var body: some View {
         Group {
-            if let data = store.imageData(for: key) {
-                AnimatedImageView(data: data)
-            } else if let bundledImage = UIImage(named: key) {
-                Image(uiImage: bundledImage)
+            if let image = store.image(for: key) {
+                Image(uiImage: image)
                     .resizable()
                     .interpolation(.none)
             } else {
