@@ -26,6 +26,7 @@ Craftify is a sleek iOS app designed for Minecraft players to browse, search, an
 - **Accessibility**: Fully optimized for VoiceOver, Dynamic Type, and other iOS accessibility features.
 - **Light/Dark Mode**: Seamlessly adapts to your device’s appearance settings.
 - **CloudKit Syncing**: Keep your favorites in sync across all your devices.
+- **Cloud Image Library**: Download and display PNG and animated GIF recipe artwork.
 - **Haptic Feedback**: Enjoy tactile feedback for a more engaging experience.
 
 #### Disclaimer
