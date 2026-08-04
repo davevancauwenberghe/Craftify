@@ -188,13 +188,14 @@ struct OnboardingView: View {
         let currentStep = step
         let accentColor = Color.userAccentColor(for: accentColorPreference)
         let animation = pageAnimation
+        let horizontalPadding = pagePadding
 
         return VStack(spacing: 0) {
             TabView(selection: $step) {
                 ForEach(Array(pageItems.enumerated()), id: \.offset) { index, page in
                     OnboardingPageView(page: page, isCurrent: currentStep == index)
                         .tag(index)
-                        .padding(.horizontal, pagePadding)
+                        .padding(.horizontal, horizontalPadding)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
@@ -237,7 +238,7 @@ struct OnboardingView: View {
                         : "Shows the next introduction page")
                 }
             }
-            .padding(.horizontal, pagePadding)
+            .padding(.horizontal, horizontalPadding)
             .padding(.bottom, 18)
         }
         .frame(maxWidth: 720)
