@@ -277,7 +277,12 @@ private struct OnboardingPageView: View {
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
     var body: some View {
-        ScrollView {
+        // SwiftUI can evaluate collection content on its asynchronous renderer.
+        // Resolve appearance state before those escaping closures are invoked.
+        let accentColor = Color.userAccentColor(for: accentColorPreference)
+        let highlights = page.highlights
+
+        return ScrollView {
             VStack(spacing: 24) {
                 Spacer(minLength: 18)
 
@@ -286,15 +291,15 @@ private struct OnboardingPageView: View {
                         .fill(.thinMaterial)
                         .overlay {
                             RoundedRectangle(cornerRadius: 36, style: .continuous)
-                                .stroke(Color.userAccentColor.opacity(0.22), lineWidth: 1)
+                                .stroke(accentColor.opacity(0.22), lineWidth: 1)
                         }
 
                     Image(systemName: page.symbol)
                         .font(.system(size: 66, weight: .medium))
-                        .foregroundStyle(Color.userAccentColor.gradient)
+                        .foregroundStyle(accentColor.gradient)
                 }
                 .frame(width: 176, height: 176)
-                .shadow(color: Color.userAccentColor.opacity(0.14), radius: 24, y: 12)
+                .shadow(color: accentColor.opacity(0.14), radius: 24, y: 12)
                 .scaleEffect(isCurrent || reduceMotion ? 1 : 0.94)
                 .opacity(isCurrent || reduceMotion ? 1 : 0.7)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: isCurrent)
@@ -303,7 +308,7 @@ private struct OnboardingPageView: View {
                     Text(page.eyebrow.uppercased())
                         .font(.caption.weight(.bold))
                         .tracking(1.2)
-                        .foregroundStyle(Color.userAccentColor)
+                        .foregroundStyle(accentColor)
                     Text(page.title)
                         .font(.largeTitle.bold())
                         .multilineTextAlignment(.center)
@@ -315,18 +320,11 @@ private struct OnboardingPageView: View {
                 }
 
                 VStack(spacing: 10) {
-                    ForEach(page.highlights) { highlight in
-                        HStack(spacing: 14) {
-                            Image(systemName: highlight.symbol)
-                                .font(.headline)
-                                .foregroundStyle(Color.userAccentColor)
-                                .frame(width: 28)
-                            Text(highlight.text)
-                                .font(.subheadline.weight(.medium))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .padding(14)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    ForEach(highlights) { highlight in
+                        OnboardingHighlightRow(
+                            highlight: highlight,
+                            accentColor: accentColor
+                        )
                     }
                 }
                 .frame(maxWidth: 520)
@@ -336,7 +334,7 @@ private struct OnboardingPageView: View {
                         HStack(spacing: 14) {
                             Image(systemName: "paintpalette.fill")
                                 .font(.headline)
-                                .foregroundStyle(Color.userAccentColor)
+                                .foregroundStyle(accentColor)
                                 .frame(width: 28)
                             Text("Choose an appearance that feels like yours")
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -361,20 +359,52 @@ private struct OnboardingPageView: View {
         let columns = dynamicTypeSize.isAccessibilitySize
             ? [GridItem(.flexible(), alignment: .leading)]
             : [GridItem(.adaptive(minimum: 72), spacing: 12, alignment: .leading)]
+        let options = AppAppearanceView.accentColors
+        let selection = $accentColorPreference
 
         return LazyVGrid(columns: columns, spacing: 12) {
-            ForEach(AppAppearanceView.accentColors) { option in
-                accentColorButton(for: option)
+            ForEach(options) { option in
+                OnboardingAccentColorButton(
+                    option: option,
+                    selection: selection
+                )
             }
         }
         .padding(.leading, 42)
     }
+}
 
-    private func accentColorButton(for option: AccentColorOption) -> some View {
-        let isSelected = accentColorPreference == option.id
+private struct OnboardingHighlightRow: View {
+    let highlight: OnboardingPage.Highlight
+    let accentColor: Color
 
-        return Button {
-            selectAccentColor(option.id)
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: highlight.symbol)
+                .font(.headline)
+                .foregroundStyle(accentColor)
+                .frame(width: 28)
+            Text(highlight.text)
+                .font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(14)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private struct OnboardingAccentColorButton: View {
+    let option: AccentColorOption
+    @Binding var selection: String
+
+    private var isSelected: Bool {
+        selection == option.id
+    }
+
+    var body: some View {
+        Button {
+            selection = option.id
+            HapticFeedback.selection()
         } label: {
             VStack(spacing: 6) {
                 Circle()
@@ -398,11 +428,6 @@ private struct OnboardingPageView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(option.name)
         .accessibilityValue(isSelected ? "Selected" : "")
-    }
-
-    private func selectAccentColor(_ id: String) {
-        accentColorPreference = id
-        HapticFeedback.selection()
     }
 }
 
