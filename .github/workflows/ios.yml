@@ -58,12 +58,10 @@ jobs:
             -enableCodeCoverage YES \
             -skip-testing:CraftifyUITests \
             IPHONEOS_DEPLOYMENT_TARGET=18.0 \
-            CODE_SIGNING_ALLOWED=NO \
             ENABLE_PREVIEWS=NO \
             COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Create code coverage report
-        if: always()
         run: |
           if [ -d "$RUNNER_TEMP/CraftifyTests.xcresult" ]; then
             xcrun xccov view \
@@ -73,7 +71,6 @@ jobs:
           fi
 
       - name: Upload code coverage
-        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: code-coverage-report
