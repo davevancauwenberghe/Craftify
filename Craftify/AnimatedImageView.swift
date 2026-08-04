@@ -65,7 +65,8 @@ private struct AnimatedUIImageView: UIViewRepresentable {
         context.coordinator.animates = animates
         imageView.image = AnimatedUIImageDecoder.image(
             from: data,
-            animates: animates
+            animates: animates,
+            scale: context.environment.displayScale
         )
     }
 
@@ -76,7 +77,11 @@ private struct AnimatedUIImageView: UIViewRepresentable {
 }
 
 private enum AnimatedUIImageDecoder {
-    static func image(from data: Data, animates: Bool) -> UIImage? {
+    static func image(
+        from data: Data,
+        animates: Bool,
+        scale: CGFloat
+    ) -> UIImage? {
         guard
             let source = CGImageSourceCreateWithData(data as CFData, nil),
             CGImageSourceGetCount(source) > 0
@@ -91,7 +96,7 @@ private enum AnimatedUIImageDecoder {
             }
             return UIImage(
                 cgImage: frame,
-                scale: UIScreen.main.scale,
+                scale: scale,
                 orientation: .up
             )
         }
@@ -108,7 +113,7 @@ private enum AnimatedUIImageDecoder {
             frames.append(
                 UIImage(
                     cgImage: frame,
-                    scale: UIScreen.main.scale,
+                    scale: scale,
                     orientation: .up
                 )
             )
