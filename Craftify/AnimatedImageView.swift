@@ -215,7 +215,7 @@ private struct AnimatedImageDescriptor: Sendable {
 private final class SendableCGImage: @unchecked Sendable {
     let image: CGImage
 
-    init(_ image: CGImage) {
+    nonisolated init(_ image: CGImage) {
         self.image = image
     }
 }
