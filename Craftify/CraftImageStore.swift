@@ -2,7 +2,7 @@
 //  CraftImageStore.swift
 //  Craftify
 //
-//  CloudKit-backed shared image library with bundled and disk fallbacks.
+//  Created by Dave Van Cauwenberghe on 03/08/2026.
 //
 
 import Foundation
