@@ -58,24 +58,3 @@ extension Color {
         }
     }
 }
-
-/// The shared app surface, matching the accent-tinted background introduced
-/// by the chest detail screen.
-struct AppBackground: View {
-    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
-
-    var body: some View {
-        ZStack {
-            Color(.systemBackground)
-            LinearGradient(
-                colors: [
-                    Color.userAccentColor(for: accentColorPreference).opacity(0.20),
-                    Color.userAccentColor(for: accentColorPreference).opacity(0.03)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-        .accessibilityHidden(true)
-    }
-}

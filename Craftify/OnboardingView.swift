@@ -18,10 +18,10 @@ struct OnboardingView: View {
     let dismissAfterLoading: Bool
     let onDismiss: () -> Void
     let onRetry: () -> Void
-    let horizontalSizeClass: UserInterfaceSizeClass?
 
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var step = 0
     @State private var isFinishing = false
     @State private var retryCount = 0
@@ -59,17 +59,11 @@ struct OnboardingView: View {
 
     private var onboardingBackground: some View {
         ZStack {
-            Color(.systemGroupedBackground)
-            LinearGradient(
-                colors: [Color.userAccentColor.opacity(0.22), .clear, Color.userAccentColor.opacity(0.08)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            Circle()
-                .fill(Color.userAccentColor.opacity(0.12))
-                .frame(width: horizontalSizeClass == .regular ? 520 : 330)
-                .blur(radius: 2)
-                .offset(x: 160, y: -300)
+            AppBackground()
+
+            CraftifyBlockGlow()
+                .frame(width: horizontalSizeClass == .regular ? 430 : 290)
+                .offset(x: horizontalSizeClass == .regular ? 270 : 165, y: -280)
         }
         .ignoresSafeArea()
     }
@@ -244,8 +238,8 @@ struct OnboardingView: View {
         .frame(maxWidth: 720)
     }
 
-    private var appMark: AppMark {
-        AppMark()
+    private var appMark: CraftifyAppMark {
+        CraftifyAppMark()
     }
 
     private var pagePadding: CGFloat {
@@ -459,22 +453,21 @@ private struct SlidingDoorMask: Shape {
     }
 }
 
-private struct AppMark: View {
-    var size: CGFloat = 88
-
+private struct CraftifyBlockGlow: View {
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size / 4, style: .continuous)
-                .fill(Color.userAccentColor.gradient)
-            Image(systemName: "hammer.fill")
-                .font(.system(size: size * 0.43, weight: .bold))
-                .foregroundStyle(.white)
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3),
+            spacing: 10
+        ) {
+            ForEach(0..<9, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.userAccentColor.opacity(index == 4 ? 0.18 : 0.08))
+                    .aspectRatio(1, contentMode: .fit)
+            }
         }
-        .frame(width: size, height: size)
-        .shadow(color: Color.userAccentColor.opacity(0.28), radius: 16, y: 8)
+        .rotationEffect(.degrees(9))
         .accessibilityHidden(true)
     }
-
 }
 
 private struct CraftifyPrimaryButtonStyle: ButtonStyle {

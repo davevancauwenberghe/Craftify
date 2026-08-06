@@ -6,93 +6,55 @@
 //
 
 import SwiftUI
-import Combine
-import CloudKit
 import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
-    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
+    @AppStorage("colorSchemePreference") private var colorSchemePreference = "system"
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
         ZStack {
-            // 1) solid base so the TabView never floats transparent
-            Color(.systemGroupedBackground)
-                .ignoresSafeArea()
+            AppBackground().ignoresSafeArea()
 
-            // 2) your TabView
             TabView(selection: $selectedTab) {
-                RecipesTabView(
-                    navigationPath: $navigationPath,
-                    accentColorPreference: accentColorPreference
-                )
-                .tabItem {
-                    Label("Recipes", systemImage: "square.grid.2x2")
-                }
-                .tag(0)
-                .accessibilityLabel("Recipes tab")
-                .accessibilityHint("View all recipes")
+                RecipesTabView(navigationPath: $navigationPath)
+                    .tabItem { Label("Recipes", systemImage: "square.grid.2x2") }
+                    .tag(0)
+                    .accessibilityLabel("Recipes tab")
+                    .accessibilityHint("Browse the Craftify recipe library")
 
                 ChestsView()
-                    .tabItem {
-                        Label("Chests", systemImage: "shippingbox.fill")
-                    }
+                    .tabItem { Label("Chests", systemImage: "shippingbox.fill") }
                     .tag(1)
                     .accessibilityLabel("Chests tab")
-                    .accessibilityHint("Organize recipes in chests")
+                    .accessibilityHint("Organize recipes in synced chests")
 
                 MoreView()
-                    .tabItem {
-                        Label("More", systemImage: "ellipsis.circle")
-                    }
+                    .tabItem { Label("More", systemImage: "ellipsis.circle") }
                     .tag(2)
                     .accessibilityLabel("More tab")
-                    .accessibilityHint("Access additional settings and features")
+                    .accessibilityHint("Open Craftify tools, settings, and information")
 
                 RecipeSearchView()
-                    .tabItem {
-                        // on iPadOS 18+, show icon-only
-                        if UIDevice.current.userInterfaceIdiom == .pad {
-                            Image(systemName: "magnifyingglass")
-                        } else {
-                            Label("Search", systemImage: "magnifyingglass")
-                        }
-                    }
+                    .tabItem { Label("Search", systemImage: "magnifyingglass") }
                     .tag(3)
                     .accessibilityLabel("Search tab")
-                    .accessibilityHint("Search for recipes")
+                    .accessibilityHint("Search recipes by name or ingredient")
             }
-            .accentColor(Color.userAccentColor)
-            .preferredColorScheme(
-                colorSchemePreference == "system" ? nil :
-                    (colorSchemePreference == "light" ? .light : .dark)
-            )
-            .ignoresSafeArea(edges: .bottom)
+            .tint(Color.userAccentColor(for: accentColorPreference))
+            .preferredColorScheme(preferredColorScheme)
 
-            // 3) manual-sync overlay
             if dataManager.isManualSyncing {
                 SyncOverlayView(
                     horizontalSizeClass: horizontalSizeClass,
                     message: "Syncing Recipes…"
                 )
-                .background(
-                    Group {
-                        if #available(iOS 26.0, *) {
-                            VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-                                .ignoresSafeArea()
-                        } else {
-                            Color.clear
-                        }
-                    }
-                )
-                .opacity(1)
-                .animation(.easeInOut(duration: 0.3), value: dataManager.isManualSyncing)
+                .transition(.opacity)
                 .zIndex(2)
             }
 
@@ -110,14 +72,7 @@ struct ContentView: View {
                 .zIndex(3)
             }
         }
-        // 4) nav-bar material
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .background {
-            if #available(iOS 26.0, *) {
-                VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-                    .ignoresSafeArea()
-            }
-        }
+        .animation(.easeInOut(duration: 0.25), value: dataManager.isManualSyncing)
         .sensoryFeedback(.success, trigger: dataManager.newRecipeAnnouncement?.id)
         .onChange(of: selectedTab) { _, newValue in
             HapticFeedback.selection()
@@ -129,203 +84,168 @@ struct ContentView: View {
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 
+    private var preferredColorScheme: ColorScheme? {
+        switch colorSchemePreference {
+        case "light": .light
+        case "dark": .dark
+        default: nil
+        }
+    }
+
     private func tabName(for tag: Int) -> String {
         switch tag {
-        case 0: return "Recipes"
-        case 1: return "Chests"
-        case 2: return "More"
-        case 3: return "Search"
-        default: return "Unknown"
+        case 0: "Recipes"
+        case 1: "Chests"
+        case 2: "More"
+        case 3: "Search"
+        default: "Unknown"
         }
     }
 }
 
-// MARK: ––––––––––––––––––––––––––––––––––––––––––––––––––
-
 struct RecipesTabView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Binding var navigationPath: NavigationPath
-    let accentColorPreference: String
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            CategoryView(
-                navigationPath: $navigationPath,
-                accentColorPreference: accentColorPreference
-            )
-            .navigationTitle("Craftify")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar(.visible, for: .navigationBar)
-            // Let the home hero continue behind the system title and controls.
-            // The title remains system-managed (and therefore accessible), while
-            // hiding only the bar's background prevents a stacked-header look.
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .overlay {
-                if dataManager.isLoading && dataManager.recipes.isEmpty {
-                    VStack(spacing: 12) {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(Color.userAccentColor)
-                            .accessibilityValue("Loading")
-                        Text("Loading Recipes…")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
+            CategoryView()
+                .navigationTitle("Craftify")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .overlay {
+                    if dataManager.isLoading && dataManager.recipes.isEmpty {
+                        loadingState
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(.systemGroupedBackground))
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Loading Recipes")
-                    .accessibilityHint("Please wait while the recipes are being loaded")
                 }
-            }
-            .navigationDestination(for: Recipe.self) { recipe in
-                RecipeDetailView(
-                    recipe: recipe,
-                    navigationPath: $navigationPath
-                )
-            }
+                .navigationDestination(for: Recipe.self) { recipe in
+                    RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                }
         }
         .dynamicTypeSize(.xSmall ... .accessibility5)
+    }
+
+    private var loadingState: some View {
+        VStack(spacing: 14) {
+            CraftifyAppMark(size: 72)
+            ProgressView()
+                .controlSize(.large)
+                .tint(Color.userAccentColor)
+                .accessibilityHidden(true)
+            Text("Preparing Your Recipe Book")
+                .font(.headline)
+            Text("Loading recipes and crafting images…")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background { AppBackground().ignoresSafeArea() }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Preparing your recipe book. Loading recipes and crafting images.")
     }
 }
 
 struct CategoryView: View {
-    @EnvironmentObject var dataManager: DataManager
-    @Binding var navigationPath: NavigationPath
+    @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    let accentColorPreference: String
-    @State private var selectedCategory: String? = nil
+    @AppStorage("isCraftifyPicksExpanded") private var isCraftifyPicksExpanded = true
+    @State private var selectedCategory: String?
     @State private var recommendedRecipes: [Recipe] = []
-    @AppStorage("isCraftifyPicksExpanded") private var isCraftifyPicksExpanded: Bool = true
     @State private var filteredRecipes: [String: [Recipe]] = [:]
-
-    private func updateFilteredRecipes() {
-        let source = selectedCategory == nil
-            ? dataManager.recipes
-            : dataManager.recipes.filter { $0.category == selectedCategory }
-
-        var groups = [String: [Recipe]]()
-        for recipe in source {
-            let key = String(recipe.name.prefix(1)).uppercased()
-            groups[key, default: []].append(recipe)
-        }
-        for key in groups.keys {
-            groups[key]?.sort { $0.name < $1.name }
-        }
-        filteredRecipes = groups
-    }
 
     var body: some View {
         VStack(spacing: 0) {
             CategoryFilterBar(
                 selectedCategory: $selectedCategory,
-                categories: dataManager.categories,
-                horizontalSizeClass: horizontalSizeClass
+                categories: dataManager.categories
             )
 
             RecipeListView(
                 recommendedRecipes: $recommendedRecipes,
                 isCraftifyPicksExpanded: $isCraftifyPicksExpanded,
-                filteredRecipes: filteredRecipes,
-                navigationPath: $navigationPath,
-                horizontalSizeClass: horizontalSizeClass,
-                accentColorPreference: accentColorPreference
+                filteredRecipes: filteredRecipes
             )
         }
-        .background(alignment: .top) {
-            // Keep the category controls visually connected to the navigation
-            // hero. Other screens use the navigation-only default height.
-            AppHeroBackground(additionalHeight: 64)
-        }
+        .background(alignment: .top) { AppHeroBackground(additionalHeight: 92) }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
-            recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(7))
+            refreshRecommendations()
             updateFilteredRecipes()
         }
         .onChange(of: dataManager.recipes) { _, _ in
-            recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(7))
+            refreshRecommendations()
             updateFilteredRecipes()
         }
-        .onChange(of: selectedCategory) { _, _ in
-            updateFilteredRecipes()
-        }
+        .onChange(of: selectedCategory) { _, _ in updateFilteredRecipes() }
         .dynamicTypeSize(.xSmall ... .accessibility5)
+    }
+
+    private func refreshRecommendations() {
+        recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(horizontalSizeClass == .regular ? 9 : 7))
+    }
+
+    private func updateFilteredRecipes() {
+        let source = selectedCategory.map { category in
+            dataManager.recipes.filter { $0.category == category }
+        } ?? dataManager.recipes
+
+        filteredRecipes = Dictionary(grouping: source) {
+            String($0.name.prefix(1)).uppercased()
+        }
+        .mapValues { $0.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending } }
     }
 }
 
 struct CategoryFilterBar: View {
     @Binding var selectedCategory: String?
     let categories: [String]
-    let horizontalSizeClass: UserInterfaceSizeClass?
-    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @ScaledMetric(relativeTo: .body) private var buttonPaddingHorizontal: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var buttonPaddingVertical: CGFloat = 8
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                Button {
-                    selectedCategory = nil
-                    HapticFeedback.selection()
-                } label: {
-                    Text("All")
-                        .font(.body)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
-                        .padding(.vertical, buttonPaddingVertical)
-                        .background(selectedCategory == nil ? Color.userAccentColor : Color(.secondarySystemBackground).opacity(0.88))
-                        .foregroundStyle(selectedCategory == nil ? Color.white : Color.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(Color.primary.opacity(selectedCategory == nil ? 0 : 0.12), lineWidth: 1)
-                        }
-                }
-                .accessibilityLabel("Show all recipes")
-                .accessibilityHint("Displays recipes from all categories")
-
+                filterButton(title: "All", symbol: "square.grid.2x2", category: nil)
                 ForEach(categories, id: \.self) { category in
-                    Button {
-                        selectedCategory = category
-                        HapticFeedback.selection()
-                    } label: {
-                        Text(category)
-                            .font(.body)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
-                            .padding(.vertical, buttonPaddingVertical)
-                            .background(selectedCategory == category ? Color.userAccentColor : Color(.secondarySystemBackground).opacity(0.88))
-                            .foregroundStyle(selectedCategory == category ? Color.white : Color.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(Color.primary.opacity(selectedCategory == category ? 0 : 0.12), lineWidth: 1)
-                            }
-                    }
-                    .accessibilityLabel("Show \(category) recipes")
-                    .accessibilityHint("Filters recipes to show only \(category) category")
+                    filterButton(title: category, symbol: "cube.fill", category: category)
                 }
             }
-            .id(accentColorPreference)
-            .padding(.horizontal, horizontalSizeClass == .regular ? buttonPaddingHorizontal * 1.5 : buttonPaddingHorizontal)
-            .padding(.vertical, buttonPaddingVertical)
+            .padding(7)
         }
-        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .bottom) {
-            Divider().opacity(0.35)
+        .craftifyFloatingSurface(cornerRadius: 18)
+        .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+        .padding(.bottom, 8)
+        .id(accentColorPreference)
+        .accessibilityLabel("Recipe categories")
+    }
+
+    private func filterButton(title: String, symbol: String, category: String?) -> some View {
+        let isSelected = selectedCategory == category
+
+        return Button {
+            selectedCategory = category
+            HapticFeedback.selection()
+        } label: {
+            Label(title, systemImage: symbol)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                .padding(.horizontal, horizontalSizeClass == .regular ? 15 : 12)
+                .padding(.vertical, 9)
+                .background(
+                    isSelected ? Color.userAccentColor : Color.primary.opacity(0.055),
+                    in: Capsule()
+                )
         }
-        .dynamicTypeSize(.xSmall ... .accessibility5)
+        .buttonStyle(.plain)
+        .accessibilityLabel(isSelected ? "\(title), selected" : title)
+        .accessibilityHint("Filters the recipe library")
     }
 }
 
 struct AppHeroBackground: View {
-    /// The portion below the actual top safe area/navigation region that the
-    /// hero should cover. Passing `nil` fills the receiving view, which is
-    /// useful when a custom header is part of the hero.
     let additionalHeight: CGFloat?
-
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
     init(additionalHeight: CGFloat? = 0) {
@@ -334,35 +254,25 @@ struct AppHeroBackground: View {
 
     var body: some View {
         GeometryReader { geometry in
-            // Depending on its container, SwiftUI either reports the whole
-            // navigation region as a safe-area inset or positions the content
-            // below it. Taking the larger measurement handles both layouts,
-            // including taller Dynamic Island safe areas and large titles.
-            let navigationRegionHeight = max(
+            let navigationHeight = max(
                 geometry.safeAreaInsets.top,
                 max(geometry.frame(in: .global).minY, 0)
             )
-            let heroHeight = additionalHeight.map { navigationRegionHeight + $0 }
-                ?? (geometry.size.height + navigationRegionHeight)
+            let height = additionalHeight.map { navigationHeight + $0 }
+                ?? geometry.size.height + navigationHeight
 
             ZStack(alignment: .top) {
-                // Lists and scroll views deliberately hide their native
-                // grouped background. Keep everything below the hero on the
-                // shared accent-tinted app surface rather than leaving it
-                // transparent.
                 AppBackground()
-
                 LinearGradient(
                     colors: [
-                        Color.userAccentColor(for: accentColorPreference).opacity(0.42),
-                        Color.userAccentColor(for: accentColorPreference).opacity(0.18),
-                        Color.clear
+                        Color.userAccentColor(for: accentColorPreference).opacity(0.32),
+                        Color.userAccentColor(for: accentColorPreference).opacity(0.10),
+                        .clear
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
-                .frame(maxWidth: .infinity)
-                .frame(height: heroHeight)
+                .frame(height: height)
             }
         }
         .ignoresSafeArea(edges: .top)
@@ -372,16 +282,23 @@ struct AppHeroBackground: View {
 
 struct RecipeListView: View {
     @EnvironmentObject private var dataManager: DataManager
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Binding var recommendedRecipes: [Recipe]
     @Binding var isCraftifyPicksExpanded: Bool
     let filteredRecipes: [String: [Recipe]]
-    @Binding var navigationPath: NavigationPath
-    let horizontalSizeClass: UserInterfaceSizeClass?
-    let accentColorPreference: String
-    @ScaledMetric(relativeTo: .body) private var gridSpacing: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var picksSpacing: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
+
+    private var recipeColumns: [GridItem] {
+        if horizontalSizeClass == .compact || dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.flexible())]
+        }
+        return CraftifyLayout.adaptiveColumns(
+            minimum: 320,
+            maximum: 520,
+            spacing: 16,
+            dynamicTypeSize: dynamicTypeSize
+        )
+    }
 
     var body: some View {
         Group {
@@ -389,218 +306,182 @@ struct RecipeListView: View {
                 EmptyRecipeView()
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                if !recommendedRecipes.isEmpty {
-                    Section {
-                        if isCraftifyPicksExpanded {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                LazyHStack(spacing: picksSpacing) {
-                                    ForEach(recommendedRecipes, id: \.name) { recipe in
-                                        NavigationLink {
-                                            RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                        } label: {
-                                            RecipeCell(recipe: recipe, isCraftifyPick: true)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .contentShape(Rectangle())
-                                    }
-                                }
-                                .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
-                                .padding(.vertical, paddingVertical)
-                            }
+                    LazyVStack(alignment: .leading, spacing: 24) {
+                        if !recommendedRecipes.isEmpty {
+                            picksSection
                         }
-                    } header: {
-                        CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded, accentColorPreference: accentColorPreference) {
-                            withAnimation { isCraftifyPicksExpanded.toggle() }
-                        }
-                        .background(Color(.systemGroupedBackground))
-                    }
-                }
 
-                ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
-                    Section {
-                        if horizontalSizeClass == .regular {
-                            // iPad: Two-column grid
-                            LazyVGrid(
-                                columns: [
-                                    GridItem(.flexible(), spacing: gridSpacing),
-                                    GridItem(.flexible(), spacing: gridSpacing)
-                                ],
-                                alignment: .leading,
-                                spacing: gridSpacing
-                            ) {
-                                ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
-                                    NavigationLink {
-                                        RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                    } label: {
-                                        RecipeCell(recipe: recipe, isCraftifyPick: false)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .contentShape(Rectangle())
-                                }
-                            }
-                            .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
-                        } else {
-                            // iPhone: Single-column stack
-                            ForEach(filteredRecipes[letter] ?? [], id: \.name) { recipe in
-                                NavigationLink {
-                                    RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                                } label: {
-                                    RecipeCell(recipe: recipe, isCraftifyPick: false)
-                                }
-                                .buttonStyle(.plain)
-                                .contentShape(Rectangle())
-                            }
+                        ForEach(filteredRecipes.keys.sorted(), id: \.self) { letter in
+                            recipeSection(letter)
                         }
-                    } header: {
-                        Text(letter)
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
-                            .padding(.vertical, paddingVertical)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(.systemGroupedBackground))
                     }
-                    }
+                    .craftifyContentWidth()
+                    .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                    .padding(.top, 8)
+                    .padding(.bottom, 32)
                 }
-                .scrollContentBackground(.hidden)
+                .scrollIndicators(.hidden)
             }
         }
+        .background { AppBackground().ignoresSafeArea() }
+    }
+
+    private var picksSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
+                withAnimation(.snappy) { isCraftifyPicksExpanded.toggle() }
+            }
+
+            if isCraftifyPicksExpanded {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(recommendedRecipes) { recipe in
+                            NavigationLink(value: recipe) {
+                                RecipeCell(recipe: recipe, isCraftifyPick: true)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 5)
+                    .padding(.horizontal, 2)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
-        .id(accentColorPreference)
-        .background(Color(.systemGroupedBackground))
-        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
-        .dynamicTypeSize(.xSmall ... .accessibility5)
+    }
+
+    private func recipeSection(_ letter: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(letter)
+                .font(.title2.bold())
+                .foregroundStyle(Color.userAccentColor)
+                .accessibilityAddTraits(.isHeader)
+
+            LazyVGrid(columns: recipeColumns, alignment: .leading, spacing: 12) {
+                ForEach(filteredRecipes[letter] ?? []) { recipe in
+                    NavigationLink(value: recipe) {
+                        RecipeCell(recipe: recipe, isCraftifyPick: false)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 }
 
 struct RecipeCell: View {
     let recipe: Recipe
     let isCraftifyPick: Bool
+
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.colorScheme) private var colorScheme
-    @ScaledMetric(relativeTo: .body) private var imageSizeRegular: CGFloat = 80
-    @ScaledMetric(relativeTo: .body) private var imageSizeCompact: CGFloat = 64
-    @ScaledMetric(relativeTo: .body) private var imageSizePickRegular: CGFloat = 96
-    @ScaledMetric(relativeTo: .body) private var imageSizePickCompact: CGFloat = 72
-    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 10
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        HStack(spacing: 12) {
-            CraftImage(key: recipe.image)
-                .scaledToFit()
-                .frame(
-                    width: isCraftifyPick
-                        ? (horizontalSizeClass == .regular ? imageSizePickRegular : imageSizePickCompact)
-                        : (horizontalSizeClass == .regular ? imageSizeRegular : imageSizeCompact),
-                    height: isCraftifyPick
-                        ? (horizontalSizeClass == .regular ? imageSizePickRegular : imageSizePickCompact)
-                        : (horizontalSizeClass == .regular ? imageSizeRegular : imageSizeCompact)
-                )
-                .cornerRadius(8)
-                .padding(4)
-                .accessibilityLabel("Image of \(recipe.name)")
+        Group {
+            if isCraftifyPick {
+                pickContent
+            } else {
+                rowContent
+            }
+        }
+        .craftifyCard(cornerRadius: 18)
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(recipe.name), \(recipe.category.isEmpty ? "recipe" : "\(recipe.category) recipe")")
+        .accessibilityHint("Opens the crafting recipe")
+    }
+
+    private var rowContent: some View {
+        HStack(spacing: 14) {
+            recipeImage(size: dynamicTypeSize.isAccessibilitySize ? 72 : 62)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(recipe.name)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                if !recipe.category.isEmpty {
+                    Label(recipe.category, systemImage: "tag.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.userAccentColor)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                }
+            }
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 86, alignment: .leading)
+    }
+
+    private var pickContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ZStack(alignment: .topLeading) {
+                AppBackground()
+                recipeImage(size: horizontalSizeClass == .regular ? 96 : 82)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(10)
+                CraftifyStatusPill(title: "Pick", symbol: "sparkles")
+                    .padding(9)
+            }
+            .frame(height: horizontalSizeClass == .regular ? 142 : 124)
+            .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(recipe.name)
                     .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                Text(recipe.category)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
-
-                if !recipe.category.isEmpty {
-                    Text(recipe.category)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
             }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.gray)
-                .padding(.trailing, horizontalSizeClass == .regular ? paddingHorizontal * 0.75 : paddingHorizontal * 0.5)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
         }
-        .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal : paddingHorizontal * 0.75)
-        .padding(.vertical, paddingVertical)
-        .background(
-            Group {
-                if #available(iOS 26.0, *), colorScheme == .dark {
-                    VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-                        .cornerRadius(10)
-                } else {
-                    Color(.secondarySystemGroupedBackground)
-                    .cornerRadius(10)
-                }
-            }
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(
-                    Color.userAccentColor.opacity(colorScheme == .dark ? 0.7 : 0.3),
-                    style: isCraftifyPick
-                        ? StrokeStyle(lineWidth: 1)
-                        : StrokeStyle(lineWidth: 1, dash: [4, 4])
-                )
-        )
-        .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
-        .padding(.vertical, 2)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(recipe.name), \(recipe.category.isEmpty ? "recipe" : "\(recipe.category) recipe")")
-        .accessibilityHint("Navigates to the detailed view of \(recipe.name)")
-        .dynamicTypeSize(.xSmall ... .accessibility5)
+        .frame(width: dynamicTypeSize.isAccessibilitySize ? 280 : (horizontalSizeClass == .regular ? 220 : 188))
+    }
+
+    private func recipeImage(size: CGFloat) -> some View {
+        CraftImage(key: recipe.image)
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .padding(5)
+            .background(Color.userAccentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .accessibilityHidden(true)
     }
 }
 
 struct CraftifyPicksHeader: View {
-    var isExpanded: Bool
-    var accentColorPreference: String
-    var toggle: () -> Void
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.colorScheme) private var colorScheme
-    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var headerHeightRegular: CGFloat = 44
-    @ScaledMetric(relativeTo: .body) private var headerHeightCompact: CGFloat = 36
+    let isExpanded: Bool
+    let toggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Button {
-                toggle()
-            } label: {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.title2)
-                    .foregroundColor(.gray)
-                    .padding(8)
-                    .background(
-                        Group {
-                            if #available(iOS 26.0, *) {
-                                VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-                            } else {
-                                Color.gray.opacity(0.1)
-                            }
-                        }
-                    )
-                    .clipShape(Circle())
+        Button(action: toggle) {
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Color.userAccentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Craftify Picks")
+                        .font(.title3.bold())
+                        .foregroundStyle(.primary)
+                    Text("A fresh handful from the recipe book")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color.userAccentColor)
             }
             .contentShape(Rectangle())
-            .accessibilityLabel(isExpanded ? "Collapse Craftify Picks" : "Expand Craftify Picks")
-            .accessibilityHint("Toggles the visibility of recommended recipes")
-
-            Text("Craftify Picks")
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-
-            Spacer()
         }
-        .padding(.horizontal, horizontalSizeClass == .regular ? paddingHorizontal * 1.5 : paddingHorizontal)
-        .padding(.vertical, paddingVertical)
-        .background(Color(.systemGroupedBackground))
-        .frame(height: horizontalSizeClass == .regular ? headerHeightRegular : headerHeightCompact)
-        .dynamicTypeSize(.xSmall ... .accessibility5)
+        .buttonStyle(.plain)
+        .accessibilityLabel(isExpanded ? "Collapse Craftify Picks" : "Expand Craftify Picks")
+        .accessibilityHint("Shows or hides recommended recipes")
     }
 }

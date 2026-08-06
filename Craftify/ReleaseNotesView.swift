@@ -8,78 +8,78 @@
 import SwiftUI
 
 struct ReleaseNotesView: View {
-    @EnvironmentObject var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
-    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var sectionSpacing: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var listRowPaddingVertical: CGFloat = 8
-    
+
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "33"
-        return "Version \(version) - Build \(build)"
+        return "Version \(version) • Build \(build)"
     }
-    
+
     var body: some View {
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: horizontalSizeClass == .regular ? sectionSpacing * 1.5 : sectionSpacing) {
-                    Text("Craftify for Minecraft")
-                        .font(horizontalSizeClass == .regular ? .title : .largeTitle)
-                        .fontWeight(.bold)
-                        .minimumScaleFactor(0.6)
-                    
-                    Text(appVersion)
-                        .font(horizontalSizeClass == .regular ? .title3 : .headline)
-                        .foregroundColor(Color.userAccentColor)
-                        .minimumScaleFactor(0.6)
-                    
-                    Text("Stay updated with the latest improvements, fixes, and new features added to Craftify.")
-                        .font(horizontalSizeClass == .regular ? .body : .subheadline)
-                        .foregroundColor(.primary)
-                        .padding(.top, paddingVertical * 0.5)
-                        .minimumScaleFactor(0.6)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                CraftifyHero(
+                    eyebrow: appVersion,
+                    title: "What’s New in Craftify",
+                    detail: "Follow the features, refinements, and fixes that shaped your crafting companion.",
+                    symbol: "sparkles"
+                )
+
+                ForEach(Array(releaseNotes.enumerated()), id: \.element.version) { index, note in
+                    ReleaseNoteCard(note: note, isCurrent: index == 0)
                 }
-                .padding(.bottom, paddingVertical)
-                .padding(.horizontal, horizontalSizeClass == .regular ? min(paddingHorizontal * 1.5, 24) : paddingHorizontal)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Craftify for Minecraft")
-                .accessibilityValue("\(appVersion). Stay updated with the latest improvements, fixes, and new features.")
-                .accessibilityHint("Release notes overview")
             }
-            .listRowBackground(AppBackground())
-            
-            ForEach(releaseNotes, id: \.version) { note in
-                Section(header: Text(note.version)
-                            .font(.headline)
-                            .foregroundColor(.secondary)) {
-                    ForEach(note.changes, id: \.self) { change in
-                        Label {
-                            Text(change)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.userAccentColor)
-                        }
+            .craftifyContentWidth(CraftifyLayout.readingMaxWidth)
+            .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+            .padding(.top, 12)
+            .padding(.bottom, 34)
+        }
+        .navigationTitle("Release Notes")
+        .navigationBarTitleDisplayMode(.large)
+        .craftifyPage()
+    }
+}
+
+private struct ReleaseNoteCard: View {
+    let note: ReleaseNote
+    let isCurrent: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(note.version)
+                    .font(.title3.bold())
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 4)
+                if isCurrent {
+                    CraftifyStatusPill(title: "Current", symbol: "checkmark.seal.fill")
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 11) {
+                ForEach(note.changes, id: \.self) { change in
+                    HStack(alignment: .top, spacing: 11) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.userAccentColor)
+                            .accessibilityHidden(true)
+                        Text(change)
                             .font(.body)
-                            .padding(.vertical, horizontalSizeClass == .regular ? listRowPaddingVertical * 1.5 : listRowPaddingVertical)
-                            .accessibilityLabel(change)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .accessibilityElement(children: .combine)
                 }
             }
         }
-        .id(accentColorPreference)
-        .listStyle(InsetGroupedListStyle())
-        .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle("Release Notes")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .dynamicTypeSize(.xSmall ... .accessibility5)
+        .padding(18)
+        .craftifyCard(cornerRadius: 22)
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(isCurrent ? Color.userAccentColor : Color.userAccentColor.opacity(0.28))
+                .frame(width: 4)
+                .padding(.vertical, 18)
+        }
     }
 }
 

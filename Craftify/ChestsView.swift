@@ -21,21 +21,51 @@ struct ChestsView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            Group {
+            ZStack {
+                AppBackground().ignoresSafeArea()
+
                 if dataManager.chests.isEmpty {
-                    ContentUnavailableView {
-                        Label("Your Chest Room Is Empty", systemImage: "shippingbox")
-                    } description: {
-                        Text("Create a chest, then fill its slots with recipes you want to craft.")
-                    } actions: {
-                        Button("Create a Chest") {
-                            HapticFeedback.impact()
-                            editor = .new
-                        }
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            CraftifyHero(
+                                eyebrow: "Project Planning",
+                                title: "Build Your Chest Room",
+                                detail: "Collect recipes in Minecraft-sized chests and keep every build organized across your devices.",
+                                symbol: "shippingbox.fill"
+                            )
+
+                            CraftifyEmptyState(
+                                symbol: "shippingbox",
+                                title: "Your Chest Room Is Empty",
+                                detail: "Create a chest, then open any recipe and use the add button to fill its slots."
+                            )
+
+                            Button("Create a Chest", systemImage: "plus") {
+                                HapticFeedback.impact()
+                                editor = .new
+                            }
                             .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                        }
+                        .craftifyContentWidth(CraftifyLayout.formMaxWidth)
+                        .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                        .padding(.top, 12)
+                        .padding(.bottom, 32)
                     }
                 } else {
                     List {
+                        Section {
+                            CraftifyHero(
+                                eyebrow: "Project Planning",
+                                title: "Your Chest Room",
+                                detail: "\(dataManager.chests.count) synced chest\(dataManager.chests.count == 1 ? "" : "s") ready for your next build.",
+                                symbol: "shippingbox.fill"
+                            )
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 12, trailing: 0))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                        }
+
                         Section {
                             ForEach(dataManager.chests) { chest in
                                 ChestListRow(
@@ -44,6 +74,9 @@ struct ChestsView: View {
                                     onEdit: { editor = .edit(chest) },
                                     onDelete: { chestPendingDeletion = chest }
                                 )
+                                .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
                             }
                             .onMove(perform: dataManager.moveChests)
                             .onDelete { offsets in
@@ -53,10 +86,12 @@ struct ChestsView: View {
                             }
                         }
                     }
-                    .listStyle(.insetGrouped)
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .frame(maxWidth: 900)
+                    .safeAreaPadding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
                 }
             }
-            .background(Color(.systemGroupedBackground))
             .id(accentColorPreference)
             .tint(Color.userAccentColor)
             .navigationTitle("Chests")
@@ -106,6 +141,7 @@ struct ChestsView: View {
             }
             .animation(reduceMotion ? nil : .snappy, value: dataManager.chests)
             .environment(\.editMode, $editMode)
+            .craftifyNavigationBar()
         }
     }
 
@@ -166,6 +202,9 @@ private struct ChestListRow: View {
 
     var body: some View {
         rowContent
+            .padding(14)
+            .craftifyCard(cornerRadius: 20)
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button("Delete", role: .destructive, action: onDelete)
                     .tint(.red)
@@ -212,7 +251,6 @@ private struct ChestRow: View {
                     .tint(Color.userAccentColor)
             }
         }
-        .padding(.vertical, 5)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(chest.name), \(chest.size.title), \(chest.recipeIDs.count) of \(chest.size.rawValue) slots used")
         .accessibilityHint("Opens the chest")
@@ -256,12 +294,13 @@ struct ChestDetailView: View {
                             isEditing: editMode.isEditing,
                             name: $chestName
                         )
+                        .craftifyCard(cornerRadius: 26)
                         if storedRecipes.isEmpty {
-                            ContentUnavailableView {
-                                Label("No Stored Recipes", systemImage: "square.grid.3x3")
-                            } description: {
-                                Text("Open a recipe and use the add button to store it in this chest.")
-                            }
+                            CraftifyEmptyState(
+                                symbol: "square.grid.3x3",
+                                title: "No Stored Recipes",
+                                detail: "Open a recipe and use the add button to store it in this chest."
+                            )
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 36)
                         } else {
@@ -327,6 +366,7 @@ struct ChestDetailView: View {
         .navigationDestination(for: Recipe.self) { recipe in
             RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
         }
+        .craftifyNavigationBar()
     }
 
     private func toggleEditMode() {
@@ -505,6 +545,8 @@ struct ChestEditorView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { AppBackground().ignoresSafeArea() }
             .navigationTitle(context.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -527,6 +569,7 @@ struct ChestEditorView: View {
             }
             .id(accentColorPreference)
             .tint(Color.userAccentColor)
+            .craftifyNavigationBar()
         }
     }
 
@@ -571,17 +614,24 @@ struct ChestsTutorialView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Label("Welcome to Chests", systemImage: "shippingbox.fill")
-                        .font(.largeTitle.bold()).foregroundStyle(Color.userAccentColor)
+                    CraftifyHero(
+                        eyebrow: "Getting Started",
+                        title: "Welcome to Chests",
+                        detail: "Turn the recipes you need into an organized plan for your next build.",
+                        symbol: "shippingbox.fill"
+                    )
                     TutorialStep(icon: "plus.circle.fill", title: "Collect recipes", text: "Tap + on a recipe and choose a chest, or create one without leaving the recipe.")
                     TutorialStep(icon: "square.grid.3x3.fill", title: "Minecraft-sized storage", text: "Small chests hold 27 recipes, large chests hold 54.")
                     TutorialStep(icon: "paintpalette.fill", title: "Make it yours", text: "Give every chest a name and a crafting-inspired symbol that fits what you store.")
                     TutorialStep(icon: "arrow.up.arrow.down", title: "Arrange safely", text: "Use Edit to drag chests into order, or tap one to change its name, size, or symbol. Swipe for Edit and a confirmed Delete.")
                     Text("Your chest room syncs through iCloud, so its order, names, and recipes follow you across devices.")
                         .font(.callout).foregroundStyle(.secondary)
-                }.padding(24)
+                }
+                .craftifyContentWidth(CraftifyLayout.readingMaxWidth)
+                .padding(24)
             }
             .toolbar { Button("Done") { dismiss() }.fontWeight(.semibold) }
+            .craftifyPage()
         }
     }
 }
@@ -590,8 +640,11 @@ private struct TutorialStep: View {
     let icon: String; let title: String; let text: String
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-            Image(systemName: icon).font(.title2).foregroundStyle(Color.userAccentColor).frame(width: 32).accessibilityHidden(true)
+            CraftifyIconTile(symbol: icon, size: 46)
             VStack(alignment: .leading, spacing: 4) { Text(title).font(.headline); Text(text).foregroundStyle(.secondary) }
-        }.accessibilityElement(children: .combine)
+        }
+        .padding(14)
+        .craftifyCard(cornerRadius: 18)
+        .accessibilityElement(children: .combine)
     }
 }

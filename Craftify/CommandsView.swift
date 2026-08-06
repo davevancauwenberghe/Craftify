@@ -6,251 +6,326 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct CommandsView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @AppStorage("colorSchemePreference") private var colorSchemePreference: String = "system"
-    @AppStorage("accentColorPreference") private var accentColorPreference: String = "default"
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var searchText: String = ""
+    @State private var searchText = ""
     @State private var editionFilter: EditionFilter = .all
-    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var spacingLarge: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var spacingSmall: CGFloat = 4
+    @State private var copiedCommandID: String?
 
     private enum EditionFilter: String, CaseIterable, Identifiable {
-        case all     = "All Editions"
+        case all = "All Editions"
         case bedrock = "Bedrock Edition"
-        case java    = "Java Edition"
-        var id: String { rawValue }
+        case java = "Java Edition"
+
+        var id: Self { self }
+        var symbol: String {
+            switch self {
+            case .all: "square.stack.3d.up.fill"
+            case .bedrock: "cube.fill"
+            case .java: "cup.and.heat.waves.fill"
+            }
+        }
     }
 
     private var filteredCommands: [ConsoleCommand] {
         dataManager.consoleCommands
-            .filter { cmd in
+            .filter { command in
                 switch editionFilter {
-                case .all:     return true
-                case .bedrock: return cmd.worksInBedrock
-                case .java:    return cmd.worksInJava
+                case .all: true
+                case .bedrock: command.worksInBedrock
+                case .java: command.worksInJava
                 }
             }
-            .filter { cmd in
+            .filter { command in
                 searchText.isEmpty
-                    || cmd.name.localizedCaseInsensitiveContains(searchText)
-                    || cmd.description.localizedCaseInsensitiveContains(searchText)
+                    || command.name.localizedCaseInsensitiveContains(searchText)
+                    || command.description.localizedCaseInsensitiveContains(searchText)
             }
     }
 
-    private func color(forOP level: Int64) -> Color {
-        switch level {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        default: return .gray
+    private var columns: [GridItem] {
+        CraftifyLayout.adaptiveColumns(
+            minimum: dynamicTypeSize.isAccessibilitySize ? 300 : 310,
+            maximum: 480,
+            spacing: 14,
+            dynamicTypeSize: dynamicTypeSize
+        )
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 24) {
+                    CraftifyHero(
+                        eyebrow: "Minecraft Reference",
+                        title: "Console Commands",
+                        detail: "Find commands for Bedrock and Java Edition, check operator requirements, and copy the exact command in one tap.",
+                        symbol: "terminal.fill"
+                    )
+
+                    HStack {
+                        CraftifyStatusPill(
+                            title: editionFilter.rawValue,
+                            symbol: editionFilter.symbol
+                        )
+                        Spacer()
+                        Text("\(filteredCommands.count) command\(filteredCommands.count == 1 ? "" : "s")")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if filteredCommands.isEmpty {
+                        CraftifyEmptyState(
+                            symbol: "terminal",
+                            title: "No Commands Found",
+                            detail: "Try another search term or choose a different Minecraft edition."
+                        )
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
+                            ForEach(filteredCommands) { command in
+                                CommandCard(
+                                    command: command,
+                                    isCopied: copiedCommandID == command.id,
+                                    onCopy: { copy(command) },
+                                    onShowOPLevels: {
+                                        withAnimation(.easeInOut) {
+                                            proxy.scrollTo("opExplanation", anchor: .top)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    OPLevelsCard()
+                        .id("opExplanation")
+                }
+                .craftifyContentWidth()
+                .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                .padding(.top, 12)
+                .padding(.bottom, 34)
+            }
+            .refreshable { dataManager.fetchConsoleCommands() }
+            .navigationTitle("Console Commands")
+            .navigationBarTitleDisplayMode(.large)
+            .searchable(
+                text: $searchText,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: "Search commands"
+            )
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(EditionFilter.allCases) { filter in
+                            Button {
+                                editionFilter = filter
+                                HapticFeedback.selection()
+                            } label: {
+                                Label(filter.rawValue, systemImage: editionFilter == filter ? "checkmark" : filter.symbol)
+                            }
+                        }
+                    } label: {
+                        Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                    }
+                    .accessibilityLabel("Filter commands by edition")
+                    .accessibilityValue(editionFilter.rawValue)
+                }
+            }
+            .craftifyPage()
+            .onAppear { dataManager.fetchConsoleCommands() }
+        }
+    }
+
+    private func copy(_ command: ConsoleCommand) {
+        UIPasteboard.general.string = command.name
+        copiedCommandID = command.id
+        HapticFeedback.notification(.success)
+        UIAccessibility.post(notification: .announcement, argument: "Copied \(command.name)")
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            if copiedCommandID == command.id { copiedCommandID = nil }
+        }
+    }
+}
+
+private struct CommandCard: View {
+    let command: ConsoleCommand
+    let isCopied: Bool
+    let onCopy: () -> Void
+    let onShowOPLevels: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.userAccentColor)
+                    .frame(width: 44, height: 44)
+                    .background(Color.userAccentColor.opacity(0.11), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .accessibilityHidden(true)
+
+                Text(command.name)
+                    .font(.system(.headline, design: .monospaced, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button(action: onCopy) {
+                    Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 36, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel(isCopied ? "Command copied" : "Copy command")
+            }
+
+            Text(command.description)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 9) { editionBadges }
+                VStack(alignment: .leading, spacing: 9) { editionBadges }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? nil : 190, alignment: .topLeading)
+        .craftifyCard(cornerRadius: 20)
+        .contextMenu {
+            Button("Copy Command", systemImage: "doc.on.doc", action: onCopy)
+        }
+    }
+
+    @ViewBuilder
+    private var editionBadges: some View {
+        CommandEditionBadge(
+            title: "Bedrock",
+            isSupported: command.worksInBedrock,
+            opLevel: command.opLevelBedrock,
+            onShowOPLevels: onShowOPLevels
+        )
+        CommandEditionBadge(
+            title: "Java",
+            isSupported: command.worksInJava,
+            opLevel: command.opLevelJava,
+            onShowOPLevels: onShowOPLevels
+        )
+    }
+}
+
+private struct CommandEditionBadge: View {
+    let title: String
+    let isSupported: Bool
+    let opLevel: Int64?
+    let onShowOPLevels: () -> Void
+
+    private var opColor: Color {
+        switch opLevel {
+        case 1: .red
+        case 2: .orange
+        case 3: .yellow
+        case 4: .green
+        default: .gray
         }
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollViewReader { proxy in
-                List {
-                    ForEach(filteredCommands) { cmd in
-                        VStack(alignment: .leading, spacing: spacingSmall) {
-                            Text("➜ \(cmd.name)")
-                                .font(.system(.body, design: .monospaced))
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
+        HStack(spacing: 7) {
+            Image(systemName: isSupported ? "checkmark.circle.fill" : "xmark.circle.fill")
+            Text(title)
+                .font(.caption.weight(.semibold))
 
-                            Text(cmd.description)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            HStack(spacing: spacingLarge) {
-                                HStack(spacing: spacingSmall) {
-                                    Image(systemName: cmd.worksInBedrock
-                                          ? "checkmark.circle.fill"
-                                          : "xmark.circle.fill")
-                                    Text("Bedrock")
-                                        .font(.caption)
-                                    if let lvl = cmd.opLevelBedrock {
-                                        Text("OP \(lvl)")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                            .padding(.vertical, 2)
-                                            .padding(.horizontal, 6)
-                                            .background(
-                                                Capsule()
-                                                    .fill(color(forOP: lvl).opacity(0.2))
-                                            )
-                                            .overlay(
-                                                Capsule()
-                                                    .stroke(color(forOP: lvl), lineWidth: 1)
-                                            )
-                                            .onTapGesture {
-                                                withAnimation {
-                                                    proxy.scrollTo("opExplanation", anchor: .top)
-                                                }
-                                            }
-                                        }
-                                }
-                                .foregroundColor(
-                                    cmd.worksInBedrock
-                                        ? Color.userAccentColor
-                                        : .red
-                                )
-                                .accessibilityLabel("Bedrock Edition \(cmd.worksInBedrock ? "supported" : "not supported")\(cmd.worksInBedrock && cmd.opLevelBedrock != nil ? ", requires OP level \(cmd.opLevelBedrock!)" : "")")
-                                .accessibilityHint(cmd.worksInBedrock ? "Double tap OP level to see explanation" : "")
-
-                                HStack(spacing: spacingSmall) {
-                                    Image(systemName: cmd.worksInJava
-                                          ? "checkmark.circle.fill"
-                                          : "xmark.circle.fill")
-                                    Text("Java")
-                                        .font(.caption)
-                                    if let lvl = cmd.opLevelJava {
-                                        Text("OP \(lvl)")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                            .padding(.vertical, 2)
-                                            .padding(.horizontal, 6)
-                                            .background(
-                                                Capsule()
-                                                    .fill(color(forOP: lvl).opacity(0.2))
-                                            )
-                                            .overlay(
-                                                Capsule()
-                                                    .stroke(color(forOP: lvl), lineWidth: 1)
-                                            )
-                                            .onTapGesture {
-                                                withAnimation {
-                                                    proxy.scrollTo("opExplanation", anchor: .top)
-                                                }
-                                            }
-                                        }
-                                }
-                                .foregroundColor(
-                                    cmd.worksInJava
-                                        ? Color.userAccentColor
-                                        : .red
-                                )
-                                .accessibilityLabel("Java Edition \(cmd.worksInJava ? "supported" : "not supported")\(cmd.worksInJava && cmd.opLevelJava != nil ? ", requires OP level \(cmd.opLevelJava!)" : "")")
-                                .accessibilityHint(cmd.worksInJava ? "Double tap OP level to see explanation" : "")
-                            }
-                        }
-                        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical)
-                        .listRowInsets(EdgeInsets(
-                            top: horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical,
-                            leading: horizontalSizeClass == .regular ? paddingHorizontal * 1.33 : paddingHorizontal,
-                            bottom: horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical,
-                            trailing: horizontalSizeClass == .regular ? paddingHorizontal * 1.33 : paddingHorizontal
-                        ))
-                        .contextMenu {
-                            Button("Copy Command") {
-                                UIPasteboard.general.string = cmd.name
-                            }
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Command: \(cmd.name), \(cmd.description)")
-                        .accessibilityHint("Double tap to copy the command")
-                    }
-
-                    Section(header: Text("OP Levels").id("opExplanation")) {
-                        VStack(alignment: .leading, spacing: spacingSmall) {
-                            Text("Higher OP levels include all permissions of the lower ones.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            Text("Bedrock Edition")
-                                .font(.headline)
-                            VStack(alignment: .leading, spacing: spacingSmall) {
-                                Text("• 1: Operator – Basic commands & command blocks")
-                                Text("• 2: Admin – Server commands")
-                                Text("• 3: Host – World & automation management")
-                                Text("• 4: Owner – Full server control")
-                            }
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                            Text("Java Edition")
-                                .font(.headline)
-                                .padding(.top, spacingSmall)
-                            VStack(alignment: .leading, spacing: spacingSmall) {
-                                Text("• 0: All – Basic commands")
-                                Text("• 1: Moderator – Bypass spawn protection")
-                                Text("• 2: GameMaster – Command blocks & extra commands")
-                                Text("• 3: Admin – Multiplayer management")
-                                Text("• 4: Owner – Full server control")
-                            }
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        }
-                        .padding(.vertical, horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical)
-                        .listRowInsets(EdgeInsets(
-                            top: horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical,
-                            leading: horizontalSizeClass == .regular ? paddingHorizontal * 1.33 : paddingHorizontal,
-                            bottom: horizontalSizeClass == .regular ? paddingVertical * 1.5 : paddingVertical,
-                            trailing: horizontalSizeClass == .regular ? paddingHorizontal * 1.33 : paddingHorizontal
-                        ))
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("OP Levels explanation: Higher OP levels include all permissions of the lower ones. Bedrock Edition: 1 Operator, basic commands and command blocks; 2 Admin, server commands; 3 Host, world and automation management; 4 Owner, full server control. Java Edition: 0 All, basic commands; 1 Moderator, bypass spawn protection; 2 GameMaster, command blocks and extra commands; 3 Admin, multiplayer management; 4 Owner, full server control.")
-                    }
-                }
-                .listStyle(InsetGroupedListStyle())
-                .refreshable {
-                    dataManager.fetchConsoleCommands()
-                }
-                .scrollContentBackground(.hidden)
-                .background(Color(UIColor.systemGroupedBackground))
-                .searchable(
-                    text: $searchText,
-                    placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: "Search commands…"
-                )
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Menu {
-                            ForEach(EditionFilter.allCases) { filter in
-                                Button(action: {
-                                    editionFilter = filter
-                                    HapticFeedback.selection()
-                                }) {
-                                    HStack {
-                                        Text(filter.rawValue)
-                                        if filter == editionFilter {
-                                            Spacer()
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                                .imageScale(.large)
-                        }
-                        .simultaneousGesture(TapGesture().onEnded { HapticFeedback.impact() })
-                        .accessibilityLabel("Filter commands by edition")
-                        .accessibilityHint("Choose All Editions, Bedrock Edition, or Java Edition")
-                    }
-                }
-                .navigationTitle("Console Commands")
-                .navigationBarTitleDisplayMode(.large)
-                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-                .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-                .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
-                .preferredColorScheme(
-                    colorSchemePreference == "system"
-                        ? nil
-                        : (colorSchemePreference == "light" ? .light : .dark)
-                )
-                .accentColor(Color.userAccentColor)
-                .onAppear {
-                    dataManager.fetchConsoleCommands()
-                }
-                .dynamicTypeSize(.xSmall ... .accessibility5)
+            if isSupported, let opLevel {
+                Button("OP \(opLevel)", action: onShowOPLevels)
+                    .font(.caption2.bold())
+                    .foregroundStyle(opColor)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(opColor.opacity(0.12), in: Capsule())
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Jumps to the operator level explanation")
             }
         }
+        .foregroundStyle(isSupported ? Color.userAccentColor : Color.red)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(
+            (isSupported ? Color.userAccentColor : Color.red).opacity(0.08),
+            in: Capsule()
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(title) Edition \(isSupported ? "supported" : "not supported")")
+    }
+}
+
+private struct OPLevelsCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            CraftifySectionHeader(
+                title: "Operator Levels",
+                detail: "Higher levels include every permission from the lower levels.",
+                symbol: "person.badge.key.fill"
+            )
+
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 18) {
+                    edition(title: "Bedrock Edition", symbol: "cube.fill", levels: bedrockLevels)
+                    edition(title: "Java Edition", symbol: "cup.and.heat.waves.fill", levels: javaLevels)
+                }
+                VStack(alignment: .leading, spacing: 18) {
+                    edition(title: "Bedrock Edition", symbol: "cube.fill", levels: bedrockLevels)
+                    edition(title: "Java Edition", symbol: "cup.and.heat.waves.fill", levels: javaLevels)
+                }
+            }
+        }
+        .padding(20)
+        .craftifyCard(cornerRadius: 24)
+    }
+
+    private var bedrockLevels: [(String, String)] {
+        [
+            ("1 · Operator", "Basic commands and command blocks"),
+            ("2 · Admin", "Server commands"),
+            ("3 · Host", "World and automation management"),
+            ("4 · Owner", "Full server control")
+        ]
+    }
+
+    private var javaLevels: [(String, String)] {
+        [
+            ("0 · All", "Basic commands"),
+            ("1 · Moderator", "Bypass spawn protection"),
+            ("2 · GameMaster", "Command blocks and extra commands"),
+            ("3 · Admin", "Multiplayer management"),
+            ("4 · Owner", "Full server control")
+        ]
+    }
+
+    private func edition(title: String, symbol: String, levels: [(String, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 11) {
+            Label(title, systemImage: symbol)
+                .font(.headline)
+                .foregroundStyle(Color.userAccentColor)
+            ForEach(levels, id: \.0) { level in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(level.0).font(.subheadline.bold())
+                    Text(level.1).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(15)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }

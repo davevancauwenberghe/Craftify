@@ -28,6 +28,10 @@ Craftify is a sleek iOS app designed for Minecraft players to browse, search, an
 - **CloudKit Syncing**: Keep your favorites in sync across all your devices.
 - **Haptic Feedback**: Enjoy tactile feedback for a more engaging experience.
 
+### Craftify interface
+
+Craftify uses a shared SwiftUI design layer (`CraftifyDesignSystem.swift`) for its crafting-grid backgrounds, adaptive content widths, cards, status badges, empty states, and headers. Screens keep native navigation and controls so iOS and iPadOS 26 receive Liquid Glass automatically, while iOS and iPadOS 18–25 retain semantic system materials. Content layouts adapt from a focused single column on iPhone to centered, multi-column grids on wider iPad windows, with dedicated layouts for accessibility Dynamic Type sizes.
+
 #### Disclaimer
 
 Craftify for Minecraft ("Craftify") is not an official Minecraft product, it is not approved or associated with Mojang or Microsoft.
