@@ -8,31 +8,16 @@
 import SwiftUI
 
 struct EmptyRecipeView: View {
-    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 36
-    @ScaledMetric(relativeTo: .body) private var spacing: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var padding: CGFloat = 16
-
     var body: some View {
-        VStack(spacing: spacing) {
-            Image(systemName: "arrow.triangle.2.circlepath.icloud")
-                .font(.system(size: iconSize))
-                .foregroundStyle(Color.userAccentColor)
-
-            Text("No recipes on this device")
-                .font(.title)
-                .bold()
-                .multilineTextAlignment(.center)
-
-            Text("Head to More and choose Sync Recipes to fetch the recipe library again.")
-                .font(.headline)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, padding)
-        }
+        CraftifyEmptyState(
+            symbol: "arrow.triangle.2.circlepath.icloud",
+            title: "No Recipes on This Device",
+            detail: "Open More and choose Sync Recipes & Images to rebuild your offline recipe book."
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(padding)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("No recipes on this device. Head to More and choose Sync Recipes to fetch the recipe library again.")
+        .padding(24)
+        .background { AppBackground().ignoresSafeArea() }
+        .accessibilityLabel("No recipes on this device. Open More and choose Sync Recipes and Images to rebuild your offline recipe book.")
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }
 }

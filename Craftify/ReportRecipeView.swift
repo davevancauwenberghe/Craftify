@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ReportRecipeView: View {
     @EnvironmentObject private var dataManager: DataManager
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
     @State private var viewMode: ViewMode = .submitReport
@@ -77,7 +78,7 @@ struct ReportRecipeView: View {
     private var isSubmissionOnCooldown: Bool { remainingSubmissionCooldown > 0 }
     var body: some View {
         ZStack {
-            Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+            AppBackground().ignoresSafeArea()
 
             ScrollView {
                 LazyVStack(spacing: 20) {
@@ -112,7 +113,8 @@ struct ReportRecipeView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 16)
+                .frame(maxWidth: CraftifyLayout.formMaxWidth)
+                .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
                 .padding(.top, 12)
                 .padding(.bottom, 32)
             }
@@ -135,7 +137,7 @@ struct ReportRecipeView: View {
         }
         .navigationTitle("Report a Recipe")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .craftifyPage()
         .alert("Delete report?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 if let reportToDelete { deleteReport(reportToDelete) }
@@ -166,30 +168,12 @@ struct ReportRecipeView: View {
     }
 
     private var introHeader: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.userAccentColor.gradient)
-                Image(systemName: "hammer.fill")
-                    .font(.system(size: 25, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: 58, height: 58)
-            .shadow(color: Color.userAccentColor.opacity(0.22), radius: 8, y: 4)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Help improve Craftify")
-                    .font(.title3.bold())
-                Text("Send feedback and follow every update in one place.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(16)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .accessibilityElement(children: .combine)
+        CraftifyHero(
+            eyebrow: "Community Workshop",
+            title: "Help Improve Craftify",
+            detail: "Send recipe feedback and follow every update from one clear workspace.",
+            symbol: "exclamationmark.bubble.fill"
+        )
     }
 
     private var modeSelector: some View {
@@ -210,7 +194,7 @@ struct ReportRecipeView: View {
             }
         }
         .padding(5)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .craftifyCard(cornerRadius: 16)
     }
 
     private func resetForm() {
@@ -400,9 +384,15 @@ private struct SubmitReportSection: View {
     private var reportTypeCards: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("WHAT HAPPENED?").font(.caption.bold()).foregroundStyle(.secondary)
-            HStack(spacing: 10) {
-                typeButton(.missingRecipe)
-                typeButton(.recipeError)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    typeButton(.missingRecipe)
+                    typeButton(.recipeError)
+                }
+                VStack(spacing: 10) {
+                    typeButton(.missingRecipe)
+                    typeButton(.recipeError)
+                }
             }
         }
     }
@@ -496,7 +486,7 @@ private struct SubmitReportSection: View {
             }
         }
         .padding(18)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .craftifyCard(cornerRadius: 20)
     }
 }
 
@@ -592,7 +582,7 @@ private struct MyReportsSection: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .craftifyCard(cornerRadius: 20)
         .accessibilityElement(children: .combine)
     }
 }
@@ -614,7 +604,7 @@ private struct EmptyReportState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 28).padding(.vertical, 34)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .craftifyCard(cornerRadius: 20)
         .accessibilityElement(children: .combine)
     }
 }
@@ -684,7 +674,7 @@ private struct ReportCard: View {
             }
         }
         .padding(16)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .craftifyCard(cornerRadius: 20)
         .overlay(alignment: .leading) {
             RoundedRectangle(cornerRadius: 3).fill(statusColor).frame(width: 4).padding(.vertical, 18)
         }
@@ -728,7 +718,7 @@ private struct SubmissionPopup: View {
             }
             .padding(24)
             .frame(maxWidth: 340)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .craftifyFloatingSurface(cornerRadius: 24)
             .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
             .padding(24)
             .accessibilityAddTraits(.isModal)
@@ -761,7 +751,7 @@ private struct DeleteConfirmationPopup: View {
                     .background(Color.userAccentColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .padding(24).frame(maxWidth: 320)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .craftifyFloatingSurface(cornerRadius: 24)
             .padding(24).accessibilityAddTraits(.isModal)
         }
     }

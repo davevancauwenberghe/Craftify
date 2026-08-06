@@ -216,6 +216,7 @@ private struct CraftifyOverlayCard<Footer: View>: View {
     let footer: Footer
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var isAnimating = false
 
     init(
@@ -237,44 +238,52 @@ private struct CraftifyOverlayCard<Footer: View>: View {
     }
 
     private var cardWidth: CGFloat {
-        horizontalSizeClass == .regular ? 420 : 330
+        horizontalSizeClass == .regular ? 440 : 350
     }
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.32)
-                .ignoresSafeArea()
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.opacity(reduceTransparency ? 0.52 : 0.34)
+                    .ignoresSafeArea()
 
-            VStack(spacing: 20) {
-                if showsIllustration {
-                    illustration
+                ScrollView {
+                    VStack {
+                        Spacer(minLength: 20)
+
+                        VStack(spacing: 20) {
+                            if showsIllustration {
+                                illustration
+                            }
+
+                            VStack(spacing: 7) {
+                                Text(title)
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .multilineTextAlignment(.center)
+
+                                Text(detail)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            footer
+                        }
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 30)
+                        .frame(maxWidth: cardWidth)
+                        .craftifyFloatingSurface(cornerRadius: 28)
+                        .shadow(color: .black.opacity(0.18), radius: 24, y: 12)
+                        .padding(.horizontal, 20)
+
+                        Spacer(minLength: 20)
+                    }
+                    .frame(minHeight: geometry.size.height)
                 }
-
-                VStack(spacing: 7) {
-                    Text(title)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.center)
-
-                    Text(detail)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                footer
+                .scrollIndicators(.hidden)
             }
-            .padding(.horizontal, 28)
-            .padding(.vertical, 30)
-            .frame(maxWidth: cardWidth)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.userAccentColor.opacity(0.18), lineWidth: 1)
-            }
-            .shadow(color: .black.opacity(0.18), radius: 24, y: 12)
-            .padding(.horizontal, 24)
         }
         .onAppear { isAnimating = true }
         .onDisappear { isAnimating = false }
@@ -284,31 +293,14 @@ private struct CraftifyOverlayCard<Footer: View>: View {
 
     private var illustration: some View {
         ZStack {
-            Circle()
-                .fill(Color.userAccentColor.opacity(0.10))
-                .frame(width: 108, height: 108)
-                .scaleEffect(isAnimating && !reduceMotion ? 1.08 : 0.94)
-                .opacity(isAnimating && !reduceMotion ? 0.55 : 1)
-                .animation(
-                    reduceMotion ? nil : .easeInOut(duration: 1.6).repeatForever(autoreverses: true),
-                    value: isAnimating
-                )
-
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.userAccentColor.gradient)
-                .frame(width: 76, height: 76)
-                .shadow(color: Color.userAccentColor.opacity(0.24), radius: 14, y: 7)
-
-            Image(systemName: symbol)
-                .font(.system(size: 32, weight: .semibold))
-                .foregroundStyle(.white)
+            CraftifyIconTile(symbol: symbol, size: 82)
 
             Image(systemName: badgeSymbol)
                 .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(Color.userAccentColor)
                 .padding(7)
                 .background(.regularMaterial, in: Circle())
-                .offset(x: 35, y: 35)
+                .offset(x: 37, y: 37)
                 .scaleEffect(isAnimating && !reduceMotion ? 1 : 0.88)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.7), value: isAnimating)
         }

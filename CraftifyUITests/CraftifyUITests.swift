@@ -9,7 +9,7 @@ import XCTest
 
 final class CraftifyUITests: XCTestCase {
     @MainActor
-    func testTextSizePickerInContentView() throws {
+    func testAppearanceControlsAreReachableFromMore() throws {
         continueAfterFailure = false
 
         let app = XCUIApplication()
@@ -22,32 +22,25 @@ final class CraftifyUITests: XCTestCase {
         )
         moreTab.tap()
 
-        let appearanceCell = app.tables.cells.staticTexts["App Appearance"]
+        let appearanceCell = app.staticTexts["App Appearance"]
         XCTAssertTrue(
             appearanceCell.waitForExistence(timeout: 5),
-            "App Appearance cell should exist"
+            "App Appearance destination should exist"
         )
         appearanceCell.tap()
 
-        let textSizeToggle = app.tables.cells.switches["Custom Text Size"]
+        let appearancePicker = app.segmentedControls["Appearance"]
         XCTAssertTrue(
-            textSizeToggle.waitForExistence(timeout: 5),
-            "Custom Text Size toggle should exist"
-        )
-        textSizeToggle.tap()
-
-        let textSizePicker = app.pickers["Text Size Picker"]
-        XCTAssertTrue(
-            textSizePicker.waitForExistence(timeout: 5),
-            "Text Size Picker should be visible"
+            appearancePicker.waitForExistence(timeout: 5),
+            "Appearance picker should exist"
         )
 
-        let pickerWheel = textSizePicker.pickerWheels.element
-        pickerWheel.adjust(toPickerWheelValue: "Extra Large")
-        XCTAssertEqual(
-            pickerWheel.value as? String,
-            "Extra Large",
-            "Picker should select Extra Large"
+        let darkAppearance = appearancePicker.buttons["Dark"]
+        XCTAssertTrue(
+            darkAppearance.exists,
+            "Dark appearance option should exist"
         )
+        darkAppearance.tap()
+        XCTAssertTrue(darkAppearance.isSelected)
     }
 }

@@ -6,168 +6,174 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct SupportView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var showClearDataAlert: Bool = false
-    @State private var showErrorAlert: Bool = false
+    @State private var showClearDataAlert = false
+    @State private var showErrorAlert = false
     @State private var errorMessage: String?
+    @State private var isPrivacyExpanded = false
 
     var body: some View {
-            List {
-                Section(header: Text("Support").font(.headline).minimumScaleFactor(0.6)) {
-                    Button(action: {
-                        HapticFeedback.selection()
-                        let supportEmail = "hello@davevancauwenberghe.be"
-                        if let url = URL(string: "mailto:\(supportEmail)") {
-                            UIApplication.shared.open(url)
-                        }
-                    }) {
-                        buttonStyle(title: "Contact Support", systemImage: "envelope.fill")
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(
-                        top: horizontalSizeClass == .regular ? 12 : 8,
-                        leading: horizontalSizeClass == .regular ? 16 : 12,
-                        bottom: horizontalSizeClass == .regular ? 12 : 8,
-                        trailing: horizontalSizeClass == .regular ? 16 : 12
-                    ))
-                    .accessibilityLabel("Contact Support")
-                    .accessibilityHint("Opens the mail app to contact support")
-                }
-
-                Section(header: Text("Data Management").font(.headline).minimumScaleFactor(0.6)) {
-                    Button(action: {
-                        showClearDataAlert = true
-                    }) {
-                        buttonStyle(title: "Clear All Data", systemImage: "trash.fill", foregroundColor: .red)
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(
-                        top: horizontalSizeClass == .regular ? 12 : 8,
-                        leading: horizontalSizeClass == .regular ? 16 : 12,
-                        bottom: horizontalSizeClass == .regular ? 12 : 8,
-                        trailing: horizontalSizeClass == .regular ? 16 : 12
-                    ))
-                    .accessibilityLabel("Clear All Data")
-                    .accessibilityHint("Clears local recipe data, downloaded images, chests, recent searches, and recipe reports")
-
-                    Text("This will permanently delete your chests, recent searches, CloudKit recipe reports, local recipe data, and downloaded recipe images.")
-                        .font(horizontalSizeClass == .regular ? .body : .subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                        .minimumScaleFactor(0.6)
-                        .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-                        .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
-                        .accessibilityLabel("Clear All Data Note")
-                        .accessibilityHint("This will permanently delete your chests, recent searches, recipe reports, local recipe data, and downloaded recipe images.")
-
-                    Button(action: {
-                        dataManager.clearCache { success in
-                            if success {
-                                HapticFeedback.notification(.success)
-                            } else {
-                                HapticFeedback.notification(.error)
-                                errorMessage = dataManager.errorMessage ?? "Failed to clear cache. Please try again."
-                                showErrorAlert = true
-                            }
-                        }
-                    }) {
-                        buttonStyle(title: "Clear Cache", systemImage: "trash.fill", foregroundColor: .red)
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(
-                        top: horizontalSizeClass == .regular ? 12 : 8,
-                        leading: horizontalSizeClass == .regular ? 16 : 12,
-                        bottom: horizontalSizeClass == .regular ? 12 : 8,
-                        trailing: horizontalSizeClass == .regular ? 16 : 12
-                    ))
-                    .accessibilityLabel("Clear Cache")
-                    .accessibilityHint("Clears local Minecraft recipes and downloaded images, keeping iCloud data like chests")
-
-                    Text("This will permanently delete local recipe data and downloaded recipe images, keeping iCloud data like chests and recent searches.")
-                        .font(horizontalSizeClass == .regular ? .body : .subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                        .minimumScaleFactor(0.6)
-                        .padding(.horizontal, horizontalSizeClass == .regular ? 12 : 8)
-                        .padding(.vertical, horizontalSizeClass == .regular ? 8 : 4)
-                        .accessibilityLabel("Clear Cache Note")
-                        .accessibilityHint("This will permanently delete local recipe data and downloaded recipe images, keeping iCloud data like chests and recent searches.")
-                }
-
-                Section(header: Text("Privacy").font(.headline).minimumScaleFactor(0.6)) {
-                    Button(action: {
-                        HapticFeedback.selection()
-                        if let url = URL(string: "https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/privacy-policy/") {
-                            UIApplication.shared.open(url)
-                        }
-                    }) {
-                        buttonStyle(title: "View Privacy Policy Online", systemImage: "safari.fill")
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(
-                        top: horizontalSizeClass == .regular ? 12 : 8,
-                        leading: horizontalSizeClass == .regular ? 16 : 12,
-                        bottom: horizontalSizeClass == .regular ? 12 : 8,
-                        trailing: horizontalSizeClass == .regular ? 16 : 12
-                    ))
-                    .accessibilityLabel("View Privacy Policy Online")
-                    .accessibilityHint("Opens the privacy policy in your web browser")
-
-                    PrivacyPolicyContent(horizontalSizeClass: horizontalSizeClass)
-                }
-            }
-            .listStyle(InsetGroupedListStyle())
-            .scrollContentBackground(.hidden)
-            .navigationTitle("Support & Privacy")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .background(Color(UIColor.systemGroupedBackground))
-            .alert(isPresented: $showErrorAlert) {
-                Alert(
-                    title: Text("Error"),
-                    message: Text(errorMessage ?? "An error occurred."),
-                    dismissButton: .cancel(Text("OK")) {
-                        errorMessage = nil
-                    }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 24) {
+                CraftifyHero(
+                    eyebrow: "Help & Control",
+                    title: "Support & Privacy",
+                    detail: "Contact support, manage Craftify’s downloaded and synced data, and review exactly how the app protects your privacy.",
+                    symbol: "hand.raised.fill"
                 )
-            }
-            .alert(isPresented: $showClearDataAlert) {
-                Alert(
-                    title: Text("Clear All Data"),
-                    message: Text("Are you sure? This will remove your chests, recent searches, CloudKit recipe reports, local recipe data, and downloaded recipe images. This action cannot be undone."),
-                    primaryButton: .destructive(Text("Clear All Data")) {
-                        dataManager.clearAllData { success in
-                            if success {
-                                HapticFeedback.notification(.success)
-                            } else {
-                                HapticFeedback.notification(.error)
-                                errorMessage = dataManager.errorMessage ?? "Failed to clear all data. Please try again."
-                                showErrorAlert = true
-                            }
-                        }
-                    },
-                    secondaryButton: .cancel()
+
+                VStack(alignment: .leading, spacing: 14) {
+                    CraftifySectionHeader(
+                        title: "Need a Hand?",
+                        detail: "Send a message directly to Craftify support.",
+                        symbol: "envelope.fill"
+                    )
+                    Button("Contact Support", systemImage: "envelope.fill", action: contactSupport)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .accessibilityHint("Opens the Mail app")
+                }
+                .padding(18)
+                .craftifyCard(cornerRadius: 22)
+
+                CraftifySectionHeader(
+                    title: "Data Management",
+                    detail: "Choose whether to remove only downloaded content or every piece of Craftify data."
                 )
+
+                dataActionCard(
+                    title: "Clear Cache",
+                    detail: "Removes local recipes and downloaded images. Your iCloud chests, recent searches, and reports stay intact.",
+                    symbol: "externaldrive.badge.xmark",
+                    actionTitle: "Clear Cache",
+                    action: clearCache
+                )
+
+                dataActionCard(
+                    title: "Clear All Data",
+                    detail: "Permanently removes chests, recent searches, CloudKit reports, local recipes, and downloaded images.",
+                    symbol: "trash.fill",
+                    actionTitle: "Clear All Data",
+                    isDestructive: true,
+                    action: { showClearDataAlert = true }
+                )
+
+                VStack(alignment: .leading, spacing: 14) {
+                    CraftifySectionHeader(
+                        title: "Privacy Policy",
+                        detail: "Craftify asks for no identity or account details and uses no third-party dependencies.",
+                        symbol: "lock.shield.fill"
+                    )
+
+                    Link(destination: URL(string: "https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/privacy-policy/")!) {
+                        Label("View Privacy Policy Online", systemImage: "arrow.up.right.square")
+                            .font(.headline)
+                    }
+
+                    DisclosureGroup(isExpanded: $isPrivacyExpanded) {
+                        PrivacyPolicyContent(horizontalSizeClass: horizontalSizeClass)
+                            .padding(.top, 14)
+                    } label: {
+                        Label("Read Privacy Policy in Craftify", systemImage: "doc.text.fill")
+                            .font(.headline)
+                    }
+                    .onChange(of: isPrivacyExpanded) { _, _ in HapticFeedback.selection() }
+                }
+                .padding(18)
+                .craftifyCard(cornerRadius: 22)
             }
-            .dynamicTypeSize(.xSmall ... .accessibility5)
+            .craftifyContentWidth(CraftifyLayout.readingMaxWidth)
+            .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+            .padding(.top, 12)
+            .padding(.bottom, 34)
+        }
+        .navigationTitle("Support & Privacy")
+        .navigationBarTitleDisplayMode(.large)
+        .craftifyPage()
+        .alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "An error occurred.")
+        }
+        .alert("Clear All Data", isPresented: $showClearDataAlert) {
+            Button("Clear All Data", role: .destructive) {
+                dataManager.clearAllData { success in
+                    if success {
+                        HapticFeedback.notification(.success)
+                    } else {
+                        HapticFeedback.notification(.error)
+                        errorMessage = dataManager.errorMessage ?? "Failed to clear all data. Please try again."
+                        showErrorAlert = true
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes your chests, recent searches, CloudKit recipe reports, local recipes, and downloaded images. This action cannot be undone.")
+        }
     }
 
-    private func buttonStyle(title: String, systemImage: String, foregroundColor: Color = Color.userAccentColor) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.title2)
-                .foregroundColor(foregroundColor)
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
-                .minimumScaleFactor(0.6)
-            Spacer()
+    private func dataActionCard(
+        title: String,
+        detail: String,
+        symbol: String,
+        actionTitle: String,
+        isDestructive: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 15) {
+            HStack(alignment: .top, spacing: 14) {
+                CraftifyIconTile(symbol: symbol, size: 52, destructive: isDestructive)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.title3.bold())
+                    Text(detail)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if isDestructive {
+                Button(role: .destructive, action: action) {
+                    Label(actionTitle, systemImage: symbol)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .tint(.red)
+                .accessibilityHint(detail)
+            } else {
+                Button(action: action) {
+                    Label(actionTitle, systemImage: symbol)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .accessibilityHint(detail)
+            }
         }
-        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 8)
+        .padding(18)
+        .craftifyCard(cornerRadius: 22)
+    }
+
+    private func contactSupport() {
+        HapticFeedback.selection()
+        if let url = URL(string: "mailto:hello@davevancauwenberghe.be") {
+            UIApplication.shared.open(url)
+        }
+    }
+
+    private func clearCache() {
+        dataManager.clearCache { success in
+            if success {
+                HapticFeedback.notification(.success)
+            } else {
+                HapticFeedback.notification(.error)
+                errorMessage = dataManager.errorMessage ?? "Failed to clear cache. Please try again."
+                showErrorAlert = true
+            }
+        }
     }
 }
 
@@ -188,7 +194,7 @@ struct PrivacyPolicyContent: View {
                 .foregroundColor(.secondary)
                 .minimumScaleFactor(0.6)
 
-            ScrollView {
+            Group {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Craftify for Minecraft (\"Craftify\") is developed by Dave Van Cauwenberghe, an individual developer. This Privacy Policy explains how Craftify handles your data. Craftify does not ask you for identity or account details. You choose chest names, so avoid including personal information in them.")
                         .font(.body)
@@ -374,10 +380,6 @@ struct PrivacyPolicyContent: View {
                 }
                 .padding(.vertical, 8)
             }
-            .frame(maxHeight: 300)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Privacy Policy for Craftify")
-            .accessibilityValue("Last updated 30 July 2026. Craftify does not ask for identity or account details. Data includes user-entered chest names, sizes, ordering and recipe IDs, Recent Searches, and Recipe Reports stored in iCloud and CloudKit for syncing. Network connectivity is monitored locally to manage syncing, not shared. Data is used for app features, with no third-party sharing. Anonymized CloudKit metadata is used for performance. You can clear all data. Craftify is safe for kids under 13, complying with COPPA and GDPR.")
         }
         .padding(.vertical, 8)
         .dynamicTypeSize(.xSmall ... .accessibility5)
