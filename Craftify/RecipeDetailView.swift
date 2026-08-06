@@ -469,7 +469,7 @@ struct IngredientDetailPopup: View {
     @EnvironmentObject private var dataManager: DataManager
 
     private var subRecipe: Recipe? {
-        guard case .grid = selectedItem else { return nil }
+        guard case .grid(_) = selectedItem else { return nil }
         return dataManager.recipes.first { $0.name == detail }
     }
 

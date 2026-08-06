@@ -144,7 +144,7 @@ struct RecipeSearchView: View {
 
             if recentSearchRecipes.isEmpty {
                 searchState(
-                    symbol: "sparkle.magnifyingglass",
+                    symbol: "magnifyingglass.circle.fill",
                     title: "What Are You Crafting?",
                     detail: "Tap the search field and start with a recipe name or ingredient."
                 )

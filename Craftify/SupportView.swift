@@ -69,12 +69,10 @@ struct SupportView: View {
                         symbol: "lock.shield.fill"
                     )
 
-                    Link(
-                        "View Privacy Policy Online",
-                        systemImage: "arrow.up.right.square",
-                        destination: URL(string: "https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/privacy-policy/")!
-                    )
-                    .font(.headline)
+                    Link(destination: URL(string: "https://www.davevancauwenberghe.be/projects/craftify-for-minecraft/privacy-policy/")!) {
+                        Label("View Privacy Policy Online", systemImage: "arrow.up.right.square")
+                            .font(.headline)
+                    }
 
                     DisclosureGroup(isExpanded: $isPrivacyExpanded) {
                         PrivacyPolicyContent(horizontalSizeClass: horizontalSizeClass)
@@ -138,11 +136,22 @@ struct SupportView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Button(actionTitle, systemImage: symbol, role: isDestructive ? .destructive : nil, action: action)
+            if isDestructive {
+                Button(role: .destructive, action: action) {
+                    Label(actionTitle, systemImage: symbol)
+                }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
                 .tint(.red)
                 .accessibilityHint(detail)
+            } else {
+                Button(action: action) {
+                    Label(actionTitle, systemImage: symbol)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .accessibilityHint(detail)
+            }
         }
         .padding(18)
         .craftifyCard(cornerRadius: 22)
