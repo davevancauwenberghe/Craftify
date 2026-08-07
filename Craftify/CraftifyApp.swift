@@ -18,6 +18,8 @@ struct CraftifyApp: App {
 
     var body: some Scene {
         WindowGroup {
+            let accent = Color.userAccentColor(for: accentColorPreference)
+
             ZStack {
                 ContentView()
                     .environmentObject(dataManager)
@@ -45,7 +47,8 @@ struct CraftifyApp: App {
                     .zIndex(1)
                 }
             }
-            .tint(Color.userAccentColor)
+            .tint(accent)
+            .environment(\.craftifyAccentColor, accent)
             .dynamicTypeSize(.xSmall ... .accessibility5)
             .onAppear {
                 dataManager.fetchRecipes(

@@ -40,8 +40,7 @@ struct OnboardingView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
-        .id(accentColorPreference)
-        .tint(Color.userAccentColor)
+        .tint(Color.userAccentColor(for: accentColorPreference))
         .dynamicTypeSize(.xSmall ... .accessibility5)
         .mask {
             SlidingDoorMask(progress: isFinishing && !reduceMotion ? 1 : 0)
@@ -120,7 +119,7 @@ struct OnboardingView: View {
         VStack(spacing: 12) {
             ProgressView()
                 .controlSize(.large)
-                .tint(Color.userAccentColor)
+                .tint(Color.userAccentColor(for: accentColorPreference))
                 .accessibilityHidden(true)
 
             switch dataManager.recipeBookLoadingPhase {
@@ -133,20 +132,12 @@ struct OnboardingView: View {
             case .downloadingRecipes(let downloaded, let total):
                 if let total {
                     let displayedTotal = max(total, downloaded)
-                    ProgressView(
-                        value: Double(downloaded),
-                        total: Double(max(displayedTotal, 1))
+                    loadingProgressRow(
+                        title: "Recipes",
+                        symbol: "book.closed.fill",
+                        completed: downloaded,
+                        total: displayedTotal
                     )
-                    .progressViewStyle(.linear)
-                    .accessibilityHidden(true)
-                    Text("Downloading recipes \(downloaded) / \(displayedTotal)")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .accessibilityLabel(
-                            "\(downloaded) of \(displayedTotal) recipes downloaded"
-                        )
                 } else {
                     Text("Downloading recipes… \(downloaded)")
                         .font(.footnote.weight(.medium))
@@ -156,23 +147,51 @@ struct OnboardingView: View {
                         .accessibilityLabel("\(downloaded) recipes downloaded")
                 }
 
-            case .preparingImages(let prepared, let total):
-                ProgressView(
-                    value: Double(total == 0 ? 1 : prepared),
-                    total: Double(max(total, 1))
+            case .preparingImages(let prepared, let total, let recipeTotal):
+                loadingProgressRow(
+                    title: "Recipes",
+                    symbol: "book.closed.fill",
+                    completed: recipeTotal,
+                    total: recipeTotal
                 )
-                .progressViewStyle(.linear)
-                .accessibilityHidden(true)
-                Text("Preparing images \(prepared) / \(total)")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .accessibilityLabel("\(prepared) of \(total) images prepared")
+                loadingProgressRow(
+                    title: "Images",
+                    symbol: "photo.stack.fill",
+                    completed: prepared,
+                    total: total
+                )
             }
         }
-        .frame(maxWidth: 320)
+        .frame(maxWidth: 360)
         .animation(.easeInOut(duration: 0.25), value: dataManager.recipeBookLoadingPhase)
+    }
+
+    private func loadingProgressRow(
+        title: String,
+        symbol: String,
+        completed: Int,
+        total: Int
+    ) -> some View {
+        let safeTotal = max(total, 1)
+        let safeCompleted = total == 0 ? safeTotal : min(completed, safeTotal)
+
+        return VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                Label(title, systemImage: symbol)
+                    .font(.footnote.weight(.semibold))
+                Spacer()
+                Text("\(completed) / \(total)")
+                    .font(.footnote.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
+            }
+
+            ProgressView(value: Double(safeCompleted), total: Double(safeTotal))
+                .progressViewStyle(.linear)
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(completed) of \(total) \(title.lowercased()) prepared")
     }
 
     private var onboardingPages: some View {
@@ -454,6 +473,8 @@ private struct SlidingDoorMask: Shape {
 }
 
 private struct CraftifyBlockGlow: View {
+    @Environment(\.craftifyAccentColor) private var accent
+
     var body: some View {
         LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3),
@@ -461,7 +482,7 @@ private struct CraftifyBlockGlow: View {
         ) {
             ForEach(0..<9, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.userAccentColor.opacity(index == 4 ? 0.18 : 0.08))
+                    .fill(accent.opacity(index == 4 ? 0.18 : 0.08))
                     .aspectRatio(1, contentMode: .fit)
             }
         }
@@ -471,14 +492,16 @@ private struct CraftifyBlockGlow: View {
 }
 
 private struct CraftifyPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.craftifyAccentColor) private var accent
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Color.userAccentColor.gradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .shadow(color: Color.userAccentColor.opacity(configuration.isPressed ? 0.12 : 0.25), radius: 10, y: 5)
+            .background(accent.gradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: accent.opacity(configuration.isPressed ? 0.12 : 0.25), radius: 10, y: 5)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(.easeInOut(duration: 0.25), value: configuration.isPressed)
     }

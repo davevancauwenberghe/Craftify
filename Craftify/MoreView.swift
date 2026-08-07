@@ -108,7 +108,7 @@ struct MoreView: View {
             HStack(alignment: .top, spacing: 14) {
                 CraftifyIconTile(
                     symbol: dataManager.isConnected ? "icloud.and.arrow.down.fill" : "icloud.slash.fill",
-                    size: 58
+                    size: 48
                 )
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Recipe Book Sync")
@@ -133,11 +133,11 @@ struct MoreView: View {
                     dataManager.isLoading ? "Syncing Recipes & Images…" : "Sync Recipes & Images",
                     systemImage: dataManager.isLoading ? "hourglass" : "arrow.clockwise"
                 )
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: 48)
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 42)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .craftifyButtonBorder(cornerRadius: 16)
             .disabled(dataManager.isLoading || !dataManager.isConnected || remainingCooldownTime > 0)
             .accessibilityHint(syncHint)
 
@@ -158,7 +158,7 @@ struct MoreView: View {
                 .foregroundStyle(.orange)
             }
         }
-        .padding(20)
+        .padding(18)
         .craftifyCard(cornerRadius: 24)
     }
 
@@ -259,6 +259,7 @@ struct MoreView: View {
 struct AboutView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -267,37 +268,27 @@ struct AboutView: View {
     }
 
     private var linkColumns: [GridItem] {
-        CraftifyLayout.adaptiveColumns(
-            minimum: dynamicTypeSize.isAccessibilitySize ? 280 : 240,
-            maximum: 360,
-            spacing: 14,
-            dynamicTypeSize: dynamicTypeSize
-        )
+        if horizontalSizeClass == .compact || dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.flexible())]
+        }
+        return [GridItem(.flexible()), GridItem(.flexible())]
     }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
-                VStack(spacing: 14) {
-                    Image("AppIconPreview")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: horizontalSizeClass == .regular ? 112 : 94)
-                        .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
-                        .shadow(color: Color.userAccentColor.opacity(0.20), radius: 16, y: 8)
-                        .accessibilityLabel("Craftify app icon")
-
-                    Text("Craftify for Minecraft")
-                        .font(.largeTitle.bold())
-                        .multilineTextAlignment(.center)
-                    Text(appVersion)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.userAccentColor)
-                    Text("A focused crafting companion for discovering recipes and planning projects in synced chests.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 560)
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        aboutIdentityVertical
+                    } else {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 22) {
+                                appIcon
+                                aboutIdentityCopy(alignment: .leading)
+                            }
+                            aboutIdentityVertical
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 24)
@@ -336,7 +327,7 @@ struct AboutView: View {
                 .padding(16)
                 .craftifyCard(cornerRadius: 18)
             }
-            .craftifyContentWidth(CraftifyLayout.formMaxWidth)
+            .craftifyContentWidth()
             .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
             .padding(.top, 12)
             .padding(.bottom, 32)
@@ -344,6 +335,40 @@ struct AboutView: View {
         .navigationTitle("About Craftify")
         .navigationBarTitleDisplayMode(.large)
         .craftifyPage()
+    }
+
+    private var appIcon: some View {
+        Image("AppIconPreview")
+            .resizable()
+            .scaledToFit()
+            .frame(width: horizontalSizeClass == .regular ? 112 : 94)
+            .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
+            .shadow(color: accent.opacity(0.20), radius: 16, y: 8)
+            .accessibilityLabel("Craftify app icon")
+    }
+
+    private var aboutIdentityVertical: some View {
+        VStack(spacing: 14) {
+            appIcon
+            aboutIdentityCopy(alignment: .center)
+        }
+    }
+
+    private func aboutIdentityCopy(alignment: TextAlignment) -> some View {
+        VStack(alignment: alignment == .center ? .center : .leading, spacing: 7) {
+            Text("Craftify for Minecraft")
+                .font(.largeTitle.bold())
+                .multilineTextAlignment(alignment)
+            Text(appVersion)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(accent)
+            Text("A focused crafting companion for discovering recipes and planning projects in synced chests.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(alignment)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: alignment == .center ? .center : .leading)
     }
 
     private func aboutDestination<Destination: View>(

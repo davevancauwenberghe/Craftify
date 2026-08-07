@@ -30,7 +30,7 @@ struct ReleaseNotesView: View {
                     ReleaseNoteCard(note: note, isCurrent: index == 0)
                 }
             }
-            .craftifyContentWidth(CraftifyLayout.readingMaxWidth)
+            .craftifyContentWidth()
             .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
             .padding(.top, 12)
             .padding(.bottom, 34)
@@ -44,6 +44,7 @@ struct ReleaseNotesView: View {
 private struct ReleaseNoteCard: View {
     let note: ReleaseNote
     let isCurrent: Bool
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
@@ -61,7 +62,7 @@ private struct ReleaseNoteCard: View {
                 ForEach(note.changes, id: \.self) { change in
                     HStack(alignment: .top, spacing: 11) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(Color.userAccentColor)
+                            .foregroundStyle(accent)
                             .accessibilityHidden(true)
                         Text(change)
                             .font(.body)
@@ -76,7 +77,7 @@ private struct ReleaseNoteCard: View {
         .craftifyCard(cornerRadius: 22)
         .overlay(alignment: .leading) {
             RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(isCurrent ? Color.userAccentColor : Color.userAccentColor.opacity(0.28))
+                .fill(isCurrent ? accent : accent.opacity(0.28))
                 .frame(width: 4)
                 .padding(.vertical, 18)
         }

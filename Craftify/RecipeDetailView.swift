@@ -10,13 +10,11 @@ import SwiftUI
 enum SelectedItem: Equatable {
     case grid(index: Int)
     case output
-    case imageremark
 }
 
 struct RecipeDetailView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let recipe: Recipe
@@ -64,19 +62,14 @@ struct RecipeDetailView: View {
                         detail: selectedDetail,
                         selectedDetail: $selectedDetail,
                         selectedItem: $selectedItem,
-                        recipe: recipe,
                         navigationPath: $navigationPath
                     )
                     .transition(reduceMotion ? .opacity : .scale(scale: 0.97).combined(with: .opacity))
                 }
 
-                RemarkAndCategoryView(
-                    recipe: recipe,
-                    selectedItem: $selectedItem,
-                    selectedDetail: $selectedDetail
-                )
+                RemarkAndCategoryView(recipe: recipe)
             }
-            .craftifyContentWidth(horizontalSizeClass == .regular ? 980 : CraftifyLayout.formMaxWidth)
+            .craftifyContentWidth()
             .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
             .padding(.top, 12)
             .padding(.bottom, 36)
@@ -144,6 +137,7 @@ private struct RecipeIdentityHeader: View {
     let recipe: Recipe
     let output: Int
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         Group {
@@ -183,7 +177,7 @@ private struct RecipeIdentityHeader: View {
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.userAccentColor.opacity(0.24), lineWidth: 1)
+                .stroke(accent.opacity(0.24), lineWidth: 1)
         }
         .accessibilityHidden(true)
     }
@@ -193,7 +187,7 @@ private struct RecipeIdentityHeader: View {
             Text("CRAFTING RECIPE")
                 .font(.caption.bold())
                 .tracking(1.1)
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
             Text(recipe.name)
                 .font(.largeTitle.bold())
                 .multilineTextAlignment(alignment)
@@ -217,6 +211,7 @@ private struct RecipeIdentityHeader: View {
 private struct AddRecipeToChestView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.craftifyAccentColor) private var accent
     let recipe: Recipe
     @State private var creatingChest = false
     @State private var message: String?
@@ -239,14 +234,14 @@ private struct AddRecipeToChestView: View {
                             } label: {
                                 HStack(spacing: 12) {
                                     Image(systemName: chest.displaySymbol)
-                                        .foregroundStyle(Color.userAccentColor)
+                                        .foregroundStyle(accent)
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(chest.name).foregroundStyle(.primary)
                                         ProgressView(
                                             value: Double(chest.recipeIDs.count),
                                             total: Double(chest.size.rawValue)
                                         )
-                                        .tint(Color.userAccentColor)
+                                        .tint(accent)
                                     }
                                     Text("\(chest.recipeIDs.count)/\(chest.size.rawValue)")
                                         .font(.caption.monospacedDigit())
@@ -308,6 +303,7 @@ struct AlternateRecipesSelector: View {
     @Binding var selectedCraftingOption: Int
     @Binding var selectedDetail: String?
     @Binding var selectedItem: SelectedItem?
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         if ingredientSets.count > 1 {
@@ -332,7 +328,7 @@ struct AlternateRecipesSelector: View {
                             .padding(.horizontal, 15)
                             .padding(.vertical, 9)
                             .background(
-                                isSelected ? Color.userAccentColor : Color.primary.opacity(0.06),
+                                isSelected ? accent : Color.primary.opacity(0.06),
                                 in: Capsule()
                             )
                             .buttonStyle(.plain)
@@ -357,6 +353,7 @@ private struct CraftingRecipeCard: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
 
     private var cellSize: CGFloat {
         horizontalSizeClass == .regular ? 76 : 64
@@ -388,7 +385,7 @@ private struct CraftingRecipeCard: View {
             craftingGrid
             Image(systemName: "arrow.right")
                 .font(.title.bold())
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
                 .accessibilityHidden(true)
             outputTile
         }
@@ -400,7 +397,7 @@ private struct CraftingRecipeCard: View {
             craftingGrid
             Image(systemName: "arrow.down")
                 .font(.title2.bold())
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
                 .accessibilityHidden(true)
             outputTile
         }
@@ -435,11 +432,11 @@ private struct CraftingRecipeCard: View {
             VStack(spacing: 7) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .fill(Color.userAccentColor.opacity(0.09))
+                        .fill(accent.opacity(0.09))
                         .overlay {
                             RoundedRectangle(cornerRadius: 15, style: .continuous)
                                 .stroke(
-                                    selectedItem == .output ? Color.userAccentColor : Color.userAccentColor.opacity(0.18),
+                                    selectedItem == .output ? accent : accent.opacity(0.18),
                                     lineWidth: selectedItem == .output ? 2 : 1
                                 )
                         }
@@ -464,9 +461,10 @@ struct IngredientDetailPopup: View {
     let detail: String
     @Binding var selectedDetail: String?
     @Binding var selectedItem: SelectedItem?
-    let recipe: Recipe
     @Binding var navigationPath: NavigationPath
     @EnvironmentObject private var dataManager: DataManager
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
 
     private var subRecipe: Recipe? {
         guard case .grid(_) = selectedItem else { return nil }
@@ -476,31 +474,21 @@ struct IngredientDetailPopup: View {
     private var descriptor: String {
         switch selectedItem {
         case .output: "Crafting output"
-        case .imageremark: recipe.remarks?.isEmpty == false ? recipe.remarks! : "Crafting utility"
         case .grid: "Crafting ingredient"
         case nil: "Recipe detail"
         }
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
-                CraftImage(key: detail)
-                    .scaledToFit()
-                    .frame(width: 76, height: 76)
-                    .padding(8)
-                    .background(Color.userAccentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Text(descriptor.uppercased())
+                    .font(.caption.bold())
+                    .tracking(1)
+                    .foregroundStyle(accent)
 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(detail)
-                        .font(.title2.bold())
-                    Text(descriptor)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 4)
+                Spacer(minLength: 8)
+
                 Button("Close", systemImage: "xmark.circle.fill") {
                     selectedDetail = nil
                     selectedItem = nil
@@ -511,25 +499,71 @@ struct IngredientDetailPopup: View {
                 .accessibilityHint("Dismisses these details")
             }
 
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 14) {
+                        detailImage
+                        detailTitle
+                    }
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .center, spacing: 16) {
+                            detailImage
+                            detailTitle
+                        }
+                        VStack(alignment: .leading, spacing: 14) {
+                            detailImage
+                            detailTitle
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             if let subRecipe {
-                Button("View \(subRecipe.name) Recipe", systemImage: "arrow.right.circle.fill") {
+                Button {
                     navigationPath.append(subRecipe)
+                } label: {
+                    Label("View \(subRecipe.name) Recipe", systemImage: "arrow.right.circle.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .craftifyButtonBorder(cornerRadius: 16)
             }
         }
         .padding(18)
         .craftifyCard(cornerRadius: 22)
         .accessibilityElement(children: .contain)
     }
+
+    private var detailImage: some View {
+        CraftImage(key: detail)
+            .scaledToFit()
+            .frame(width: 76, height: 76)
+            .padding(8)
+            .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityHidden(true)
+    }
+
+    private var detailTitle: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(detail)
+                .font(.title2.bold())
+                .fixedSize(horizontal: false, vertical: true)
+            Text(selectedItem == .output ? "The item produced by this recipe." : "An item required in the crafting layout.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
 }
 
 struct RemarkAndCategoryView: View {
     let recipe: Recipe
-    @Binding var selectedItem: SelectedItem?
-    @Binding var selectedDetail: String?
+    @Environment(\.craftifyAccentColor) private var accent
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var isUtilityExpanded = false
 
     var body: some View {
         if recipe.imageremark?.isEmpty == false || recipe.remarks?.isEmpty == false {
@@ -541,40 +575,47 @@ struct RemarkAndCategoryView: View {
                 )
 
                 if let imageRemark = recipe.imageremark, !imageRemark.isEmpty {
-                    Button {
-                        selectedDetail = imageRemark
-                        selectedItem = .imageremark
-                        HapticFeedback.impact()
+                    DisclosureGroup(isExpanded: $isUtilityExpanded) {
+                        Group {
+                            if dynamicTypeSize.isAccessibilitySize {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    utilityImage(imageRemark)
+                                    utilityCopy(imageRemark)
+                                }
+                            } else {
+                                HStack(alignment: .top, spacing: 14) {
+                                    utilityImage(imageRemark)
+                                    utilityCopy(imageRemark)
+                                }
+                            }
+                        }
+                        .padding(.top, 12)
                     } label: {
                         HStack(spacing: 13) {
-                            CraftImage(key: imageRemark)
-                                .scaledToFit()
-                                .frame(width: 48, height: 48)
-                                .padding(5)
-                                .background(Color.userAccentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            Image(systemName: "hammer.fill")
+                                .font(.headline)
+                                .foregroundStyle(accent)
+                                .frame(width: 40, height: 40)
+                                .background(accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 .accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(imageRemark)
+                                Text("Required Crafting Utility")
                                     .font(.headline)
                                     .foregroundStyle(.primary)
-                                Text("Required crafting utility")
+                                Text(isUtilityExpanded ? "Hide utility details" : "Show utility details")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            Spacer()
-                            Image(systemName: "info.circle.fill")
-                                .foregroundStyle(Color.userAccentColor)
-                                .accessibilityHidden(true)
                         }
-                        .padding(12)
-                        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Crafting utility: \(imageRemark)")
-                    .accessibilityHint("Shows crafting notes")
+                    .tint(accent)
+                    .onChange(of: isUtilityExpanded) { _, _ in HapticFeedback.selection() }
+                    .accessibilityHint("Shows the required utility and crafting notes")
                 }
 
-                if let remarks = recipe.remarks, !remarks.isEmpty {
+                if recipe.imageremark?.isEmpty != false,
+                   let remarks = recipe.remarks,
+                   !remarks.isEmpty {
                     Text(remarks)
                         .font(.body)
                         .foregroundStyle(.secondary)
@@ -583,6 +624,34 @@ struct RemarkAndCategoryView: View {
             }
             .padding(18)
             .craftifyCard(cornerRadius: 22)
+        }
+    }
+
+    private func utilityImage(_ imageRemark: String) -> some View {
+        CraftImage(key: imageRemark)
+            .scaledToFit()
+            .frame(width: 64, height: 64)
+            .padding(7)
+            .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .accessibilityHidden(true)
+    }
+
+    private func utilityCopy(_ imageRemark: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(imageRemark)
+                .font(.headline)
+            Text("Use this utility for the crafting layout shown above.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let remarks = recipe.remarks, !remarks.isEmpty {
+                Text(remarks)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+            }
         }
     }
 }
@@ -654,6 +723,7 @@ struct GridCell: View {
     let isSelected: Bool
     let cellSize: CGFloat
     let onTap: () -> Void
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         Button {
@@ -663,11 +733,11 @@ struct GridCell: View {
         } label: {
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(ingredient.isEmpty ? Color.primary.opacity(0.035) : Color.userAccentColor.opacity(0.075))
+                    .fill(ingredient.isEmpty ? Color.primary.opacity(0.035) : accent.opacity(0.075))
                     .overlay {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .stroke(
-                                isSelected ? Color.userAccentColor : Color.primary.opacity(ingredient.isEmpty ? 0.05 : 0.10),
+                                isSelected ? accent : Color.primary.opacity(ingredient.isEmpty ? 0.05 : 0.10),
                                 lineWidth: isSelected ? 2 : 1
                             )
                     }

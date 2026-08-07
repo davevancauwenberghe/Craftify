@@ -68,12 +68,10 @@ struct AppAppearanceView: View {
     }
 
     private var iconColumns: [GridItem] {
-        CraftifyLayout.adaptiveColumns(
-            minimum: dynamicTypeSize.isAccessibilitySize ? 280 : 190,
-            maximum: 280,
-            spacing: 14,
-            dynamicTypeSize: dynamicTypeSize
-        )
+        if horizontalSizeClass == .compact || dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.flexible())]
+        }
+        return [GridItem(.flexible()), GridItem(.flexible())]
     }
 
     var body: some View {
@@ -90,7 +88,7 @@ struct AppAppearanceView: View {
                 accentSection
                 appIconSection
             }
-            .craftifyContentWidth(CraftifyLayout.formMaxWidth)
+            .craftifyContentWidth()
             .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
             .padding(.top, 12)
             .padding(.bottom, 32)
@@ -255,10 +253,10 @@ struct AppAppearanceView: View {
             .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
             .background(
                 selectedAccentColor.opacity(isSelected ? 0.10 : 0.03),
-                in: RoundedRectangle(cornerRadius: 17, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(selectedAccentColor.opacity(isSelected ? 0.48 : 0.12), lineWidth: isSelected ? 2 : 1)
             }
         }

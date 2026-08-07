@@ -27,7 +27,7 @@ final class DataManager: ObservableObject {
     enum RecipeBookLoadingPhase: Equatable {
         case idle
         case downloadingRecipes(downloaded: Int, total: Int?)
-        case preparingImages(prepared: Int, total: Int)
+        case preparingImages(prepared: Int, total: Int, recipeTotal: Int)
     }
 
     struct NewRecipeAnnouncement: Identifiable, Equatable {
@@ -419,7 +419,8 @@ final class DataManager: ObservableObject {
                     let imageCount = CraftImageStore.imageKeys(in: fetchedRecipes).count
                     recipeBookLoadingPhase = .preparingImages(
                         prepared: 0,
-                        total: imageCount
+                        total: imageCount,
+                        recipeTotal: actualRecipeCount
                     )
                     let allImagesPrepared = await imageStore.prepare(
                         recipes: fetchedRecipes
@@ -429,7 +430,8 @@ final class DataManager: ObservableObject {
                         }
                         self.recipeBookLoadingPhase = .preparingImages(
                             prepared: prepared,
-                            total: total
+                            total: total,
+                            recipeTotal: actualRecipeCount
                         )
                     }
                     guard generation == recipeFetchGeneration else { return }
@@ -441,6 +443,14 @@ final class DataManager: ObservableObject {
                         isManualSyncing = false
                         return
                     }
+
+                    recipeBookLoadingPhase = .preparingImages(
+                        prepared: imageCount,
+                        total: imageCount,
+                        recipeTotal: actualRecipeCount
+                    )
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard generation == recipeFetchGeneration else { return }
                 } else {
                     imageStore.prefetch(recipes: fetchedRecipes)
                 }

@@ -105,22 +105,27 @@ struct ContentView: View {
 
 struct RecipesTabView: View {
     @EnvironmentObject private var dataManager: DataManager
+    @Environment(\.craftifyAccentColor) private var accent
     @Binding var navigationPath: NavigationPath
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            CategoryView()
-                .navigationTitle("Craftify")
-                .navigationBarTitleDisplayMode(.large)
-                .toolbarBackground(.hidden, for: .navigationBar)
-                .overlay {
-                    if dataManager.isLoading && dataManager.recipes.isEmpty {
-                        loadingState
+            ZStack {
+                AppBackground().ignoresSafeArea()
+
+                CategoryView()
+                    .navigationTitle("Craftify")
+                    .navigationBarTitleDisplayMode(.large)
+                    .toolbarBackground(.hidden, for: .navigationBar)
+                    .overlay {
+                        if dataManager.isLoading && dataManager.recipes.isEmpty {
+                            loadingState
+                        }
                     }
-                }
-                .navigationDestination(for: Recipe.self) { recipe in
-                    RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                }
+                    .navigationDestination(for: Recipe.self) { recipe in
+                        RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
+                    }
+            }
         }
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }
@@ -130,7 +135,7 @@ struct RecipesTabView: View {
             CraftifyAppMark(size: 72)
             ProgressView()
                 .controlSize(.large)
-                .tint(Color.userAccentColor)
+                .tint(accent)
                 .accessibilityHidden(true)
             Text("Preparing Your Recipe Book")
                 .font(.headline)
@@ -166,7 +171,6 @@ struct CategoryView: View {
                 filteredRecipes: filteredRecipes
             )
         }
-        .background(alignment: .top) { AppHeroBackground(additionalHeight: 92) }
         .navigationTitle("Craftify")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
@@ -204,6 +208,10 @@ struct CategoryFilterBar: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
+    private var accent: Color {
+        Color.userAccentColor(for: accentColorPreference)
+    }
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -217,7 +225,6 @@ struct CategoryFilterBar: View {
         .craftifyFloatingSurface(cornerRadius: 18)
         .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
         .padding(.bottom, 8)
-        .id(accentColorPreference)
         .accessibilityLabel("Recipe categories")
     }
 
@@ -234,7 +241,7 @@ struct CategoryFilterBar: View {
                 .padding(.horizontal, horizontalSizeClass == .regular ? 15 : 12)
                 .padding(.vertical, 9)
                 .background(
-                    isSelected ? Color.userAccentColor : Color.primary.opacity(0.055),
+                    isSelected ? accent : Color.primary.opacity(0.055),
                     in: Capsule()
                 )
         }
@@ -244,46 +251,11 @@ struct CategoryFilterBar: View {
     }
 }
 
-struct AppHeroBackground: View {
-    let additionalHeight: CGFloat?
-    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
-
-    init(additionalHeight: CGFloat? = 0) {
-        self.additionalHeight = additionalHeight
-    }
-
-    var body: some View {
-        GeometryReader { geometry in
-            let navigationHeight = max(
-                geometry.safeAreaInsets.top,
-                max(geometry.frame(in: .global).minY, 0)
-            )
-            let height = additionalHeight.map { navigationHeight + $0 }
-                ?? geometry.size.height + navigationHeight
-
-            ZStack(alignment: .top) {
-                AppBackground()
-                LinearGradient(
-                    colors: [
-                        Color.userAccentColor(for: accentColorPreference).opacity(0.32),
-                        Color.userAccentColor(for: accentColorPreference).opacity(0.10),
-                        .clear
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .frame(height: height)
-            }
-        }
-        .ignoresSafeArea(edges: .top)
-        .accessibilityHidden(true)
-    }
-}
-
 struct RecipeListView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
     @Binding var recommendedRecipes: [Recipe]
     @Binding var isCraftifyPicksExpanded: Bool
     let filteredRecipes: [String: [Recipe]]
@@ -323,7 +295,6 @@ struct RecipeListView: View {
                 .scrollIndicators(.hidden)
             }
         }
-        .background { AppBackground().ignoresSafeArea() }
     }
 
     private var picksSection: some View {
@@ -354,7 +325,7 @@ struct RecipeListView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(letter)
                 .font(.title2.bold())
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
                 .accessibilityAddTraits(.isHeader)
 
             LazyVGrid(columns: recipeColumns, alignment: .leading, spacing: 12) {
@@ -375,16 +346,18 @@ struct RecipeCell: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         Group {
             if isCraftifyPick {
                 pickContent
+                    .craftifyAccentCard(cornerRadius: 18)
             } else {
                 rowContent
+                    .craftifyCard(cornerRadius: 18)
             }
         }
-        .craftifyCard(cornerRadius: 18)
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(recipe.name), \(recipe.category.isEmpty ? "recipe" : "\(recipe.category) recipe")")
@@ -403,7 +376,7 @@ struct RecipeCell: View {
                 if !recipe.category.isEmpty {
                     Label(recipe.category, systemImage: "tag.fill")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.userAccentColor)
+                        .foregroundStyle(accent)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                 }
             }
@@ -420,7 +393,6 @@ struct RecipeCell: View {
     private var pickContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             ZStack(alignment: .topLeading) {
-                AppBackground()
                 recipeImage(size: horizontalSizeClass == .regular ? 96 : 82)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(10)
@@ -428,7 +400,6 @@ struct RecipeCell: View {
                     .padding(9)
             }
             .frame(height: horizontalSizeClass == .regular ? 142 : 124)
-            .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(recipe.name)
@@ -451,7 +422,7 @@ struct RecipeCell: View {
             .scaledToFit()
             .frame(width: size, height: size)
             .padding(5)
-            .background(Color.userAccentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
             .accessibilityHidden(true)
     }
 }
@@ -459,12 +430,13 @@ struct RecipeCell: View {
 struct CraftifyPicksHeader: View {
     let isExpanded: Bool
     let toggle: () -> Void
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         Button(action: toggle) {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles")
-                    .foregroundStyle(Color.userAccentColor)
+                    .foregroundStyle(accent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Craftify Picks")
                         .font(.title3.bold())
@@ -476,7 +448,7 @@ struct CraftifyPicksHeader: View {
                 Spacer()
                 Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(Color.userAccentColor)
+                    .foregroundStyle(accent)
             }
             .contentShape(Rectangle())
         }

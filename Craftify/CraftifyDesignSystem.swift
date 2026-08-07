@@ -7,10 +7,19 @@
 
 import SwiftUI
 
+private struct CraftifyAccentColorKey: EnvironmentKey {
+    static let defaultValue = Color.userAccentColor
+}
+
+extension EnvironmentValues {
+    var craftifyAccentColor: Color {
+        get { self[CraftifyAccentColorKey.self] }
+        set { self[CraftifyAccentColorKey.self] = newValue }
+    }
+}
+
 enum CraftifyLayout {
     static let contentMaxWidth: CGFloat = 1_180
-    static let readingMaxWidth: CGFloat = 760
-    static let formMaxWidth: CGFloat = 820
 
     static func pagePadding(for sizeClass: UserInterfaceSizeClass?) -> CGFloat {
         sizeClass == .regular ? 28 : 16
@@ -32,13 +41,9 @@ enum CraftifyLayout {
 /// The app-wide canvas. The restrained 3×3 block motifs reference the
 /// crafting grid without turning every screen into a Minecraft texture.
 struct AppBackground: View {
-    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
+    @Environment(\.craftifyAccentColor) private var accent
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
-
-    private var accent: Color {
-        Color.userAccentColor(for: accentColorPreference)
-    }
 
     var body: some View {
         ZStack {
@@ -72,11 +77,9 @@ struct AppBackground: View {
 }
 
 private struct CraftifyBlockMotif: View {
-    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
-        let accent = Color.userAccentColor(for: accentColorPreference)
-
         LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 3),
             spacing: 7
@@ -94,6 +97,7 @@ struct CraftifyIconTile: View {
     let symbol: String
     var size: CGFloat = 56
     var destructive = false
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         Image(systemName: symbol)
@@ -101,11 +105,11 @@ struct CraftifyIconTile: View {
             .foregroundStyle(.white)
             .frame(width: size, height: size)
             .background(
-                destructive ? Color.red.gradient : Color.userAccentColor.gradient,
+                destructive ? Color.red.gradient : accent.gradient,
                 in: RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
             )
             .shadow(
-                color: (destructive ? Color.red : Color.userAccentColor).opacity(0.20),
+                color: (destructive ? Color.red : accent).opacity(0.20),
                 radius: 10,
                 y: 5
             )
@@ -115,17 +119,18 @@ struct CraftifyIconTile: View {
 
 struct CraftifyAppMark: View {
     var size: CGFloat = 88
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
-                .fill(Color.userAccentColor.gradient)
+                .fill(accent.gradient)
             Image(systemName: "hammer.fill")
                 .font(.system(size: size * 0.43, weight: .bold))
                 .foregroundStyle(.white)
         }
         .frame(width: size, height: size)
-        .shadow(color: Color.userAccentColor.opacity(0.24), radius: 16, y: 8)
+        .shadow(color: accent.opacity(0.24), radius: 16, y: 8)
         .accessibilityHidden(true)
     }
 }
@@ -137,6 +142,7 @@ struct CraftifyHero: View {
     let symbol: String
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
 
     init(eyebrow: String? = nil, title: String, detail: String, symbol: String) {
         self.eyebrow = eyebrow
@@ -182,7 +188,7 @@ struct CraftifyHero: View {
                 Text(eyebrow.uppercased())
                     .font(.caption.weight(.bold))
                     .tracking(1.1)
-                    .foregroundStyle(Color.userAccentColor)
+                    .foregroundStyle(accent)
             }
             Text(title)
                 .font(.title2.bold())
@@ -252,21 +258,31 @@ struct CraftifyEmptyState: View {
 struct CraftifyStatusPill: View {
     let title: String
     let symbol: String
-    var tint: Color = Color.userAccentColor
+    var tint: Color?
+    @Environment(\.craftifyAccentColor) private var accent
+
+    init(title: String, symbol: String, tint: Color? = nil) {
+        self.title = title
+        self.symbol = symbol
+        self.tint = tint
+    }
 
     var body: some View {
+        let resolvedTint = tint ?? accent
+
         Label(title, systemImage: symbol)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(tint)
+            .foregroundStyle(resolvedTint)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(tint.opacity(0.12), in: Capsule())
+            .background(resolvedTint.opacity(0.12), in: Capsule())
     }
 }
 
 private struct CraftifyCardModifier: ViewModifier {
     let cornerRadius: CGFloat
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.craftifyAccentColor) private var accent
 
     func body(content: Content) -> some View {
         content
@@ -277,7 +293,30 @@ private struct CraftifyCardModifier: ViewModifier {
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(
-                        Color.userAccentColor.opacity(contrast == .increased ? 0.42 : 0.16),
+                        accent.opacity(contrast == .increased ? 0.42 : 0.16),
+                        lineWidth: contrast == .increased ? 1.5 : 1
+                    )
+            }
+            .shadow(color: .black.opacity(0.055), radius: 12, y: 5)
+    }
+}
+
+private struct CraftifyAccentCardModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.craftifyAccentColor) private var accent
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                AppBackground()
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            }
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(
+                        accent.opacity(contrast == .increased ? 0.48 : 0.20),
                         lineWidth: contrast == .increased ? 1.5 : 1
                     )
             }
@@ -289,12 +328,16 @@ private struct CraftifyFloatingSurfaceModifier: ViewModifier {
     let cornerRadius: CGFloat
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
+    private var accent: Color {
+        Color.userAccentColor(for: accentColorPreference)
+    }
+
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
                 .glassEffect(
-                    .regular.tint(Color.userAccentColor(for: accentColorPreference).opacity(0.08)),
+                    .regular.tint(accent.opacity(0.08)),
                     in: .rect(cornerRadius: cornerRadius)
                 )
         } else {
@@ -305,7 +348,7 @@ private struct CraftifyFloatingSurfaceModifier: ViewModifier {
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(Color.userAccentColor.opacity(0.18), lineWidth: 1)
+                        .stroke(accent.opacity(0.18), lineWidth: 1)
                 }
         }
     }
@@ -326,10 +369,16 @@ private struct CraftifyPageModifier: ViewModifier {
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
     func body(content: Content) -> some View {
+        let accent = Color.userAccentColor(for: accentColorPreference)
+
         content
-            .background { AppBackground().ignoresSafeArea() }
-            .tint(Color.userAccentColor(for: accentColorPreference))
-            .id(accentColorPreference)
+            .background {
+                AppBackground()
+                    .environment(\.craftifyAccentColor, accent)
+                    .ignoresSafeArea()
+            }
+            .tint(accent)
+            .environment(\.craftifyAccentColor, accent)
             .modifier(CraftifyNavigationBarModifier())
             .dynamicTypeSize(.xSmall ... .accessibility5)
     }
@@ -338,6 +387,10 @@ private struct CraftifyPageModifier: ViewModifier {
 extension View {
     func craftifyCard(cornerRadius: CGFloat = 20) -> some View {
         modifier(CraftifyCardModifier(cornerRadius: cornerRadius))
+    }
+
+    func craftifyAccentCard(cornerRadius: CGFloat = 20) -> some View {
+        modifier(CraftifyAccentCardModifier(cornerRadius: cornerRadius))
     }
 
     func craftifyFloatingSurface(cornerRadius: CGFloat = 24) -> some View {
@@ -355,5 +408,9 @@ extension View {
     func craftifyContentWidth(_ maximum: CGFloat = CraftifyLayout.contentMaxWidth) -> some View {
         frame(maxWidth: maximum)
             .frame(maxWidth: .infinity)
+    }
+
+    func craftifyButtonBorder(cornerRadius: CGFloat = 16) -> some View {
+        buttonBorderShape(.roundedRectangle(radius: cornerRadius))
     }
 }

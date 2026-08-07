@@ -47,7 +47,7 @@ struct ChestsView: View {
                             .buttonStyle(.borderedProminent)
                             .controlSize(.large)
                         }
-                        .craftifyContentWidth(CraftifyLayout.formMaxWidth)
+                        .craftifyContentWidth()
                         .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
                         .padding(.top, 12)
                         .padding(.bottom, 32)
@@ -88,12 +88,12 @@ struct ChestsView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .frame(maxWidth: 900)
+                    .frame(maxWidth: CraftifyLayout.contentMaxWidth)
+                    .frame(maxWidth: .infinity)
                     .safeAreaPadding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
                 }
             }
-            .id(accentColorPreference)
-            .tint(Color.userAccentColor)
+            .tint(Color.userAccentColor(for: accentColorPreference))
             .navigationTitle("Chests")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
@@ -199,6 +199,7 @@ private struct ChestListRow: View {
     let isEditing: Bool
     let onEdit: () -> Void
     let onDelete: () -> Void
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         rowContent
@@ -209,7 +210,7 @@ private struct ChestListRow: View {
                 Button("Delete", role: .destructive, action: onDelete)
                     .tint(.red)
                 Button("Edit", action: onEdit)
-                    .tint(Color.userAccentColor)
+                    .tint(accent)
             }
             .contextMenu {
                 Button("Edit Chest", systemImage: "pencil", action: onEdit)
@@ -234,21 +235,22 @@ private struct ChestListRow: View {
 
 private struct ChestRow: View {
     let chest: RecipeChest
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         HStack(spacing: 16) {
             Image(systemName: chest.displaySymbol)
                 .font(.title2)
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
                 .frame(width: 44, height: 44)
-                .background(Color.userAccentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(chest.name).font(.headline)
                 Text("\(chest.recipeIDs.count) of \(chest.size.rawValue) slots")
                     .font(.subheadline).foregroundStyle(.secondary)
                 ProgressView(value: Double(chest.recipeIDs.count), total: Double(chest.size.rawValue))
-                    .tint(Color.userAccentColor)
+                    .tint(accent)
             }
         }
         .accessibilityElement(children: .combine)
@@ -344,7 +346,7 @@ struct ChestDetailView: View {
                     AppBackground()
                         .ignoresSafeArea()
                 }
-                .id(accentColorPreference).tint(Color.userAccentColor)
+                .tint(Color.userAccentColor(for: accentColorPreference))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
@@ -399,6 +401,7 @@ private struct ChestDetailHeader: View {
     let usedSlots: Int
     let isEditing: Bool
     @Binding var name: String
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -423,8 +426,8 @@ private struct ChestDetailHeader: View {
             .font(.system(.largeTitle, design: .rounded, weight: .bold))
             .foregroundStyle(.white)
             .frame(width: 92, height: 92)
-            .background(Color.userAccentColor.gradient, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .shadow(color: Color.userAccentColor.opacity(0.25), radius: 14, y: 8)
+            .background(accent.gradient, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: accent.opacity(0.25), radius: 14, y: 8)
             .accessibilityHidden(true)
     }
 
@@ -450,7 +453,7 @@ private struct ChestDetailHeader: View {
                 .font(.headline)
                 .foregroundStyle(.secondary)
             ProgressView(value: Double(usedSlots), total: Double(chest.size.rawValue))
-                .tint(Color.userAccentColor)
+                .tint(accent)
                 .frame(maxWidth: 400)
                 .accessibilityLabel("Chest capacity")
                 .accessibilityValue("\(usedSlots) of \(chest.size.rawValue) slots used")
@@ -461,6 +464,7 @@ private struct ChestDetailHeader: View {
 
 private struct ChestRecipeCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
     let recipe: Recipe
     let slot: Int
     var body: some View {
@@ -482,7 +486,7 @@ private struct ChestRecipeCard: View {
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 Label(recipe.category, systemImage: "tag.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.userAccentColor)
+                    .foregroundStyle(accent)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -490,7 +494,7 @@ private struct ChestRecipeCard: View {
             .background(Color(.secondarySystemGroupedBackground))
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.userAccentColor.opacity(0.4), lineWidth: 1) }
+        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(accent.opacity(0.4), lineWidth: 1) }
         .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Slot \(slot), \(recipe.name), \(recipe.category)")
@@ -567,8 +571,7 @@ struct ChestEditorView: View {
             } message: {
                 Text("A small chest holds 27 recipes. Shrinking will permanently remove the last \(overflowCount) recipes from this chest and sync the change to iCloud.")
             }
-            .id(accentColorPreference)
-            .tint(Color.userAccentColor)
+            .tint(Color.userAccentColor(for: accentColorPreference))
             .craftifyNavigationBar()
         }
     }
@@ -627,7 +630,7 @@ struct ChestsTutorialView: View {
                     Text("Your chest room syncs through iCloud, so its order, names, and recipes follow you across devices.")
                         .font(.callout).foregroundStyle(.secondary)
                 }
-                .craftifyContentWidth(CraftifyLayout.readingMaxWidth)
+                .craftifyContentWidth()
                 .padding(24)
             }
             .toolbar { Button("Done") { dismiss() }.fontWeight(.semibold) }

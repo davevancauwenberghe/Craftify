@@ -160,16 +160,16 @@ private struct CommandCard: View {
     let onCopy: () -> Void
     let onShowOPLevels: () -> Void
 
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "chevron.left.forwardslash.chevron.right")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Color.userAccentColor)
-                    .frame(width: 44, height: 44)
-                    .background(Color.userAccentColor.opacity(0.11), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(accent)
+                    .frame(width: 36, height: 36)
+                    .background(accent.opacity(0.11), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .accessibilityHidden(true)
 
                 Text(command.name)
@@ -180,8 +180,8 @@ private struct CommandCard: View {
 
                 Button(action: onCopy) {
                     Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 36, height: 36)
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 30, height: 30)
                 }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.circle)
@@ -199,7 +199,7 @@ private struct CommandCard: View {
             }
         }
         .padding(16)
-        .frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? nil : 190, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .craftifyCard(cornerRadius: 20)
         .contextMenu {
             Button("Copy Command", systemImage: "doc.on.doc", action: onCopy)
@@ -228,6 +228,7 @@ private struct CommandEditionBadge: View {
     let isSupported: Bool
     let opLevel: Int64?
     let onShowOPLevels: () -> Void
+    @Environment(\.craftifyAccentColor) private var accent
 
     private var opColor: Color {
         switch opLevel {
@@ -256,11 +257,11 @@ private struct CommandEditionBadge: View {
                     .accessibilityHint("Jumps to the operator level explanation")
             }
         }
-        .foregroundStyle(isSupported ? Color.userAccentColor : Color.red)
+        .foregroundStyle(isSupported ? accent : Color.red)
         .padding(.horizontal, 9)
         .padding(.vertical, 7)
         .background(
-            (isSupported ? Color.userAccentColor : Color.red).opacity(0.08),
+            (isSupported ? accent : Color.red).opacity(0.08),
             in: Capsule()
         )
         .accessibilityElement(children: .contain)
@@ -269,6 +270,8 @@ private struct CommandEditionBadge: View {
 }
 
 private struct OPLevelsCard: View {
+    @Environment(\.craftifyAccentColor) private var accent
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             CraftifySectionHeader(
@@ -315,7 +318,7 @@ private struct OPLevelsCard: View {
         VStack(alignment: .leading, spacing: 11) {
             Label(title, systemImage: symbol)
                 .font(.headline)
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
             ForEach(levels, id: \.0) { level in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(level.0).font(.subheadline.bold())

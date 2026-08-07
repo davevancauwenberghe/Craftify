@@ -11,6 +11,7 @@ struct RecipeSearchView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
     @State private var searchText = ""
     @State private var isSearchActive = false
     @State private var filteredRecipes: [String: [Recipe]] = [:]
@@ -194,7 +195,7 @@ struct RecipeSearchView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(letter)
                         .font(.title2.bold())
-                        .foregroundStyle(Color.userAccentColor)
+                        .foregroundStyle(accent)
                         .accessibilityAddTraits(.isHeader)
 
                     LazyVGrid(columns: resultColumns, alignment: .leading, spacing: 12) {
@@ -222,7 +223,7 @@ struct RecipeSearchView: View {
 
     private var loadingState: some View {
         VStack(spacing: 14) {
-            ProgressView().controlSize(.large).tint(Color.userAccentColor)
+            ProgressView().controlSize(.large).tint(accent)
             Text("Loading Recipes…").font(.headline)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -254,6 +255,7 @@ struct RecipeSearchView: View {
 struct RecentSearchItem: View {
     let recipe: Recipe
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         HStack(spacing: 13) {
@@ -261,7 +263,7 @@ struct RecentSearchItem: View {
                 .scaledToFit()
                 .frame(width: 48, height: 48)
                 .padding(5)
-                .background(Color.userAccentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
