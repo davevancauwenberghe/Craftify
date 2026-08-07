@@ -113,13 +113,11 @@ struct ReportRecipeView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .frame(maxWidth: CraftifyLayout.formMaxWidth)
+                .frame(maxWidth: CraftifyLayout.contentMaxWidth)
                 .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
                 .padding(.top, 12)
                 .padding(.bottom, 32)
             }
-            .id(accentColorPreference)
-
             if showSubmissionPopup {
                 SubmissionPopup(state: submissionState, onDismiss: dismissSubmissionPopup)
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
@@ -187,7 +185,7 @@ struct ReportRecipeView: View {
                         .foregroundStyle(viewMode == mode ? Color.white : Color.primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
-                        .background(viewMode == mode ? Color.userAccentColor : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(viewMode == mode ? Color.userAccentColor(for: accentColorPreference) : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(viewMode == mode ? .isSelected : [])
@@ -306,6 +304,7 @@ private struct SubmitReportSection: View {
     let onSubmit: () -> Void
 
     @EnvironmentObject private var dataManager: DataManager
+    @Environment(\.craftifyAccentColor) private var accent
     @FocusState private var focusedField: Field?
 
     private enum Field { case name, details }
@@ -356,7 +355,7 @@ private struct SubmitReportSection: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 18)
                 .frame(minHeight: 54)
-                .background(Color.userAccentColor.gradient, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(accent.gradient, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .opacity(isFormIncomplete || !dataManager.isConnected || isSubmissionOnCooldown ? 0.45 : 1)
             }
             .buttonStyle(.plain)
@@ -375,9 +374,9 @@ private struct SubmitReportSection: View {
             Spacer()
             Text("\(completedSteps)/4")
                 .font(.caption.bold())
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
                 .padding(.horizontal, 9).padding(.vertical, 5)
-                .background(Color.userAccentColor.opacity(0.12), in: Capsule())
+                .background(accent.opacity(0.12), in: Capsule())
         }
     }
 
@@ -406,7 +405,7 @@ private struct SubmitReportSection: View {
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: type.icon)
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(reportType == type ? Color.white : Color.userAccentColor)
+                    .foregroundStyle(reportType == type ? Color.white : accent)
                 Text(type.title).font(.subheadline.bold())
                     .foregroundStyle(reportType == type ? Color.white : Color.primary)
                 Text(type == .missingRecipe ? "Request a new guide" : "Flag incorrect steps")
@@ -416,7 +415,7 @@ private struct SubmitReportSection: View {
             }
             .frame(maxWidth: .infinity, minHeight: 100, alignment: .leading)
             .padding(14)
-            .background(reportType == type ? Color.userAccentColor : Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(reportType == type ? accent : Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(reportType == type ? Color.clear : Color.primary.opacity(0.06)))
         }
         .buttonStyle(.plain)
@@ -427,7 +426,7 @@ private struct SubmitReportSection: View {
         VStack(alignment: .leading, spacing: 18) {
             Label(reportType.subtitle, systemImage: reportType.icon)
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
 
             LabeledContentField(title: "Recipe name", icon: "cube.fill") {
                 TextField("e.g. Copper Torch", text: activeName)
@@ -451,7 +450,7 @@ private struct SubmitReportSection: View {
                     ForEach(categories, id: \.self) { Text($0).tag($0) }
                 }
                 .pickerStyle(.menu)
-                .tint(activeCategory.wrappedValue.isEmpty ? .secondary : Color.userAccentColor)
+                .tint(activeCategory.wrappedValue.isEmpty ? .secondary : accent)
             }
 
             Divider()
@@ -529,6 +528,7 @@ private struct MyReportsSection: View {
     let errorMessage: String?
     let onRefresh: () -> Void
     let onDelete: (RecipeReport) -> Void
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -546,7 +546,7 @@ private struct MyReportsSection: View {
                     Image(systemName: "arrow.clockwise")
                         .font(.body.bold())
                         .frame(width: 38, height: 38)
-                        .background(Color.userAccentColor.opacity(0.12), in: Circle())
+                        .background(accent.opacity(0.12), in: Circle())
                 }
                 .disabled(isLoadingReports || !isConnected)
                 .accessibilityLabel("Refresh reports")
@@ -574,7 +574,7 @@ private struct MyReportsSection: View {
 
     private var loadingCard: some View {
         HStack(spacing: 12) {
-            ProgressView().tint(Color.userAccentColor)
+            ProgressView().tint(accent)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Checking for updates").font(.headline)
                 Text("This should only take a moment.").font(.subheadline).foregroundStyle(.secondary)
@@ -591,14 +591,15 @@ private struct EmptyReportState: View {
     let icon: String
     let title: String
     let message: String
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 30, weight: .medium))
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
                 .frame(width: 64, height: 64)
-                .background(Color.userAccentColor.opacity(0.12), in: Circle())
+                .background(accent.opacity(0.12), in: Circle())
             Text(title).font(.title3.bold())
             Text(message).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
@@ -613,6 +614,7 @@ private struct ReportCard: View {
     let report: RecipeReport
     let onDelete: () -> Void
     @State private var isExpanded = false
+    @Environment(\.craftifyAccentColor) private var accent
 
     private var isPending: Bool { report.status.localizedCaseInsensitiveContains("pending") }
     private var isResolved: Bool {
@@ -620,7 +622,7 @@ private struct ReportCard: View {
             || report.status.localizedCaseInsensitiveContains("complete")
             || report.status.localizedCaseInsensitiveContains("fixed")
     }
-    private var statusColor: Color { isPending ? .orange : (isResolved ? .green : Color.userAccentColor) }
+    private var statusColor: Color { isPending ? .orange : (isResolved ? .green : accent) }
     private var statusIcon: String { isPending ? "clock.fill" : (isResolved ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath") }
     private var isMissingRecipe: Bool { report.reportType == "Report Missing Recipe" }
 
@@ -633,9 +635,9 @@ private struct ReportCard: View {
                 HStack(spacing: 12) {
                     Image(systemName: isMissingRecipe ? "plus.magnifyingglass" : "exclamationmark.triangle.fill")
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(Color.userAccentColor)
+                        .foregroundStyle(accent)
                         .frame(width: 44, height: 44)
-                        .background(Color.userAccentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     VStack(alignment: .leading, spacing: 4) {
                         Text(report.recipeName).font(.headline).foregroundStyle(.primary).lineLimit(2)
                         Text("\(isMissingRecipe ? "Missing recipe" : "Recipe error") • \(report.category)")
@@ -685,6 +687,7 @@ private struct ReportCard: View {
 private struct SubmissionPopup: View {
     let state: ReportRecipeView.SubmissionState
     let onDismiss: () -> Void
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         ZStack {
@@ -693,7 +696,7 @@ private struct SubmissionPopup: View {
             VStack(spacing: 18) {
                 switch state {
                 case .submitting:
-                    ProgressView().controlSize(.large).tint(Color.userAccentColor)
+                    ProgressView().controlSize(.large).tint(accent)
                     Text("Sending your report…").font(.headline)
                     Text("Hang tight while we securely save your feedback.")
                         .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -713,7 +716,7 @@ private struct SubmissionPopup: View {
                     Button("Done", action: onDismiss)
                         .font(.headline).foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(Color.userAccentColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .background(accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
             }
             .padding(24)
@@ -735,6 +738,7 @@ private struct SubmissionPopup: View {
 private struct DeleteConfirmationPopup: View {
     let message: String
     let onDismiss: () -> Void
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         ZStack {
@@ -748,7 +752,7 @@ private struct DeleteConfirmationPopup: View {
                 Button("Done", action: onDismiss)
                     .font(.headline).foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(Color.userAccentColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .padding(24).frame(maxWidth: 320)
             .craftifyFloatingSurface(cornerRadius: 24)
