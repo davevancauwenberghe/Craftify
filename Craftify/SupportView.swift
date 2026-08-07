@@ -86,7 +86,7 @@ struct SupportView: View {
                 .padding(18)
                 .craftifyCard(cornerRadius: 22)
             }
-            .craftifyContentWidth(CraftifyLayout.readingMaxWidth)
+            .craftifyContentWidth()
             .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
             .padding(.top, 12)
             .padding(.bottom, 34)
