@@ -10,6 +10,7 @@ import SwiftUI
 struct SyncOverlayView: View {
     let horizontalSizeClass: UserInterfaceSizeClass?
     let message: String
+    @Environment(\.craftifyAccentColor) private var accent
 
     var body: some View {
         CraftifyOverlayCard(
@@ -20,7 +21,7 @@ struct SyncOverlayView: View {
             badgeSymbol: "icloud.fill"
         ) {
             ProgressView()
-                .tint(Color.userAccentColor)
+                .tint(accent)
                 .controlSize(.small)
                 .accessibilityHidden(true)
         }
@@ -41,6 +42,7 @@ struct NewRecipesOverlayView: View {
     let onDismiss: () -> Void
 
     @State private var page: Page = .summary
+    @Environment(\.craftifyAccentColor) private var accent
 
     private var recipeCount: Int {
         recipes.count
@@ -108,7 +110,7 @@ struct NewRecipesOverlayView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
-            .tint(Color.userAccentColor)
+            .tint(accent)
             .accessibilityHint("Shows the names and record IDs of the newly added recipes")
         }
     }
@@ -152,7 +154,7 @@ struct NewRecipesOverlayView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
-            .tint(Color.userAccentColor)
+            .tint(accent)
             .accessibilityHint("Returns to the new recipe summary")
         }
     }
@@ -165,7 +167,7 @@ struct NewRecipesOverlayView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .tint(Color.userAccentColor)
+        .tint(accent)
         .accessibilityHint("Dismisses this message and opens your recipe library")
     }
 }
@@ -217,6 +219,7 @@ private struct CraftifyOverlayCard<Footer: View>: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.craftifyAccentColor) private var accent
     @State private var isAnimating = false
 
     init(
@@ -297,7 +300,7 @@ private struct CraftifyOverlayCard<Footer: View>: View {
 
             Image(systemName: badgeSymbol)
                 .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(Color.userAccentColor)
+                .foregroundStyle(accent)
                 .padding(7)
                 .background(.regularMaterial, in: Circle())
                 .offset(x: 37, y: 37)
