@@ -90,7 +90,7 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 112", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 122-123", changes: [
         "Experimental: Craftify Unified UI"
     ]),
     ReleaseNote(version: "Version 1.0 - Build 113-121", changes: [
