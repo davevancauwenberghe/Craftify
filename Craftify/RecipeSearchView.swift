@@ -15,23 +15,9 @@ struct RecipeSearchView: View {
     @State private var searchText = ""
     @State private var isSearchActive = false
     @State private var filteredRecipes: [String: [Recipe]] = [:]
-    @State private var navigationPath = NavigationPath()
     @State private var searchFilter: SearchFilter = .all
 
-    enum SearchFilter: String, CaseIterable, Identifiable {
-        case all = "Names & Ingredients"
-        case names = "Recipe Names"
-        case ingredients = "Ingredients"
-
-        var id: Self { self }
-        var symbol: String {
-            switch self {
-            case .all: "text.magnifyingglass"
-            case .names: "character.cursor.ibeam"
-            case .ingredients: "cube.fill"
-            }
-        }
-    }
+    typealias SearchFilter = RecipeSearchScope
 
     private var recentSearchRecipes: [Recipe] {
         var resolved: [Recipe] = []
@@ -54,17 +40,14 @@ struct RecipeSearchView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
+        RecipeBrowser(onSelect: { recipe in
+            dataManager.saveRecentSearch(recipe)
+            HapticFeedback.impact(.light)
+        }) { selectedID, openRecipe in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 24) {
-                    if searchText.isEmpty && !isSearchActive {
-                        inactiveContent
-                    } else if searchText.isEmpty {
-                        searchState(
-                            symbol: "text.cursor",
-                            title: "Start Searching",
-                            detail: "Enter a recipe name or an ingredient you already have."
-                        )
+                    if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        inactiveContent(openRecipe: openRecipe)
                     } else if filteredRecipes.isEmpty {
                         searchState(
                             symbol: "magnifyingglass",
@@ -72,7 +55,7 @@ struct RecipeSearchView: View {
                             detail: "Try another term or change where Craftify searches."
                         )
                     } else {
-                        resultsContent
+                        resultsContent(selectedID: selectedID, openRecipe: openRecipe)
                     }
                 }
                 .craftifyContentWidth()
@@ -80,6 +63,7 @@ struct RecipeSearchView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 34)
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.large)
             .searchable(
@@ -113,9 +97,6 @@ struct RecipeSearchView: View {
                 }
             }
             .craftifyPage()
-            .onChange(of: isSearchActive) { _, active in
-                if !active { searchText = "" }
-            }
             .onChange(of: searchText) { _, _ in updateFilteredRecipes() }
             .onChange(of: dataManager.recipes) { _, _ in updateFilteredRecipes() }
             .onAppear {
@@ -124,25 +105,11 @@ struct RecipeSearchView: View {
                 dataManager.fetchRecipes(isManual: false)
                 updateFilteredRecipes()
             }
-            .navigationDestination(for: Recipe.self) { recipe in
-                RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                    .onAppear {
-                        dataManager.saveRecentSearch(recipe)
-                        HapticFeedback.impact(.light)
-                    }
-            }
         }
     }
 
-    private var inactiveContent: some View {
+    private func inactiveContent(openRecipe: @escaping (Recipe) -> Void) -> some View {
         Group {
-            CraftifyHero(
-                eyebrow: "Find Anything",
-                title: "Search Your Recipe Book",
-                detail: "Search by recipe name, ingredient, or both. Your recent finds follow you through iCloud.",
-                symbol: "magnifyingglass"
-            )
-
             if recentSearchRecipes.isEmpty {
                 searchState(
                     symbol: "magnifyingglass.circle.fill",
@@ -167,14 +134,14 @@ struct RecipeSearchView: View {
 
                     RecentSearchesList(
                         recipes: recentSearchRecipes,
-                        navigationPath: $navigationPath
+                        openRecipe: openRecipe
                     )
                 }
             }
         }
     }
 
-    private var resultsContent: some View {
+    private func resultsContent(selectedID: Int?, openRecipe: @escaping (Recipe) -> Void) -> some View {
         Group {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
@@ -200,8 +167,8 @@ struct RecipeSearchView: View {
 
                     LazyVGrid(columns: resultColumns, alignment: .leading, spacing: 12) {
                         ForEach(filteredRecipes[letter] ?? []) { recipe in
-                            NavigationLink(value: recipe) {
-                                RecipeCell(recipe: recipe, isCraftifyPick: false)
+                            Button { openRecipe(recipe) } label: {
+                                RecipeCell(recipe: recipe, isCraftifyPick: false, isSelected: recipe.id == selectedID)
                             }
                             .buttonStyle(.plain)
                         }
@@ -233,16 +200,8 @@ struct RecipeSearchView: View {
     }
 
     private func updateFilteredRecipes() {
-        let matches = searchText.isEmpty ? dataManager.recipes : dataManager.recipes.filter { recipe in
-            switch searchFilter {
-            case .all:
-                recipe.name.localizedCaseInsensitiveContains(searchText)
-                    || recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
-            case .names:
-                recipe.name.localizedCaseInsensitiveContains(searchText)
-            case .ingredients:
-                recipe.ingredients.contains { $0.localizedCaseInsensitiveContains(searchText) }
-            }
+        let matches = dataManager.recipes.filter { recipe in
+            recipe.matchesSearch(searchText, scope: searchFilter)
         }
 
         filteredRecipes = Dictionary(grouping: matches) {
@@ -293,7 +252,7 @@ struct RecentSearchItem: View {
 
 struct RecentSearchesList: View {
     let recipes: [Recipe]
-    @Binding var navigationPath: NavigationPath
+    let openRecipe: (Recipe) -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var columns: [GridItem] {
@@ -308,7 +267,7 @@ struct RecentSearchesList: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {
             ForEach(recipes) { recipe in
-                NavigationLink(value: recipe) {
+                Button { openRecipe(recipe) } label: {
                     RecentSearchItem(recipe: recipe)
                 }
                 .buttonStyle(.plain)

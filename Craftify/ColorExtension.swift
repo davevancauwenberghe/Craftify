@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 extension Color {
     init(hex: String) {
@@ -54,7 +55,12 @@ extension Color {
         case "default":
             fallthrough
         default:
-            return Color(hex: "00AA00")
+            return Color(uiColor: UIColor { traits in
+                if traits.userInterfaceStyle == .dark {
+                    return UIColor(red: 0, green: 170 / 255.0, blue: 0, alpha: 1)
+                }
+                return UIColor(red: 22 / 255.0, green: 130 / 255.0, blue: 56 / 255.0, alpha: 1)
+            })
         }
     }
 }

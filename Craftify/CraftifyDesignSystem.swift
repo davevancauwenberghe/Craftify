@@ -36,6 +36,81 @@ enum CraftifyLayout {
         }
         return [GridItem(.adaptive(minimum: minimum, maximum: maximum), spacing: spacing)]
     }
+
+    /// Keep complete cards on either side of an active vertical hinge.
+    static func dividedColumns(
+        width: CGFloat, division: CGRect, minimum: CGFloat, spacing: CGFloat,
+        dynamicTypeSize: DynamicTypeSize
+    ) -> [GridItem]? {
+        let leftWidth = max(0, division.minX)
+        let rightStart = min(width, division.maxX)
+        let rightWidth = width - rightStart
+        guard leftWidth >= 44, rightWidth >= 44 else { return nil }
+        let leftCount = dynamicTypeSize.isAccessibilitySize ? 1 : max(1, Int((leftWidth + spacing) / (minimum + spacing)))
+        let rightCount = dynamicTypeSize.isAccessibilitySize ? 1 : max(1, Int((rightWidth + spacing) / (minimum + spacing)))
+        let leftCellWidth = (leftWidth - CGFloat(leftCount - 1) * spacing) / CGFloat(leftCount)
+        let rightCellWidth = (rightWidth - CGFloat(rightCount - 1) * spacing) / CGFloat(rightCount)
+        return (0..<leftCount).map { index in
+            GridItem(.fixed(leftCellWidth), spacing: index == leftCount - 1 ? rightStart - leftWidth : spacing)
+        } + (0..<rightCount).map { _ in GridItem(.fixed(rightCellWidth), spacing: spacing) }
+    }
+}
+
+private struct CraftifyGridGeometry: Equatable {
+    var width: CGFloat = 0
+    var division: CGRect?
+}
+
+/// Normal windows use adaptive columns; Duo adds a gap for the hinge and its margins.
+struct CraftifyAdaptiveGrid<Content: View>: View {
+    let minimum: CGFloat
+    var maximum: CGFloat = 440
+    var spacing: CGFloat = 16
+    @ViewBuilder var content: () -> Content
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var geometry = CraftifyGridGeometry()
+
+    private var columns: [GridItem] {
+        if let division = geometry.division,
+           let columns = CraftifyLayout.dividedColumns(
+                width: geometry.width, division: division, minimum: minimum,
+                spacing: spacing, dynamicTypeSize: dynamicTypeSize
+           ) {
+            return columns
+        }
+        return CraftifyLayout.adaptiveColumns(
+            minimum: minimum, maximum: maximum, spacing: spacing, dynamicTypeSize: dynamicTypeSize
+        )
+    }
+
+    var body: some View {
+        #if compiler(>=6.4)
+        if #available(iOS 27.1, *) {
+            grid.onGeometryChange(for: CraftifyGridGeometry.self) { proxy in
+                let region = proxy.reservedRegions(kind: .division).first {
+                    $0.frame.height > $0.frame.width
+                }
+                let division = region.map { region in
+                    CGRect(
+                        x: region.frame.minX - region.margins.leading,
+                        y: region.frame.minY,
+                        width: region.frame.width + region.margins.leading + region.margins.trailing,
+                        height: region.frame.height
+                    )
+                }
+                return CraftifyGridGeometry(width: proxy.size.width, division: division)
+            } action: { geometry = $0 }
+        } else {
+            grid
+        }
+        #else
+        grid
+        #endif
+    }
+
+    private var grid: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: spacing, content: content)
+    }
 }
 
 /// The app-wide canvas. The restrained 3×3 block motifs reference the
@@ -51,8 +126,8 @@ struct AppBackground: View {
 
             LinearGradient(
                 colors: [
-                    accent.opacity(reduceTransparency ? 0.12 : (colorScheme == .dark ? 0.20 : 0.16)),
-                    accent.opacity(reduceTransparency ? 0.035 : 0.07),
+                    accent.opacity(reduceTransparency ? 0.04 : (colorScheme == .dark ? 0.08 : 0.05)),
+                    accent.opacity(0.015),
                     Color.clear
                 ],
                 startPoint: .topLeading,
@@ -70,7 +145,7 @@ struct AppBackground: View {
                     .rotationEffect(.degrees(10))
                     .offset(x: -70, y: geometry.size.height * 0.72)
             }
-            .opacity(reduceTransparency ? 0.24 : 0.48)
+            .opacity(reduceTransparency ? 0.08 : 0.16)
         }
         .accessibilityHidden(true)
     }
@@ -293,11 +368,11 @@ private struct CraftifyCardModifier: ViewModifier {
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(
-                        accent.opacity(contrast == .increased ? 0.42 : 0.16),
+                        Color.primary.opacity(contrast == .increased ? 0.42 : 0.07),
                         lineWidth: contrast == .increased ? 1.5 : 1
                     )
             }
-            .shadow(color: .black.opacity(0.055), radius: 12, y: 5)
+            .shadow(color: .black.opacity(0.025), radius: 4, y: 2)
     }
 }
 

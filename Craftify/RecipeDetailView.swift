@@ -24,8 +24,8 @@ struct RecipeDetailView: View {
     @State private var selectedItem: SelectedItem?
     @State private var showingChestPicker = false
     @State private var selectedCraftingOption = 0
-    @State private var ingredientSets: [[String]] = []
-    @State private var outputs: [Int] = []
+    private var ingredientSets: [[String]] { recipe.craftingOptions.map(\.ingredients) }
+    private var outputs: [Int] { recipe.craftingOptions.map(\.output) }
 
     private var currentIngredients: [String] {
         guard ingredientSets.indices.contains(selectedCraftingOption) else { return [] }
@@ -38,6 +38,61 @@ struct RecipeDetailView: View {
     }
 
     var body: some View {
+        recipeContent
+            .navigationTitle(recipe.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Add to Chest", systemImage: "plus") {
+                        HapticFeedback.impact()
+                        showingChestPicker = true
+                    }
+                    .accessibilityIdentifier("add-to-chest")
+                    .accessibilityHint("Opens your chests")
+                }
+            }
+            .sheet(isPresented: $showingChestPicker) {
+                AddRecipeToChestView(recipe: recipe)
+                    .environmentObject(dataManager)
+            }
+            .sheet(isPresented: ingredientDetailBinding) {
+                if let selectedDetail {
+                    NavigationStack {
+                        ScrollView {
+                            IngredientDetailPopup(
+                                detail: selectedDetail,
+                                selectedDetail: $selectedDetail,
+                                selectedItem: $selectedItem,
+                                navigationPath: $navigationPath,
+                                onOpenRecipe: { self.selectedDetail = nil }
+                            )
+                            .padding(16)
+                        }
+                        .navigationTitle("Item Details")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .craftifyPage()
+                    }
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .craftifyPage()
+            .onChange(of: recipe) { _, _ in
+                selectedCraftingOption = min(selectedCraftingOption, max(0, ingredientSets.count - 1))
+                selectedDetail = nil
+                selectedItem = nil
+            }
+            .animation(reduceMotion ? nil : .snappy, value: selectedCraftingOption)
+    }
+
+    private var ingredientDetailBinding: Binding<Bool> {
+        Binding(
+            get: { selectedDetail != nil },
+            set: { if !$0 { selectedDetail = nil; selectedItem = nil } }
+        )
+    }
+
+    private var recipeContent: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
                 RecipeIdentityHeader(recipe: recipe, output: currentOutput)
@@ -57,16 +112,7 @@ struct RecipeDetailView: View {
                     selectedDetail: $selectedDetail
                 )
 
-                if let selectedDetail {
-                    IngredientDetailPopup(
-                        detail: selectedDetail,
-                        selectedDetail: $selectedDetail,
-                        selectedItem: $selectedItem,
-                        navigationPath: $navigationPath
-                    )
-                    .transition(reduceMotion ? .opacity : .scale(scale: 0.97).combined(with: .opacity))
-                }
-
+                ingredientsList
                 RemarkAndCategoryView(recipe: recipe)
             }
             .craftifyContentWidth()
@@ -74,62 +120,31 @@ struct RecipeDetailView: View {
             .padding(.top, 12)
             .padding(.bottom, 36)
         }
-        .navigationTitle(recipe.name)
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Add to Chest", systemImage: "plus") {
-                    HapticFeedback.impact()
-                    showingChestPicker = true
+        .accessibilityIdentifier("recipe-detail")
+    }
+
+    private var ingredientsList: some View {
+        let counts = Dictionary(grouping: currentIngredients.filter { !$0.isEmpty }, by: { $0 }).mapValues(\.count)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Ingredients").font(.headline).accessibilityAddTraits(.isHeader)
+            ForEach(counts.keys.sorted(), id: \.self) { ingredient in
+                HStack(spacing: 12) {
+                    CraftImage(key: ingredient)
+                        .scaledToFit()
+                        .frame(width: 32, height: 32)
+                        .accessibilityHidden(true)
+                    Text(ingredient)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("×\(counts[ingredient] ?? 0)")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
                 }
-                .labelStyle(.iconOnly)
-                .accessibilityHint("Opens your chests")
+                .accessibilityElement(children: .combine)
             }
         }
-        .sheet(isPresented: $showingChestPicker) {
-            AddRecipeToChestView(recipe: recipe)
-                .environmentObject(dataManager)
-        }
-        .craftifyPage()
-        .onAppear {
-            ingredientSets = computeIngredientSets()
-            outputs = computeOutputs()
-        }
-        .onChange(of: dataManager.isLoading) { _, isLoading in
-            if !isLoading && dataManager.isManualSyncing { dataManager.syncChests() }
-        }
-        .animation(reduceMotion ? nil : .snappy, value: selectedDetail)
-        .animation(reduceMotion ? nil : .snappy, value: selectedCraftingOption)
-    }
-
-    private func computeIngredientSets() -> [[String]] {
-        let maximum = recipe.imageremark == "Furnace" ? 2 : 9
-        let alternates = [
-            recipe.alternateIngredients,
-            recipe.alternateIngredients1,
-            recipe.alternateIngredients2,
-            recipe.alternateIngredients3
-        ]
-        let allSets = [recipe.ingredients] + alternates.compactMap { ingredients in
-            guard let ingredients, !ingredients.isEmpty else { return nil }
-            return ingredients
-        }
-
-        return allSets.map { ingredients in
-            if ingredients.count < maximum {
-                return ingredients + Array(repeating: "", count: maximum - ingredients.count)
-            }
-            return Array(ingredients.prefix(maximum))
-        }
-    }
-
-    private func computeOutputs() -> [Int] {
-        var result = [recipe.output]
-        if recipe.alternateIngredients?.isEmpty == false { result.append(recipe.alternateOutput ?? recipe.output) }
-        if recipe.alternateIngredients1?.isEmpty == false { result.append(recipe.alternateOutput1 ?? recipe.output) }
-        if recipe.alternateIngredients2?.isEmpty == false { result.append(recipe.alternateOutput2 ?? recipe.output) }
-        if recipe.alternateIngredients3?.isEmpty == false { result.append(recipe.alternateOutput3 ?? recipe.output) }
-        return result
+        .padding(16)
+        .craftifyCard()
     }
 }
 
@@ -142,9 +157,11 @@ private struct RecipeIdentityHeader: View {
     var body: some View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(spacing: 16) {
+                HStack(spacing: 16) {
                     recipeImage
-                    details(alignment: .center)
+                    Text("Makes \(output)")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
                 ViewThatFits(in: .horizontal) {
@@ -159,7 +176,7 @@ private struct RecipeIdentityHeader: View {
                 }
             }
         }
-        .padding(20)
+        .padding(14)
         .frame(maxWidth: .infinity)
         .craftifyCard(cornerRadius: 26)
         .accessibilityElement(children: .combine)
@@ -171,9 +188,9 @@ private struct RecipeIdentityHeader: View {
             AppBackground()
             CraftImage(key: recipe.image)
                 .scaledToFit()
-                .padding(16)
+                .padding(8)
         }
-        .frame(width: 112, height: 112)
+        .frame(width: 64, height: 64)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -184,12 +201,8 @@ private struct RecipeIdentityHeader: View {
 
     private func details(alignment: TextAlignment) -> some View {
         VStack(alignment: alignment == .center ? .center : .leading, spacing: 7) {
-            Text("CRAFTING RECIPE")
-                .font(.caption.bold())
-                .tracking(1.1)
-                .foregroundStyle(accent)
             Text(recipe.name)
-                .font(.largeTitle.bold())
+                .font(.title2.bold())
                 .multilineTextAlignment(alignment)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) { metadata }
@@ -212,8 +225,10 @@ private struct AddRecipeToChestView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
     @Environment(\.craftifyAccentColor) private var accent
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let recipe: Recipe
     @State private var creatingChest = false
+    @State private var createdChest = false
     @State private var message: String?
 
     var body: some View {
@@ -249,6 +264,8 @@ private struct AddRecipeToChestView: View {
                                 }
                             }
                             .disabled(chest.recipeIDs.count >= chest.size.rawValue || chest.recipeIDs.contains(recipe.id))
+                            .accessibilityIdentifier("chest-choice-\(chest.name)")
+                            .accessibilityValue("\(chest.recipeIDs.count) of \(chest.size.rawValue) slots used")
                             .accessibilityHint(chest.recipeIDs.contains(recipe.id) ? "Recipe already stored here" : "Adds recipe to this chest")
                         }
                     }
@@ -262,13 +279,17 @@ private struct AddRecipeToChestView: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .sheet(isPresented: $creatingChest) {
-                ChestEditorView(context: .new, recipeToAdd: recipe) {
-                    creatingChest = false
+            .sheet(isPresented: $creatingChest, onDismiss: {
+                if createdChest {
+                    createdChest = false
                     dismiss()
                 }
+            }) {
+                ChestEditorView(context: .new, recipeToAdd: recipe) {
+                    createdChest = true
+                }
                 .environmentObject(dataManager)
-                .presentationDetents([.medium])
+                .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
                 .presentationSizing(.page)
             }
             .alert("Couldn’t Add Recipe", isPresented: messageBinding) {
@@ -278,7 +299,7 @@ private struct AddRecipeToChestView: View {
             }
             .craftifyPage()
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
     }
 
     private var messageBinding: Binding<Bool> {
@@ -326,7 +347,7 @@ struct AlternateRecipesSelector: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(isSelected ? Color.white : Color.primary)
                             .padding(.horizontal, 15)
-                            .padding(.vertical, 9)
+                            .frame(minHeight: 44)
                             .background(
                                 isSelected ? accent : Color.primary.opacity(0.06),
                                 in: Capsule()
@@ -355,17 +376,19 @@ private struct CraftingRecipeCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.craftifyAccentColor) private var accent
 
+    @State private var availableWidth: CGFloat = 320
     private var cellSize: CGFloat {
-        horizontalSizeClass == .regular ? 76 : 64
+        min(horizontalSizeClass == .regular ? 76 : 64, max(44, (availableWidth - 52) / 3))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            CraftifySectionHeader(
-                title: recipe.imageremark == "Furnace" ? "Smelting Layout" : "Crafting Layout",
-                detail: "Tap an ingredient or the output to inspect it.",
-                symbol: recipe.imageremark == "Furnace" ? "flame.fill" : "square.grid.3x3.fill"
+            Label(
+                recipe.imageremark == "Furnace" ? "Smelting Layout" : "Crafting Layout",
+                systemImage: recipe.imageremark == "Furnace" ? "flame.fill" : "square.grid.3x3.fill"
             )
+            .font(.headline)
+            .accessibilityAddTraits(.isHeader)
 
             if dynamicTypeSize.isAccessibilitySize {
                 verticalLayout
@@ -375,9 +398,15 @@ private struct CraftingRecipeCard: View {
                     verticalLayout
                 }
             }
+
+            Text("Tap an item for details.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
         .padding(20)
         .craftifyCard(cornerRadius: 24)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
+        .accessibilityIdentifier("crafting-layout")
     }
 
     private var horizontalLayout: some View {
@@ -462,6 +491,7 @@ struct IngredientDetailPopup: View {
     @Binding var selectedDetail: String?
     @Binding var selectedItem: SelectedItem?
     @Binding var navigationPath: NavigationPath
+    var onOpenRecipe: () -> Void = {}
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.craftifyAccentColor) private var accent
@@ -496,6 +526,7 @@ struct IngredientDetailPopup: View {
                 }
                 .labelStyle(.iconOnly)
                 .font(.title2)
+                .frame(minWidth: 44, minHeight: 44)
                 .accessibilityHint("Dismisses these details")
             }
 
@@ -523,6 +554,7 @@ struct IngredientDetailPopup: View {
             if let subRecipe {
                 Button {
                     navigationPath.append(subRecipe)
+                    onOpenRecipe()
                 } label: {
                     Label("View \(subRecipe.name) Recipe", systemImage: "arrow.right.circle.fill")
                         .font(.headline)
@@ -602,7 +634,7 @@ struct RemarkAndCategoryView: View {
                                 Text("Required Crafting Utility")
                                     .font(.headline)
                                     .foregroundStyle(.primary)
-                                Text(isUtilityExpanded ? "Hide utility details" : "Show utility details")
+                                Text(imageRemark)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

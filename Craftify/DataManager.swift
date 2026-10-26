@@ -21,6 +21,7 @@ protocol KeyValueStore: AnyObject {
 }
 
 extension NSUbiquitousKeyValueStore: KeyValueStore {}
+extension UserDefaults: KeyValueStore {}
 
 @MainActor
 final class DataManager: ObservableObject {
@@ -68,6 +69,9 @@ final class DataManager: ObservableObject {
     private let keyValueStore: any KeyValueStore
     private let imageStore: CraftImageStore
     private let defaults: UserDefaults
+    private let startsServices: Bool
+    private var recipeLoadTask: Task<Void, Never>?
+    private(set) var cachedRecipeReports: [RecipeReport] = []
     private var recipeFetchGeneration = 0
     private var shouldPersistRecipeBookLoadingError = false
 
@@ -87,23 +91,33 @@ final class DataManager: ObservableObject {
     init(
         keyValueStore: any KeyValueStore = NSUbiquitousKeyValueStore.default,
         imageStore: CraftImageStore = .shared,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        startsServices: Bool = true
     ) {
         self.keyValueStore = keyValueStore
         self.imageStore = imageStore
         self.defaults = defaults
+        self.startsServices = startsServices
+        if let data = defaults.data(forKey: iCloudChestsKey),
+            let saved = try? JSONDecoder().decode([RecipeChest].self, from: data)
+        {
+            chests = saved
+        }
         keyValueStore.synchronize()
-
-        networkMonitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor in
-                self?.isConnected = path.status == .satisfied
-                if !(self?.isConnected ?? true) {
-                    self?.errorMessage = "No internet connection. Try again later."
-                    self?.accessibilityAnnouncement = self?.errorMessage
+        syncChests()
+        syncRecentSearches()
+        if startsServices {
+            networkMonitor.pathUpdateHandler = { [weak self] path in
+                Task { @MainActor in
+                    self?.isConnected = path.status == .satisfied
+                    if !(self?.isConnected ?? true) {
+                        self?.errorMessage = "No internet connection. Try again later."
+                        self?.accessibilityAnnouncement = self?.errorMessage
+                    }
                 }
             }
+            networkMonitor.start(queue: networkQueue)
         }
-        networkMonitor.start(queue: networkQueue)
 
         NotificationCenter.default.addObserver(
             self,
@@ -144,6 +158,7 @@ final class DataManager: ObservableObject {
             }
             .store(in: &cancellables)
 
+        guard startsServices else { return }
         if let localRecipes = loadRecipesFromLocalCache() {
             print("Loaded \(localRecipes.count) recipes from local cache.")
             self.recipes = localRecipes.sorted(by: { $0.name < $1.name })
@@ -175,6 +190,10 @@ final class DataManager: ObservableObject {
     var syncStatus: String {
         if !isConnected {
             return "No internet connection"
+        } else if isLoading {
+            return "Syncing recipes..."
+        } else if let errorMessage = errorMessage {
+            return "Sync failed: \(errorMessage)"
         } else if let lastUpdated = lastUpdated {
             let formatter = DateFormatter()
             formatter.dateStyle = .short
@@ -182,10 +201,6 @@ final class DataManager: ObservableObject {
             formatter.locale = Locale.current
             formatter.timeZone = TimeZone.current
             return "Last synced: \(formatter.string(from: lastUpdated))"
-        } else if isLoading {
-            return "Syncing recipes..."
-        } else if let errorMessage = errorMessage {
-            return "Sync failed: \(errorMessage)"
         } else {
             return "Not synced"
         }
@@ -196,8 +211,9 @@ final class DataManager: ObservableObject {
         // Preserve an explicit empty value so older clients observe the clear and
         // cannot upload favorites they still hold in memory.
         keyValueStore.set([Int](), forKey: iCloudFavoritesKey)
-        keyValueStore.removeObject(forKey: iCloudChestsKey)
-        keyValueStore.synchronize()
+        // Sync an empty collection: removing the key leaves other devices'
+        // in-memory chests intact and lets them upload deleted data again.
+        saveChests()
         print("Cleared chests and legacy favorites")
     }
 
@@ -264,11 +280,27 @@ final class DataManager: ObservableObject {
         if let data = keyValueStore.data(forKey: iCloudChestsKey),
            let decoded = try? JSONDecoder().decode([RecipeChest].self, from: data) {
             chests = decoded
+            defaults.set(data, forKey: iCloudChestsKey)
+        } else if keyValueStore.object(forKey: iCloudChestsKey) == nil,
+                  chests.isEmpty,
+                  defaults.data(forKey: iCloudChestsKey) == nil,
+                  let favorites = keyValueStore.array(forKey: iCloudFavoritesKey) as? [Int],
+                  !favorites.isEmpty {
+            // Preserve favorites from versions that predate chests, including
+            // libraries larger than a single Minecraft chest.
+            for start in stride(from: 0, to: favorites.count, by: RecipeChest.Size.large.rawValue) {
+                let end = min(start + RecipeChest.Size.large.rawValue, favorites.count)
+                let number = start / RecipeChest.Size.large.rawValue + 1
+                let name = number == 1 ? "Favorites" : "Favorites \(number)"
+                chests.append(RecipeChest(name: name, size: .large, recipeIDs: Array(favorites[start..<end])))
+            }
+            saveChests()
         }
     }
 
     private func saveChests() {
         guard let data = try? JSONEncoder().encode(chests) else { return }
+        defaults.set(data, forKey: iCloudChestsKey)
         keyValueStore.set(data, forKey: iCloudChestsKey)
         keyValueStore.synchronize()
     }
@@ -280,21 +312,26 @@ final class DataManager: ObservableObject {
         print("Updated recent search names: \(recentSearchNames)")
 
         keyValueStore.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
+        defaults.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
         keyValueStore.synchronize()
     }
 
     func clearRecentSearches() {
         recentSearchNames = []
         keyValueStore.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
+        defaults.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
         keyValueStore.synchronize()
         print("Cleared recent search names: \(recentSearchNames)")
     }
 
     func syncRecentSearches() {
-        if let savedNames = keyValueStore.array(forKey: iCloudRecentSearchesKey) as? [String] {
-            recentSearchNames = Array(savedNames.prefix(10)).filter { name in
-                recipes.contains { $0.name == name }
-            }
+        if let savedNames = (keyValueStore.array(forKey: iCloudRecentSearchesKey)
+            ?? defaults.array(forKey: iCloudRecentSearchesKey)) as? [String] {
+            // Keep history while recipes are loading or temporarily absent.
+            // The search view resolves names against the current recipe book.
+            var seen: Set<String> = []
+            recentSearchNames = Array(savedNames.filter { seen.insert($0).inserted }.prefix(10))
+            defaults.set(recentSearchNames, forKey: iCloudRecentSearchesKey)
         }
     }
 
@@ -313,6 +350,7 @@ final class DataManager: ObservableObject {
         waitForImages: Bool = false,
         completion: @escaping () -> Void = {}
     ) {
+        guard startsServices else { completion(); return }
         shouldPersistRecipeBookLoadingError = false
 
         if !isConnected {
@@ -342,23 +380,30 @@ final class DataManager: ObservableObject {
         waitForImages: Bool = false,
         completion: @escaping () -> Void
     ) {
-        let generation = recipeFetchGeneration
         Task {
-            await loadData(
-                isManual: isManual,
-                waitForImages: waitForImages,
-                generation: generation
-            )
+            await loadDataAsync(isManual: isManual, waitForImages: waitForImages)
             completion()
         }
     }
 
     func loadDataAsync(isManual: Bool = false, waitForImages: Bool = false) async {
-        await withCheckedContinuation { continuation in
-            loadData(isManual: isManual, waitForImages: waitForImages) {
-                continuation.resume()
-            }
+        guard startsServices else { return }
+        if let recipeLoadTask {
+            await recipeLoadTask.value
+            return
         }
+        guard isConnected else {
+            shouldPersistRecipeBookLoadingError = waitForImages
+            errorMessage = ErrorType.network.rawValue
+            return
+        }
+        let generation = recipeFetchGeneration
+        let task = Task {
+            await loadData(isManual: isManual, waitForImages: waitForImages, generation: generation)
+        }
+        recipeLoadTask = task
+        await task.value
+        if generation == recipeFetchGeneration { recipeLoadTask = nil }
     }
 
     private func loadData(
@@ -621,7 +666,7 @@ final class DataManager: ObservableObject {
         if let lastFetch = lastReportStatusFetchTime,
            Date().timeIntervalSince(lastFetch) < reportStatusFetchInterval {
             print("Skipping report fetch; last fetch was less than \(reportStatusFetchInterval) seconds ago.")
-            completion(.success([]))
+            completion(.success(cachedRecipeReports))
             return
         }
 
@@ -634,7 +679,7 @@ final class DataManager: ObservableObject {
                 let query = CKQuery(recordType: "PublicRecipeReport", predicate: predicate)
                 let records = try await fetchAllRecords(matching: query, from: container.publicCloudDatabase)
                 let reports = records.compactMap(convertRecordToRecipeReport)
-                lastReportStatusFetchTime = Date()
+                cacheRecipeReports(reports)
                 completion(.success(reports))
             } catch {
                 let type = errorType(for: error)
@@ -643,6 +688,11 @@ final class DataManager: ObservableObject {
                 completion(.failure(error))
             }
         }
+    }
+
+    func cacheRecipeReports(_ reports: [RecipeReport]) {
+        cachedRecipeReports = reports
+        lastReportStatusFetchTime = Date()
     }
 
     func deleteRecipeReport(
@@ -657,6 +707,7 @@ final class DataManager: ObservableObject {
         }
 
         guard let recordIDString = report.recordID else {
+            cachedRecipeReports.removeAll { $0.id == report.id }
             accessibilityAnnouncement = "Report deleted successfully"
             completion(true)
             return
@@ -666,9 +717,11 @@ final class DataManager: ObservableObject {
             do {
                 let database = CKContainer(identifier: "iCloud.craftifydb").publicCloudDatabase
                 _ = try await database.deleteRecord(withID: CKRecord.ID(recordName: recordIDString))
+                cachedRecipeReports.removeAll { $0.id == report.id }
                 accessibilityAnnouncement = "Report deleted successfully"
                 completion(true)
             } catch let error as CKError where error.code == .unknownItem {
+                cachedRecipeReports.removeAll { $0.id == report.id }
                 accessibilityAnnouncement = "Report deleted successfully"
                 completion(true)
             } catch {
@@ -693,6 +746,7 @@ final class DataManager: ObservableObject {
 
         let recordIDs = reports.compactMap(\.recordID).map { CKRecord.ID(recordName: $0) }
         guard !recordIDs.isEmpty else {
+            cachedRecipeReports.removeAll { cached in reports.contains { $0.id == cached.id } }
             accessibilityAnnouncement = "All reports deleted successfully"
             completion(true)
             return
@@ -702,6 +756,7 @@ final class DataManager: ObservableObject {
             do {
                 let database = CKContainer(identifier: "iCloud.craftifydb").publicCloudDatabase
                 try await deleteRecipeReportRecords(recordIDs, from: database)
+                cachedRecipeReports.removeAll { cached in reports.contains { $0.id == cached.id } }
                 accessibilityAnnouncement = "All reports deleted successfully"
                 completion(true)
             } catch {
@@ -715,6 +770,8 @@ final class DataManager: ObservableObject {
 
     func clearCache(completion: @escaping (Bool) -> Void) {
         recipeFetchGeneration += 1
+        recipeLoadTask?.cancel()
+        recipeLoadTask = nil
         isLoading = false
         isManualSyncing = false
 
@@ -746,6 +803,7 @@ final class DataManager: ObservableObject {
             self.clearChestsAndLegacyFavorites()
             self.clearRecentSearches()
             self.lastReportStatusFetchTime = nil
+            self.cachedRecipeReports = []
 
             guard self.isConnected else {
                 self.errorMessage = ErrorType.network.rawValue
@@ -826,7 +884,7 @@ final class DataManager: ObservableObject {
         let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
         if let data = try? JSONEncoder().encode(recipes) {
             do {
-                try data.write(to: fileURL)
+                try data.write(to: fileURL, options: .atomic)
             } catch {
                 print("Error saving recipes to local cache: \(error.localizedDescription)")
             }
@@ -842,11 +900,11 @@ final class DataManager: ObservableObject {
               let image = record["image"] as? String,
               let ingredients = record["ingredients"] as? [String],
               let outputInt64 = record["output"] as? Int64,
-              let category = record["category"] as? String else {
+              let category = record["category"] as? String,
+              let id = Int(record.recordID.recordName) else {
             return nil
         }
 
-        let id = Int(record.recordID.recordName) ?? 0
         let output = Int(outputInt64)
         let imageremark = record["imageremark"] as? String
         let remarks = record["remarks"] as? String
@@ -880,6 +938,7 @@ final class DataManager: ObservableObject {
     }
 
     func fetchConsoleCommands(completion: @escaping @MainActor () -> Void = {}) {
+        guard startsServices else { completion(); return }
         guard isConnected else {
             errorMessage = ErrorType.network.rawValue
             accessibilityAnnouncement = errorMessage
@@ -929,7 +988,7 @@ final class DataManager: ObservableObject {
             matching: query,
             resultsLimit: CKQueryOperation.maximumResults
         )
-        var fetchedRecords = records(from: page.matchResults)
+        var fetchedRecords = try records(from: page.matchResults)
         progress?(fetchedRecords.count)
 
         while let cursor = page.queryCursor {
@@ -937,7 +996,7 @@ final class DataManager: ObservableObject {
                 continuingMatchFrom: cursor,
                 resultsLimit: CKQueryOperation.maximumResults
             )
-            fetchedRecords.append(contentsOf: records(from: page.matchResults))
+            fetchedRecords.append(contentsOf: try records(from: page.matchResults))
             progress?(fetchedRecords.count)
         }
 
@@ -946,17 +1005,9 @@ final class DataManager: ObservableObject {
 
     private func records(
         from results: [(CKRecord.ID, Result<CKRecord, Error>)]
-    ) -> [CKRecord] {
-        results.compactMap { recordID, result in
-            switch result {
-            case .success(let record):
-                return record
-            case .failure(let error):
-                errorMessage = "Error fetching record \(recordID.recordName): \(error.localizedDescription)"
-                accessibilityAnnouncement = errorMessage
-                return nil
-            }
-        }
+    ) throws -> [CKRecord] {
+        // A partial query must not replace the complete offline recipe book.
+        try results.map { try $0.1.get() }
     }
 
     private func convertRecordToRecipeReport(_ record: CKRecord) -> RecipeReport? {

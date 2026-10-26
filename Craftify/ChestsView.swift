@@ -11,6 +11,7 @@ struct ChestsView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @AppStorage("hasSeenChestsTutorial") private var hasSeenTutorial = false
     @State private var navigationPath = NavigationPath()
@@ -27,13 +28,6 @@ struct ChestsView: View {
                 if dataManager.chests.isEmpty {
                     ScrollView {
                         VStack(spacing: 24) {
-                            CraftifyHero(
-                                eyebrow: "Project Planning",
-                                title: "Build Your Chest Room",
-                                detail: "Collect recipes in Minecraft-sized chests and keep every build organized across your devices.",
-                                symbol: "shippingbox.fill"
-                            )
-
                             CraftifyEmptyState(
                                 symbol: "shippingbox",
                                 title: "Your Chest Room Is Empty",
@@ -55,12 +49,9 @@ struct ChestsView: View {
                 } else {
                     List {
                         Section {
-                            CraftifyHero(
-                                eyebrow: "Project Planning",
-                                title: "Your Chest Room",
-                                detail: "\(dataManager.chests.count) synced chest\(dataManager.chests.count == 1 ? "" : "s") ready for your next build.",
-                                symbol: "shippingbox.fill"
-                            )
+                            Text("\(dataManager.chests.count) saved chest\(dataManager.chests.count == 1 ? "" : "s") · Syncs with iCloud")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 12, trailing: 0))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -120,7 +111,7 @@ struct ChestsView: View {
             .sheet(item: $editor) { context in
                 ChestEditorView(context: context)
                     .environmentObject(dataManager)
-                    .presentationDetents([.medium])
+                    .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
                     .presentationSizing(.page)
             }
             .sheet(isPresented: $showTutorial) {
@@ -272,16 +263,6 @@ struct ChestDetailView: View {
     @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 16
     @ScaledMetric(relativeTo: .body) private var pagePadding: CGFloat = 16
 
-    private var gridColumns: [GridItem] {
-        if dynamicTypeSize.isAccessibilitySize {
-            return [GridItem(.flexible())]
-        }
-
-        // An adaptive grid keeps cards comfortably readable on iPhone while
-        // using the additional width available on iPad and in landscape.
-        return [GridItem(.adaptive(minimum: 156, maximum: 220), spacing: cardSpacing)]
-    }
-
     private var chest: RecipeChest? { dataManager.chests.first { $0.id == chestID } }
 
     var body: some View {
@@ -292,7 +273,7 @@ struct ChestDetailView: View {
                     LazyVStack(alignment: .leading, spacing: 24) {
                         ChestDetailHeader(
                             chest: chest,
-                            usedSlots: storedRecipes.count,
+                            usedSlots: chest.recipeIDs.count,
                             isEditing: editMode.isEditing,
                             name: $chestName
                         )
@@ -311,7 +292,7 @@ struct ChestDetailView: View {
                                     .font(.title2.bold())
                                     .accessibilityAddTraits(.isHeader)
 
-                                LazyVGrid(columns: gridColumns, spacing: cardSpacing) {
+                                CraftifyAdaptiveGrid(minimum: 156, maximum: 220, spacing: cardSpacing) {
                                     ForEach(Array(storedRecipes.enumerated()), id: \.element.id) { slot, recipe in
                                         ZStack(alignment: .topTrailing) {
                                             NavigationLink(value: recipe) {
@@ -348,7 +329,6 @@ struct ChestDetailView: View {
                 }
                 .tint(Color.userAccentColor(for: accentColorPreference))
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
                     Button(editMode.isEditing ? "Done" : "Edit", action: toggleEditMode)
                 }
@@ -511,6 +491,7 @@ enum ChestEditorContext: Identifiable {
 struct ChestEditorView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let context: ChestEditorContext
     let recipeToAdd: Recipe?
@@ -536,9 +517,18 @@ struct ChestEditorView: View {
             Form {
                 Section("Chest details") {
                     TextField("Chest name", text: $name).textInputAutocapitalization(.words)
-                    Picker("Capacity", selection: $size) {
-                        ForEach(RecipeChest.Size.allCases) { size in
-                            Text("\(size.title) · \(size.rawValue) slots").tag(size)
+                    if dynamicTypeSize.isAccessibilitySize {
+                        Picker("Capacity", selection: $size) {
+                            ForEach(RecipeChest.Size.allCases) { size in
+                                Text("\(size.rawValue) slots").tag(size)
+                            }
+                        }
+                        .pickerStyle(.inline)
+                    } else {
+                        Picker("Capacity", selection: $size) {
+                            ForEach(RecipeChest.Size.allCases) { size in
+                                Text("\(size.title) · \(size.rawValue) slots").tag(size)
+                            }
                         }
                     }
                     Picker("Symbol", selection: $symbol) {

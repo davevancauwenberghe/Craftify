@@ -39,7 +39,7 @@ struct AppAppearanceView: View {
     ]
 
     static let accentColors: [AccentColorOption] = [
-        .init(id: "default", name: "Default", color: Color(hex: "00AA00")),
+        .init(id: "default", name: "Default", color: Color.userAccentColor(for: "default")),
         .init(id: "blue", name: "Blue", color: .blue),
         .init(id: "orange", name: "Orange", color: .orange),
         .init(id: "purple", name: "Purple", color: .purple),
@@ -119,6 +119,7 @@ struct AppAppearanceView: View {
                 Label("Dark", systemImage: "moon.fill").tag("dark")
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier("appearance-picker")
             .onChange(of: colorSchemePreference) { _, _ in HapticFeedback.selection() }
             .accessibilityHint("Choose System, Light, or Dark appearance")
         }

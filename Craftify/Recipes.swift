@@ -8,6 +8,21 @@
 import Foundation
 import CloudKit
 
+enum RecipeSearchScope: String, CaseIterable, Identifiable {
+    case all = "Names & Ingredients"
+    case names = "Recipe Names"
+    case ingredients = "Ingredients"
+
+    var id: Self { self }
+    var symbol: String {
+        switch self {
+        case .all: "text.magnifyingglass"
+        case .names: "character.cursor.ibeam"
+        case .ingredients: "cube.fill"
+        }
+    }
+}
+
 struct Recipe: Codable, Identifiable, Equatable, Hashable {
     let id: Int
     let name: String
@@ -25,6 +40,44 @@ struct Recipe: Codable, Identifiable, Equatable, Hashable {
     let category: String
     let imageremark: String?
     let remarks: String?
+
+    struct CraftingOption: Equatable {
+        let ingredients: [String]
+        let output: Int
+    }
+
+    /// Keep alternate outputs paired with their ingredient set, including gaps.
+    var craftingOptions: [CraftingOption] {
+        let maximum = imageremark == "Furnace" ? 2 : 9
+        let variants: [([String]?, Int?)] = [
+            (ingredients, output),
+            (alternateIngredients, alternateOutput),
+            (alternateIngredients1, alternateOutput1),
+            (alternateIngredients2, alternateOutput2),
+            (alternateIngredients3, alternateOutput3)
+        ]
+        return variants.enumerated().compactMap { index, variant in
+            guard let ingredients = variant.0,
+                  index == 0 || ingredients.contains(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+                return nil
+            }
+            let padded = Array(ingredients.prefix(maximum))
+                + Array(repeating: "", count: max(0, maximum - ingredients.count))
+            return CraftingOption(ingredients: padded, output: variant.1 ?? output)
+        }
+    }
+
+    func matchesSearch(_ text: String, scope: RecipeSearchScope = .all) -> Bool {
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return true }
+        let matchesName = scope != .ingredients && name.localizedStandardContains(query)
+        guard scope != .names else { return matchesName }
+        let allIngredients = [ingredients, alternateIngredients ?? [], alternateIngredients1 ?? [],
+                              alternateIngredients2 ?? [], alternateIngredients3 ?? []]
+        return matchesName || allIngredients.contains { ingredients in
+            ingredients.contains { $0.localizedStandardContains(query) }
+        }
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, name, image, ingredients
@@ -100,7 +153,19 @@ struct RecipeChest: Codable, Identifiable, Equatable, Hashable {
         self.name = name
         self.size = size
         self.symbol = symbol
-        self.recipeIDs = Array(recipeIDs.prefix(size.rawValue))
+        var seen: Set<Int> = []
+        self.recipeIDs = Array(recipeIDs.filter { seen.insert($0).inserted }.prefix(size.rawValue))
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try values.decode(UUID.self, forKey: .id),
+            name: try values.decode(String.self, forKey: .name),
+            size: try values.decode(Size.self, forKey: .size),
+            symbol: try values.decodeIfPresent(String.self, forKey: .symbol),
+            recipeIDs: try values.decode([Int].self, forKey: .recipeIDs)
+        )
     }
 
     var displaySymbol: String { symbol ?? (size == .large ? "shippingbox.fill" : "shippingbox") }

@@ -32,7 +32,7 @@ struct OnboardingView: View {
         ZStack {
             onboardingBackground
 
-            if isLoading || errorMessage != nil {
+            if isFirstLaunch && (isLoading || errorMessage != nil) {
                 loadingView
                     .transition(.opacity)
             } else {
@@ -68,50 +68,55 @@ struct OnboardingView: View {
     }
 
     private var loadingView: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer()
 
-            appMark
+                    appMark
 
-            VStack(spacing: 10) {
-                Text(title)
-                    .font(horizontalSizeClass == .regular ? .largeTitle : .title)
-                    .fontWeight(.bold)
-                    .multilineTextAlignment(.center)
+                    VStack(spacing: 10) {
+                        Text(title)
+                            .font(horizontalSizeClass == .regular ? .largeTitle : .title)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.center)
 
-                Text(errorMessage == nil ? message : "We couldn't prepare your recipe book.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            if let errorMessage {
-                VStack(spacing: 18) {
-                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-
-                    Button("Try Again", systemImage: "arrow.clockwise") {
-                        retryCount += 1
-                        onRetry()
+                        Text(errorMessage == nil ? message : "We couldn't prepare your recipe book.")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
-                    .buttonStyle(CraftifyPrimaryButtonStyle())
-                    .sensoryFeedback(.impact(weight: .medium), trigger: retryCount)
-                    .accessibilityHint("Retries loading the Craftify recipe library")
-                }
-            } else {
-                recipeBookProgressView
-            }
 
-            Spacer()
-            Text("Everything you need to craft with confidence")
-                .font(.footnote)
-                .foregroundStyle(.tertiary)
+                    if let errorMessage {
+                        VStack(spacing: 18) {
+                            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+
+                            Button("Try Again", systemImage: "arrow.clockwise") {
+                                retryCount += 1
+                                onRetry()
+                            }
+                            .buttonStyle(CraftifyPrimaryButtonStyle())
+                            .sensoryFeedback(.impact(weight: .medium), trigger: retryCount)
+                            .accessibilityHint("Retries loading the Craftify recipe library")
+                        }
+                    } else {
+                        recipeBookProgressView
+                    }
+
+                    Spacer()
+                    Text("Everything you need to craft with confidence")
+                        .font(.footnote)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, pagePadding)
+                .padding(.vertical, 28)
+                .frame(maxWidth: 620)
+                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+            }
         }
-        .padding(.horizontal, pagePadding)
-        .padding(.vertical, 28)
-        .frame(maxWidth: 620)
     }
 
     @ViewBuilder
