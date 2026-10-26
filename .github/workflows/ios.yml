@@ -97,3 +97,50 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             ENABLE_PREVIEWS=NO \
             COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Report failing tests
+        if: failure()
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          bundle = os.path.join(os.environ["RUNNER_TEMP"], "CraftifyTests.xcresult")
+
+          def test_results():
+              proc = subprocess.run(
+                  ["xcrun", "xcresulttool", "get", "test-results", "tests", "--path", bundle],
+                  capture_output=True, text=True,
+              )
+              return proc.stdout or proc.stderr
+
+          def escape(text):
+              return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          lines = []
+
+          def walk(node, trail):
+              if isinstance(node, dict):
+                  kind = node.get("nodeType", "")
+                  name = node.get("name", "")
+                  if kind == "Failure Message":
+                      lines.append(" / ".join(trail[-2:]) + ": " + name)
+                  here = trail + [name] if kind in ("Test Suite", "Test Case") else trail
+                  for child in node.get("children", []):
+                      walk(child, here)
+              elif isinstance(node, list):
+                  for item in node:
+                      walk(item, trail)
+
+          raw = test_results()
+          try:
+              walk(json.loads(raw).get("testNodes", []), [])
+          except Exception as error:
+              lines.append("Could not parse test results (" + str(error) + "). Raw output: " + raw[:1500])
+          if not lines:
+              lines.append("No failure messages found. Raw output: " + raw[:1500])
+          # Surfaced as a check annotation so a failure is readable without the full log.
+          print("::error title=Failing tests::" + escape("\n".join(lines)[:3500]))
+          PY
