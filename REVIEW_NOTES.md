@@ -8,9 +8,9 @@ Review date: 26 October 2026. App version: 1.0, build 125. Deployment target: iO
 - Recipes and Search share `RecipeBrowser`, a native `NavigationSplitView` with an independent detail navigation stack for each tab. Wide windows show the library beside a selected recipe; compact windows show one column. Selection, ingredient navigation, category, and search state stay in the existing view hierarchy during resizing.
 - Adopted the native Search tab role and semantic primary-action placement. iOS/iPadOS 27 can arrange system bars, search, and sheets for the current device configuration.
 - Added `CraftifyAdaptiveGrid` for chest contents. With the iOS 27.1 SDK and runtime, it queries active vertical reserved division regions, includes their margins, and distributes complete cards on each side of the hinge. Horizontal folds remain part of the scrolling layout. The implementation uses runtime and compiler availability checks; older systems use the existing adaptive grid.
-- Replaced custom onboarding and new-recipe modal overlays with system sheets. Chest editors offer medium and large detents at standard text sizes and open at full height for accessibility text sizes. Nested chest creation waits for the editor to dismiss before closing its parent picker.
+- Replaced custom onboarding and new-recipe modal overlays with system sheets. Chest editors offer medium and large detents at standard text sizes and open at full height for accessibility text sizes. Nested chest creation waits for the editor to dismiss before closing its parent picker. The chest-name keyboard offers Done to finish editing and reveal the remaining controls.
 
-These changes follow Apple's [preparation guidance](https://developer.apple.com/videos/play/tech-talks/111461/) and [adaptive-layout guidance](https://developer.apple.com/videos/play/tech-talks/111463/). Follow-up release verification uses the installed iOS 27.1 Duo runtime; results are recorded below.
+These changes follow Apple's [preparation guidance](https://developer.apple.com/videos/play/tech-talks/111461/) and [adaptive-layout guidance](https://developer.apple.com/videos/play/tech-talks/111463/). Release verification includes the installed iOS 27.1 Duo runtime; results are recorded below.
 
 ## Everyday usability
 
@@ -53,22 +53,30 @@ The implementation was compiled with Xcode 27.1 / Swift 6.4 and an iOS 27.1 SDK 
 
 | Configuration | Result |
 | --- | --- |
+| iPhone Duo, iOS 27.1 | 16 unit tests + 6 UI tests passed |
 | iPhone 18 Pro, iOS 27.0 | 16 unit tests + 6 UI tests passed |
 | iPad Pro 13-inch (M5), iPadOS 27.0 | 16 unit tests + 6 UI tests passed |
 | iPhone 16 Pro Max, iOS 18.0 | 16 unit tests + 6 UI tests passed |
 | Release, generic iOS device destination | Build passed with signing disabled |
+| Release archive, build 125 | Automatic signing succeeded; signature verification passed |
 | Project/Info property lists, workflow YAML, whitespace checks | Passed |
 
 The UI suite exercises appearance settings, alternate-ingredient search with query preservation, the first-launch tour, large-text chest creation, ingredient-to-recipe navigation across rotation, and saving into an existing chest. Screenshots were exported and visually inspected. After the final accessibility row adjustment, focused large-text checks passed on both iPhone and iPad, and the iPad rotation/ingredient-navigation check also passed. The Release build was repeated successfully after that refinement.
 
 Xcode emitted SDK build-number/debugger diagnostic messages during test startup, but the completed test bundles report no failures or runtime warnings. The Release product reports build 125, deployment target 18.0, all four orientations, and no full-screen or hidden-status-bar requirement. The test-fixture symbols are absent from the Release executable.
 
-The initial review used iOS 27.0. The subsequent iOS 27.1 runtime supports iPhone Duo only, so it cannot be used to create an iPad simulator. Duo release checks are in progress. The first run exposed test assumptions about horizontal navigation bars and screen aspect ratios; the checks now locate the native Back control independently of bar placement and verify the selected recipe across device orientation changes. Large-text sheet presentation and dismissal were also refined before release.
+The installed iOS 27.1 runtime supports iPhone Duo only, so iPad checks use iPadOS 27.0. The first Duo run exposed test assumptions about horizontal navigation bars and screen aspect ratios; the checks now locate the native Back control independently of bar placement. XCTest's orientation setting did not rotate the active Duo display reliably, so actual display rotation was checked separately with the simulator helper described below.
 
-Live CloudKit service behavior, simultaneous writes from two signed-in devices, VoiceOver gestures, and alternate-icon changes require additional device/account checks. Automated storage tests simulate shared values; they do not establish that a live iCloud account synchronized successfully.
+Manual Duo checks covered the closed cover display, fully open inner display, partially folded inner display, inner-display portrait and landscape, and closing back to the cover in landscape. A five-recipe chest retained its selection and occupied-slot count across those transitions. Partially folding in landscape introduced a visible gap between complete cards on each side of the vertical hinge; portrait retained a continuous scrolling grid. Screenshots were captured from the active display and visually inspected. The helper could read back the active screen, dimensions, and orientation, but this Xcode version did not provide its hinge-angle readback, so the requested partial-fold angle is not treated as a measured result.
 
-CI now triggers for unit/UI test changes and runs the regression suite on available iPhone and iPad simulators. README and in-app release notes describe the updated behavior and development workflow. Existing release-note entries are retained.
+Final iPad checking caught an intermittent save-tap failure with the name keyboard active; an unchanged retry passed. The chest-name field now provides Done, and the regression finishes text entry before tapping Save, waits for both sheets to close, and confirms that the created chest appears in the library.
 
-Local review artifacts are retained at `/private/tmp/CraftifyReview/`. They include iPhone crafting, search, dark appearance, and large-text screens, plus iPad landscape and large-text screens. The successful complete test bundles are `/private/tmp/CraftifyFinaliPhone27.xcresult`, `/private/tmp/CraftifyFinaliPad.xcresult`, and `/private/tmp/CraftifyFinaliOS18.xcresult`; focused results are in `/private/tmp/CraftifyVisualiPhone.xcresult` and `/private/tmp/CraftifyVisualiPad.xcresult`. These temporary artifacts are not part of the Git repository.
+After the keyboard refinement, the complete 22-test iPad suite passed again with no runtime warnings.
+
+Live CloudKit service behavior, simultaneous writes from two signed-in devices, VoiceOver gestures, alternate-icon changes, and system Split View on either side of Duo require additional device/account checks. Automated storage tests simulate shared values; they do not establish that a live iCloud account synchronized successfully.
+
+CI now triggers for unit/UI test changes and runs the regression suite on available iPhone and iPad simulators. It uses GitHub's [Xcode 27 runner](https://github.blog/changelog/2026-10-15-xcode-27-runner-image-generally-available/): the previous macOS 26 image selected Xcode 26.6, which could not open project format 110. README and in-app release notes describe the updated behavior and development workflow. Existing release-note entries are retained.
+
+Local review artifacts are retained at `/private/tmp/CraftifyReview/`. They include iPhone crafting, search, dark appearance, and large-text screens, iPad landscape and large-text screens, and five Duo pose screenshots. Successful complete test bundles include `/private/tmp/Craftify125Duo271ReleaseChecks.xcresult`, `/private/tmp/CraftifyFinaliPhone27.xcresult`, `/private/tmp/Craftify125iPadFinalRegression.xcresult`, and `/private/tmp/CraftifyFinaliOS18.xcresult`; focused results are in `/private/tmp/CraftifyVisualiPhone.xcresult` and `/private/tmp/CraftifyVisualiPad.xcresult`. Release archives and deployment artifacts are under `/private/tmp/Craftify125Release/`. These temporary artifacts are not part of the Git repository.
 
 Duo pose verification uses a reviewed temporary copy of [duoctl](https://github.com/skarol/duoctl), pinned at `efd5e3d62fd85f555057b429deafcc9c81123454`. It sends simulator-only HID events and reads back the active display. Its cache and source stay outside the app and repository; no private simulator APIs are included in the release app.

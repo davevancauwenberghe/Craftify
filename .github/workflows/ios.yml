@@ -21,6 +21,7 @@ concurrency:
 jobs:
   build:
     name: Build and test (${{ matrix.family }})
+    # Project format 110 requires the Xcode 27 toolchain.
     runs-on: xcode-27
     timeout-minutes: 20
     strategy:
