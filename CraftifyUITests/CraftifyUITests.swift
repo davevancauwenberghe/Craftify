@@ -138,10 +138,14 @@ final class CraftifyUITests: XCTestCase {
         let name = app.textFields["Chest name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
-        name.typeText("Accessible Chest")
+        name.typeText("Accessible Chest\n")
+        XCTAssertEqual(name.value as? String, "Accessible Chest")
         screenshot("Chest Editor - Accessibility Text", app: app)
         app.buttons["Save"].tap()
         XCTAssertTrue(name.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Create New Chest"].waitForNonExistence(timeout: 5))
+        tab("Chests", in: app)
+        XCTAssertTrue(app.staticTexts["Accessible Chest"].waitForExistence(timeout: 5))
     }
 
     func testFirstLaunchTourCanFinish() {

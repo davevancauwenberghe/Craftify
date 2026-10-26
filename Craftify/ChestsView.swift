@@ -500,6 +500,7 @@ struct ChestEditorView: View {
     @State private var size: RecipeChest.Size
     @State private var symbol: String?
     @State private var showShrinkConfirmation = false
+    @FocusState private var isNameFocused: Bool
 
     init(context: ChestEditorContext, recipeToAdd: Recipe? = nil, onSave: (() -> Void)? = nil) {
         self.context = context
@@ -516,7 +517,11 @@ struct ChestEditorView: View {
         NavigationStack {
             Form {
                 Section("Chest details") {
-                    TextField("Chest name", text: $name).textInputAutocapitalization(.words)
+                    TextField("Chest name", text: $name)
+                        .textInputAutocapitalization(.words)
+                        .focused($isNameFocused)
+                        .submitLabel(.done)
+                        .onSubmit { isNameFocused = false }
                     if dynamicTypeSize.isAccessibilitySize {
                         Picker("Capacity", selection: $size) {
                             ForEach(RecipeChest.Size.allCases) { size in
