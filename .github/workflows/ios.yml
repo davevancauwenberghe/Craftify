@@ -81,6 +81,12 @@ jobs:
               output.write(f"id={device['udid']}\n")
           PY
 
+      - name: Boot simulator
+        # The first UI test launches the app on a freshly booted simulator, which
+        # can time out ("Timed out while launching application via Xcode").
+        # Wait for the simulator to finish booting before the tests start.
+        run: xcrun simctl bootstatus "${{ steps.simulator.outputs.id }}" -b
+
       - name: Run regression and UI tests
         run: |
           xcodebuild test \
