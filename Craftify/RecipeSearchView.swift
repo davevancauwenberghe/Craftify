@@ -9,8 +9,6 @@ import SwiftUI
 
 struct RecipeSearchView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.craftifyAccentColor) private var accent
     @State private var searchText = ""
     @State private var isSearchActive = false
@@ -30,14 +28,9 @@ struct RecipeSearchView: View {
         return Array(resolved.prefix(10))
     }
 
-    private var resultColumns: [GridItem] {
-        CraftifyLayout.adaptiveColumns(
-            minimum: dynamicTypeSize.isAccessibilitySize ? 300 : 320,
-            maximum: 520,
-            spacing: 14,
-            dynamicTypeSize: dynamicTypeSize
-        )
-    }
+    /// Results live in the sidebar column (or a compact window), so they always
+    /// use a single column; see `RecipeListView.recipeColumns`.
+    private let resultColumns = [GridItem(.flexible())]
 
     var body: some View {
         RecipeBrowser(onSelect: { recipe in
@@ -59,13 +52,12 @@ struct RecipeSearchView: View {
                     }
                 }
                 .craftifyContentWidth()
-                .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                .padding(.horizontal, CraftifyLayout.sidebarPadding)
                 .padding(.top, 12)
                 .padding(.bottom, 34)
             }
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Search")
-            .navigationBarTitleDisplayMode(.large)
+            .craftifyLibraryTitle("Search")
             .searchable(
                 text: $searchText,
                 isPresented: $isSearchActive,
@@ -253,16 +245,9 @@ struct RecentSearchItem: View {
 struct RecentSearchesList: View {
     let recipes: [Recipe]
     let openRecipe: (Recipe) -> Void
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private var columns: [GridItem] {
-        CraftifyLayout.adaptiveColumns(
-            minimum: dynamicTypeSize.isAccessibilitySize ? 300 : 280,
-            maximum: 420,
-            spacing: 12,
-            dynamicTypeSize: dynamicTypeSize
-        )
-    }
+    /// Recent searches sit in the same narrow library column as the results.
+    private let columns = [GridItem(.flexible())]
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {

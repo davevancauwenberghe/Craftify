@@ -18,12 +18,32 @@ extension EnvironmentValues {
     }
 }
 
+private struct CraftifyShowsSidebarKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// True while the recipe library is shown as the sidebar column of a wide
+    /// window. `RecipeBrowser` reads the window's size class outside the
+    /// columns and passes the answer in, because a column's own size class
+    /// describes the column rather than the window.
+    var craftifyShowsSidebar: Bool {
+        get { self[CraftifyShowsSidebarKey.self] }
+        set { self[CraftifyShowsSidebarKey.self] = newValue }
+    }
+}
+
 enum CraftifyLayout {
     static let contentMaxWidth: CGFloat = 1_180
 
     static func pagePadding(for sizeClass: UserInterfaceSizeClass?) -> CGFloat {
         sizeClass == .regular ? 28 : 16
     }
+
+    /// Inset for the recipe library. The library is always either a split-view
+    /// sidebar (300–460 pt) or fills a compact window, so it must not follow
+    /// the window's size class the way full-width pages do.
+    static let sidebarPadding: CGFloat = 16
 
     static func adaptiveColumns(
         minimum: CGFloat,
@@ -440,6 +460,20 @@ private struct CraftifyNavigationBarModifier: ViewModifier {
     }
 }
 
+/// A large title suits a library that fills the screen. In a split-view
+/// sidebar it leaves the system's sidebar button alone on its own row above
+/// the title, so the sidebar uses an inline title beside the button instead.
+private struct CraftifyLibraryTitleModifier: ViewModifier {
+    let title: String
+    @Environment(\.craftifyShowsSidebar) private var showsSidebar
+
+    func body(content: Content) -> some View {
+        content
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(showsSidebar ? .inline : .large)
+    }
+}
+
 private struct CraftifyPageModifier: ViewModifier {
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
@@ -478,6 +512,16 @@ extension View {
 
     func craftifyPage() -> some View {
         modifier(CraftifyPageModifier())
+    }
+
+    func craftifyLibraryTitle(_ title: String) -> some View {
+        modifier(CraftifyLibraryTitleModifier(title: title))
+    }
+
+    /// Small forms and pickers use the form-sized sheet on iPad, so chest sheets
+    /// share one width. Compact windows ignore the sizing and keep the system sheet.
+    func craftifyFormSheet() -> some View {
+        presentationSizing(.form)
     }
 
     func craftifyContentWidth(_ maximum: CGFloat = CraftifyLayout.contentMaxWidth) -> some View {

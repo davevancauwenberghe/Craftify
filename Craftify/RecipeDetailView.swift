@@ -54,6 +54,7 @@ struct RecipeDetailView: View {
             .sheet(isPresented: $showingChestPicker) {
                 AddRecipeToChestView(recipe: recipe)
                     .environmentObject(dataManager)
+                    .craftifyFormSheet()
             }
             .sheet(isPresented: ingredientDetailBinding) {
                 if let selectedDetail {
@@ -290,7 +291,7 @@ private struct AddRecipeToChestView: View {
                 }
                 .environmentObject(dataManager)
                 .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
-                .presentationSizing(.page)
+                .craftifyFormSheet()
             }
             .alert("Couldn’t Add Recipe", isPresented: messageBinding) {
                 Button("OK", role: .cancel) { message = nil }

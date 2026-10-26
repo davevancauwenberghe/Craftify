@@ -55,6 +55,9 @@ extension Color {
         case "default":
             fallthrough
         default:
+            // Keep these values in sync with Assets.xcassets/AccentColor. UIKit-drawn
+            // chrome (the sidebar button, the iPad menu bar, alerts) takes its tint
+            // from that asset, so a mismatch shows up as differently coloured bars.
             return Color(uiColor: UIColor { traits in
                 if traits.userInterfaceStyle == .dark {
                     return UIColor(red: 0, green: 170 / 255.0, blue: 0, alpha: 1)

@@ -4,6 +4,8 @@ import SwiftUI
 /// System split-view columns also stay clear of Duo's reserved hinge region.
 struct RecipeBrowser<Library: View>: View {
     @EnvironmentObject private var dataManager: DataManager
+    // Read here, outside the split view's columns, so this is the window's size class.
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var selectedRecipeID: Int?
     @State private var compactColumn: NavigationSplitViewColumn = .sidebar
     @State private var detailPath = NavigationPath()
@@ -19,6 +21,7 @@ struct RecipeBrowser<Library: View>: View {
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
             library(selectedRecipeID, select)
+                .environment(\.craftifyShowsSidebar, horizontalSizeClass == .regular)
                 .navigationSplitViewColumnWidth(min: 300, ideal: 360, max: 460)
         } detail: {
             NavigationStack(path: $detailPath) {

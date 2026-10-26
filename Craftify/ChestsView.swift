@@ -79,9 +79,11 @@ struct ChestsView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .frame(maxWidth: CraftifyLayout.contentMaxWidth)
-                    .frame(maxWidth: .infinity)
+                    // Inset first, then cap, so rows end up exactly as wide as the
+                    // cards on the other Chests screens (`craftifyContentWidth`).
                     .safeAreaPadding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                    .frame(maxWidth: CraftifyLayout.contentMaxWidth + 2 * CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                    .frame(maxWidth: .infinity)
                 }
             }
             .tint(Color.userAccentColor(for: accentColorPreference))
@@ -112,7 +114,7 @@ struct ChestsView: View {
                 ChestEditorView(context: context)
                     .environmentObject(dataManager)
                     .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
-                    .presentationSizing(.page)
+                    .craftifyFormSheet()
             }
             .sheet(isPresented: $showTutorial) {
                 tutorialSheet
@@ -151,20 +153,10 @@ struct ChestsView: View {
         )
     }
 
-    /// The presentation sizing styles have different concrete types. Keeping
-    /// them in separate result-builder branches avoids asking the compiler to
-    /// infer a common type for `.form` and `.page` in a ternary expression.
-    @ViewBuilder
     private var tutorialSheet: some View {
-        if horizontalSizeClass == .regular {
-            ChestsTutorialView()
-                .presentationDetents([.medium, .large])
-                .presentationSizing(.form)
-        } else {
-            ChestsTutorialView()
-                .presentationDetents([.medium, .large])
-                .presentationSizing(.page)
-        }
+        ChestsTutorialView()
+            .presentationDetents([.medium, .large])
+            .craftifyFormSheet()
     }
 
     private func deletePendingChest() {
@@ -254,6 +246,7 @@ struct ChestDetailView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let chestID: UUID
     @Binding var navigationPath: NavigationPath
@@ -261,7 +254,6 @@ struct ChestDetailView: View {
     @State private var chestName = ""
 
     @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var pagePadding: CGFloat = 16
 
     private var chest: RecipeChest? { dataManager.chests.first { $0.id == chestID } }
 
@@ -292,7 +284,9 @@ struct ChestDetailView: View {
                                     .font(.title2.bold())
                                     .accessibilityAddTraits(.isHeader)
 
-                                CraftifyAdaptiveGrid(minimum: 156, maximum: 220, spacing: cardSpacing) {
+                                // No maximum: a capped cell left cards narrower than the
+                                // header card above them in narrow iPad windows.
+                                CraftifyAdaptiveGrid(minimum: 156, maximum: .infinity, spacing: cardSpacing) {
                                     ForEach(Array(storedRecipes.enumerated()), id: \.element.id) { slot, recipe in
                                         ZStack(alignment: .topTrailing) {
                                             NavigationLink(value: recipe) {
@@ -319,9 +313,10 @@ struct ChestDetailView: View {
                             }
                         }
                     }
-                    .frame(maxWidth: 1200)
-                    .padding(pagePadding)
-                    .frame(maxWidth: .infinity)
+                    .craftifyContentWidth()
+                    .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                    .padding(.top, 12)
+                    .padding(.bottom, 32)
                 }
                 .background {
                     AppBackground()
@@ -383,6 +378,10 @@ private struct ChestDetailHeader: View {
     @Binding var name: String
     @Environment(\.craftifyAccentColor) private var accent
 
+    /// Only the stacked (centered) layout caps its controls. Beside the icon they
+    /// fill the card, like the capacity bar on the chest rows.
+    private static let centeredFieldWidth: CGFloat = 420
+
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 20) {
@@ -422,7 +421,7 @@ private struct ChestDetailHeader: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .frame(maxWidth: 400)
+                    .frame(maxWidth: centered ? Self.centeredFieldWidth : .infinity)
             } else {
                 Text(chest.name)
                     .font(.largeTitle.bold())
@@ -434,7 +433,7 @@ private struct ChestDetailHeader: View {
                 .foregroundStyle(.secondary)
             ProgressView(value: Double(usedSlots), total: Double(chest.size.rawValue))
                 .tint(accent)
-                .frame(maxWidth: 400)
+                .frame(maxWidth: centered ? Self.centeredFieldWidth : .infinity)
                 .accessibilityLabel("Chest capacity")
                 .accessibilityValue("\(usedSlots) of \(chest.size.rawValue) slots used")
         }
@@ -450,7 +449,9 @@ private struct ChestRecipeCard: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
-                AppBackground()
+                // A plain canvas fill: up to 54 cards each rendered a full
+                // `AppBackground` (gradient plus two motif grids) behind a small image.
+                Color(.systemGroupedBackground)
                 CraftImage(key: recipe.image)
                     .scaledToFit()
                     .padding(18)

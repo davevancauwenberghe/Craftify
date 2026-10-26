@@ -26,6 +26,19 @@ These changes follow Apple's [preparation guidance](https://developer.apple.com/
 - New-recipe announcements list readable names and categories; their Explore action returns to the Recipes library.
 - Preserved native tab announcements instead of posting a second VoiceOver announcement for every tab change.
 
+## iPad layout follow-up
+
+Raised after the first iPad pass: the sidebar button sat on its own row above the large "Craftify" title, system-drawn controls were a different green from the app, and widths differed across the Chests screens.
+
+- **Library column sizing.** The Recipes and Search libraries always live in a 300–460 pt sidebar (or fill a compact window), but their grids asked for 320 pt minimum columns and padded by the window's size class, so rows could overflow the column on iPad. They now use one flexible column and a fixed `CraftifyLayout.sidebarPadding`.
+- **Sidebar title.** `RecipeBrowser` reads the window's size class outside the split view's columns and passes it down as `craftifyShowsSidebar`. In a wide window the library uses an inline title beside the sidebar button; compact windows keep the large title. The title is set once, by `craftifyLibraryTitle`.
+- **System accent.** `AccentColor` in the asset catalog was still the old `#00AA00` in both appearances, while the in-app default is `#168238` in light mode. UIKit-drawn chrome takes its tint from the asset. Both now use the same light and dark values.
+- **Chests widths.** `ChestDetailView` used a hardcoded 1200 pt cap and 16 pt padding; every other page uses `craftifyContentWidth` (1180 pt) and `pagePadding`. It now matches, and the chest list rows end at the same width. The header's capacity bar and name field no longer stop at 400 pt beside the icon, and card cells no longer stop at 220 pt, which left them narrower than the header in narrow windows.
+- **Chest sheets.** The editor, the add-to-chest picker, the nested editor, and the tutorial now share `craftifyFormSheet()` (form-sized on iPad). The editor and picker previously used full-page sheets while the tutorial used a form sheet.
+- Chest cards use a plain canvas fill instead of rendering a full `AppBackground` per card (up to 54 per chest).
+
+These edits were made without a device or simulator. CI compiles them and runs the existing 22 tests on iPhone and iPad, but none of those tests measure layout, so the iPad appearance still needs a manual look: Recipes and Search with the sidebar open and in narrow windows, a filled chest at several window widths, the chest sheets on iPad, and the sidebar button and tab bar in both appearances.
+
 ## Bugs fixed
 
 | Area | Previous behavior | Corrected behavior |

@@ -89,8 +89,7 @@ struct RecipesTabView: View {
     var body: some View {
         RecipeBrowser(resetID: resetID) { selectedID, openRecipe in
             CategoryView(selectedRecipeID: selectedID, openRecipe: openRecipe)
-                .navigationTitle("Craftify")
-                .navigationBarTitleDisplayMode(.large)
+                .craftifyLibraryTitle("Craftify")
                 .overlay {
                     if dataManager.isLoading && dataManager.recipes.isEmpty {
                         loadingState
@@ -146,8 +145,6 @@ struct CategoryView: View {
                 openRecipe: openRecipe
             )
         }
-        .navigationTitle("Craftify")
-        .navigationBarTitleDisplayMode(.large)
         .onAppear {
             refreshRecommendations()
             updateFilteredRecipes()
@@ -206,7 +203,7 @@ struct CategoryFilterBar: View {
             .padding(7)
         }
         .craftifyFloatingSurface(cornerRadius: 18)
-        .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+        .padding(.horizontal, CraftifyLayout.sidebarPadding)
         .padding(.bottom, 8)
         .accessibilityLabel("Recipe categories")
     }
@@ -237,8 +234,6 @@ struct CategoryFilterBar: View {
 
 struct RecipeListView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.craftifyAccentColor) private var accent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var recommendedRecipes: [Recipe]
@@ -248,17 +243,10 @@ struct RecipeListView: View {
     let selectedRecipeID: Int?
     let openRecipe: (Recipe) -> Void
 
-    private var recipeColumns: [GridItem] {
-        if horizontalSizeClass == .compact || dynamicTypeSize.isAccessibilitySize {
-            return [GridItem(.flexible())]
-        }
-        return CraftifyLayout.adaptiveColumns(
-            minimum: 320,
-            maximum: 520,
-            spacing: 16,
-            dynamicTypeSize: dynamicTypeSize
-        )
-    }
+    /// The library is a sidebar column (300–460 pt) or a compact window, never a
+    /// wide page. The previous 320 pt adaptive minimum was wider than the
+    /// sidebar's content area, so rows overflowed their column on iPad.
+    private let recipeColumns = [GridItem(.flexible())]
 
     var body: some View {
         Group {
@@ -276,7 +264,7 @@ struct RecipeListView: View {
                         }
                     }
                     .craftifyContentWidth()
-                    .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                    .padding(.horizontal, CraftifyLayout.sidebarPadding)
                     .padding(.top, 8)
                     .padding(.bottom, 32)
                 }
