@@ -5,12 +5,12 @@
 //  Created by Dave Van Cauwenberghe on 07/02/2025.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 @main
 struct CraftifyApp: App {
-    @StateObject private var dataManager = DataManager()
+    @StateObject private var dataManager = DataManager.forAppLaunch()
     @AppStorage("hasLaunchedBefore") private var hasLaunchedBefore: Bool = false
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @State private var showOnboarding: Bool = false
@@ -20,11 +20,9 @@ struct CraftifyApp: App {
         WindowGroup {
             let accent = Color.userAccentColor(for: accentColorPreference)
 
-            ZStack {
-                ContentView()
-                    .environmentObject(dataManager)
-
-                if showOnboarding {
+            ContentView()
+                .environmentObject(dataManager)
+                .sheet(isPresented: $showOnboarding) {
                     OnboardingView(
                         title: "Welcome to Craftify!",
                         message: "Fetching your Minecraft recipes…",
@@ -44,28 +42,50 @@ struct CraftifyApp: App {
                         }
                     )
                     .environmentObject(dataManager)
-                    .zIndex(1)
+                    .interactiveDismissDisabled(!hasLaunchedBefore)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(hasLaunchedBefore ? .visible : .hidden)
                 }
-            }
-            .tint(accent)
-            .environment(\.craftifyAccentColor, accent)
-            .dynamicTypeSize(.xSmall ... .accessibility5)
-            .onAppear {
-                dataManager.fetchRecipes(
-                    isManual: false,
-                    waitForImages: !hasLaunchedBefore
-                )
-                if !hasLaunchedBefore {
-                    dismissOnboardingAfterLoading = true
+                .tint(accent)
+                .environment(\.craftifyAccentColor, accent)
+                .dynamicTypeSize(.xSmall ... .accessibility5)
+                .onAppear {
+                    dataManager.fetchRecipes(
+                        isManual: false,
+                        waitForImages: !hasLaunchedBefore
+                    )
+                    if !hasLaunchedBefore {
+                        dismissOnboardingAfterLoading = true
+                        showOnboarding = true
+                    }
+                    print("CraftifyApp: DataManager initialized, isLoading: \(dataManager.isLoading)")
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .showOnboarding)) { _ in
+                    dismissOnboardingAfterLoading = false
                     showOnboarding = true
                 }
-                print("CraftifyApp: DataManager initialized, isLoading: \(dataManager.isLoading)")
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .showOnboarding)) { _ in
-                dismissOnboardingAfterLoading = false
-                showOnboarding = true
-            }
         }
+    }
+}
+
+extension DataManager {
+    static func forAppLaunch() -> DataManager {
+        #if DEBUG
+            if ProcessInfo.processInfo.isCraftifyTestProcess {
+                return CraftifyTestData.makeDataManager()
+            }
+        #endif
+        return DataManager()
+    }
+}
+
+extension ProcessInfo {
+    var isCraftifyTestProcess: Bool {
+        #if DEBUG
+            arguments.contains("-ui-testing") || environment["XCTestConfigurationFilePath"] != nil
+        #else
+            false
+        #endif
     }
 }
 

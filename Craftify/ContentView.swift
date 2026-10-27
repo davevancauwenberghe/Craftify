@@ -6,82 +6,63 @@
 //
 
 import SwiftUI
-import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var dataManager: DataManager
     @AppStorage("colorSchemePreference") private var colorSchemePreference = "system"
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var selectedTab = 0
-    @State private var navigationPath = NavigationPath()
+    @SceneStorage("selectedTab") private var selectedTab = 0
+    @State private var recipeLibraryResetID = UUID()
 
     var body: some View {
         ZStack {
             AppBackground().ignoresSafeArea()
 
             TabView(selection: $selectedTab) {
-                RecipesTabView(navigationPath: $navigationPath)
-                    .tabItem { Label("Recipes", systemImage: "square.grid.2x2") }
-                    .tag(0)
-                    .accessibilityLabel("Recipes tab")
-                    .accessibilityHint("Browse the Craftify recipe library")
-
-                ChestsView()
-                    .tabItem { Label("Chests", systemImage: "shippingbox.fill") }
-                    .tag(1)
-                    .accessibilityLabel("Chests tab")
-                    .accessibilityHint("Organize recipes in synced chests")
-
-                MoreView()
-                    .tabItem { Label("More", systemImage: "ellipsis.circle") }
-                    .tag(2)
-                    .accessibilityLabel("More tab")
-                    .accessibilityHint("Open Craftify tools, settings, and information")
-
-                RecipeSearchView()
-                    .tabItem { Label("Search", systemImage: "magnifyingglass") }
-                    .tag(3)
-                    .accessibilityLabel("Search tab")
-                    .accessibilityHint("Search recipes by name or ingredient")
+                Tab("Recipes", systemImage: "square.grid.2x2", value: 0) {
+                    RecipesTabView(resetID: recipeLibraryResetID)
+                }
+                Tab("Chests", systemImage: "shippingbox.fill", value: 1) {
+                    ChestsView()
+                }
+                Tab("More", systemImage: "ellipsis.circle", value: 2) {
+                    MoreView()
+                }
+                Tab("Search", systemImage: "magnifyingglass", value: 3, role: .search) {
+                    RecipeSearchView()
+                }
             }
             .tint(Color.userAccentColor(for: accentColorPreference))
             .preferredColorScheme(preferredColorScheme)
 
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
             if dataManager.isManualSyncing {
-                SyncOverlayView(
-                    horizontalSizeClass: horizontalSizeClass,
-                    message: "Syncing Recipes…"
-                )
-                .transition(.opacity)
-                .zIndex(2)
-            }
-
-            if !dataManager.isManualSyncing,
-               let announcement = dataManager.newRecipeAnnouncement {
-                NewRecipesOverlayView(
-                    horizontalSizeClass: horizontalSizeClass,
-                    recipes: announcement.recipes
-                ) {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        dataManager.dismissNewRecipeAnnouncement()
-                    }
-                }
-                .id(announcement.id)
-                .zIndex(3)
+                SyncStatusBanner()
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: dataManager.isManualSyncing)
+        .sheet(item: announcementBinding) { announcement in
+            NewRecipesOverlayView(recipes: announcement.recipes) {
+                selectedTab = 0
+                recipeLibraryResetID = UUID()
+                dataManager.dismissNewRecipeAnnouncement()
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: dataManager.isManualSyncing)
         .sensoryFeedback(.success, trigger: dataManager.newRecipeAnnouncement?.id)
-        .onChange(of: selectedTab) { _, newValue in
+        .onChange(of: selectedTab) { _, _ in
             HapticFeedback.selection()
-            UIAccessibility.post(
-                notification: .announcement,
-                argument: "Selected tab: \(tabName(for: newValue))"
-            )
         }
         .dynamicTypeSize(.xSmall ... .accessibility5)
+        .onAppear {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-ui-testing") { selectedTab = 0 }
+            #endif
+        }
     }
 
     private var preferredColorScheme: ColorScheme? {
@@ -92,40 +73,29 @@ struct ContentView: View {
         }
     }
 
-    private func tabName(for tag: Int) -> String {
-        switch tag {
-        case 0: "Recipes"
-        case 1: "Chests"
-        case 2: "More"
-        case 3: "Search"
-        default: "Unknown"
-        }
+    private var announcementBinding: Binding<DataManager.NewRecipeAnnouncement?> {
+        Binding(
+            get: { dataManager.isManualSyncing ? nil : dataManager.newRecipeAnnouncement },
+            set: { if $0 == nil { dataManager.dismissNewRecipeAnnouncement() } }
+        )
     }
 }
 
 struct RecipesTabView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.craftifyAccentColor) private var accent
-    @Binding var navigationPath: NavigationPath
+    let resetID: UUID
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            ZStack {
-                AppBackground().ignoresSafeArea()
-
-                CategoryView()
-                    .navigationTitle("Craftify")
-                    .navigationBarTitleDisplayMode(.large)
-                    .toolbarBackground(.hidden, for: .navigationBar)
-                    .overlay {
-                        if dataManager.isLoading && dataManager.recipes.isEmpty {
-                            loadingState
-                        }
+        RecipeBrowser(resetID: resetID) { selectedID, openRecipe in
+            CategoryView(selectedRecipeID: selectedID, openRecipe: openRecipe)
+                .craftifyLibraryTitle("Craftify")
+                .overlay {
+                    if dataManager.isLoading && dataManager.recipes.isEmpty {
+                        loadingState
                     }
-                    .navigationDestination(for: Recipe.self) { recipe in
-                        RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
-                    }
-            }
+                }
+                .craftifyPage()
         }
         .dynamicTypeSize(.xSmall ... .accessibility5)
     }
@@ -152,8 +122,9 @@ struct RecipesTabView: View {
 
 struct CategoryView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @AppStorage("isCraftifyPicksExpanded") private var isCraftifyPicksExpanded = true
+    @AppStorage("isCraftifyPicksExpanded") private var isCraftifyPicksExpanded = false
+    let selectedRecipeID: Int?
+    let openRecipe: (Recipe) -> Void
     @State private var selectedCategory: String?
     @State private var recommendedRecipes: [Recipe] = []
     @State private var filteredRecipes: [String: [Recipe]] = [:]
@@ -168,16 +139,20 @@ struct CategoryView: View {
             RecipeListView(
                 recommendedRecipes: $recommendedRecipes,
                 isCraftifyPicksExpanded: $isCraftifyPicksExpanded,
-                filteredRecipes: filteredRecipes
+                filteredRecipes: filteredRecipes,
+                showsRecommendations: selectedCategory == nil,
+                selectedRecipeID: selectedRecipeID,
+                openRecipe: openRecipe
             )
         }
-        .navigationTitle("Craftify")
-        .navigationBarTitleDisplayMode(.large)
         .onAppear {
             refreshRecommendations()
             updateFilteredRecipes()
         }
         .onChange(of: dataManager.recipes) { _, _ in
+            if let selectedCategory, !dataManager.categories.contains(selectedCategory) {
+                self.selectedCategory = nil
+            }
             refreshRecommendations()
             updateFilteredRecipes()
         }
@@ -186,7 +161,12 @@ struct CategoryView: View {
     }
 
     private func refreshRecommendations() {
-        recommendedRecipes = Array(dataManager.recipes.shuffled().prefix(horizontalSizeClass == .regular ? 9 : 7))
+        let existingIDs = Set(recommendedRecipes.map(\.id))
+        let existing = recommendedRecipes.compactMap { previous in
+            dataManager.recipes.first { $0.id == previous.id }
+        }
+        let additions = dataManager.recipes.filter { !existingIDs.contains($0.id) }.shuffled()
+        recommendedRecipes = Array((existing + additions).prefix(7))
     }
 
     private func updateFilteredRecipes() {
@@ -223,7 +203,7 @@ struct CategoryFilterBar: View {
             .padding(7)
         }
         .craftifyFloatingSurface(cornerRadius: 18)
-        .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+        .padding(.horizontal, CraftifyLayout.sidebarPadding)
         .padding(.bottom, 8)
         .accessibilityLabel("Recipe categories")
     }
@@ -239,7 +219,7 @@ struct CategoryFilterBar: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .padding(.horizontal, horizontalSizeClass == .regular ? 15 : 12)
-                .padding(.vertical, 9)
+                .frame(minHeight: 44)
                 .background(
                     isSelected ? accent : Color.primary.opacity(0.055),
                     in: Capsule()
@@ -248,29 +228,25 @@ struct CategoryFilterBar: View {
         .buttonStyle(.plain)
         .accessibilityLabel(isSelected ? "\(title), selected" : title)
         .accessibilityHint("Filters the recipe library")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
 struct RecipeListView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.craftifyAccentColor) private var accent
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var recommendedRecipes: [Recipe]
     @Binding var isCraftifyPicksExpanded: Bool
     let filteredRecipes: [String: [Recipe]]
+    let showsRecommendations: Bool
+    let selectedRecipeID: Int?
+    let openRecipe: (Recipe) -> Void
 
-    private var recipeColumns: [GridItem] {
-        if horizontalSizeClass == .compact || dynamicTypeSize.isAccessibilitySize {
-            return [GridItem(.flexible())]
-        }
-        return CraftifyLayout.adaptiveColumns(
-            minimum: 320,
-            maximum: 520,
-            spacing: 16,
-            dynamicTypeSize: dynamicTypeSize
-        )
-    }
+    /// The library is a sidebar column (300–460 pt) or a compact window, never a
+    /// wide page. The previous 320 pt adaptive minimum was wider than the
+    /// sidebar's content area, so rows overflowed their column on iPad.
+    private let recipeColumns = [GridItem(.flexible())]
 
     var body: some View {
         Group {
@@ -279,7 +255,7 @@ struct RecipeListView: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 24) {
-                        if !recommendedRecipes.isEmpty {
+                        if showsRecommendations && !recommendedRecipes.isEmpty {
                             picksSection
                         }
 
@@ -288,7 +264,7 @@ struct RecipeListView: View {
                         }
                     }
                     .craftifyContentWidth()
-                    .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                    .padding(.horizontal, CraftifyLayout.sidebarPadding)
                     .padding(.top, 8)
                     .padding(.bottom, 32)
                 }
@@ -300,14 +276,14 @@ struct RecipeListView: View {
     private var picksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             CraftifyPicksHeader(isExpanded: isCraftifyPicksExpanded) {
-                withAnimation(.snappy) { isCraftifyPicksExpanded.toggle() }
+                withAnimation(reduceMotion ? nil : .snappy) { isCraftifyPicksExpanded.toggle() }
             }
 
             if isCraftifyPicksExpanded {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 12) {
                         ForEach(recommendedRecipes) { recipe in
-                            NavigationLink(value: recipe) {
+                            Button { openRecipe(recipe) } label: {
                                 RecipeCell(recipe: recipe, isCraftifyPick: true)
                             }
                             .buttonStyle(.plain)
@@ -330,8 +306,8 @@ struct RecipeListView: View {
 
             LazyVGrid(columns: recipeColumns, alignment: .leading, spacing: 12) {
                 ForEach(filteredRecipes[letter] ?? []) { recipe in
-                    NavigationLink(value: recipe) {
-                        RecipeCell(recipe: recipe, isCraftifyPick: false)
+                    Button { openRecipe(recipe) } label: {
+                        RecipeCell(recipe: recipe, isCraftifyPick: false, isSelected: recipe.id == selectedRecipeID)
                     }
                     .buttonStyle(.plain)
                 }
@@ -343,6 +319,7 @@ struct RecipeListView: View {
 struct RecipeCell: View {
     let recipe: Recipe
     let isCraftifyPick: Bool
+    var isSelected = false
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -359,35 +336,56 @@ struct RecipeCell: View {
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(accent, lineWidth: 2)
+                    .allowsHitTesting(false)
+            }
+        }
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("recipe-\(recipe.id)")
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(recipe.name), \(recipe.category.isEmpty ? "recipe" : "\(recipe.category) recipe")")
         .accessibilityHint("Opens the crafting recipe")
     }
 
     private var rowContent: some View {
-        HStack(spacing: 14) {
-            recipeImage(size: dynamicTypeSize.isAccessibilitySize ? 72 : 62)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(recipe.name)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                if !recipe.category.isEmpty {
-                    Label(recipe.category, systemImage: "tag.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(accent)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    recipeImage(size: 64)
+                    rowLabels
+                }
+            } else {
+                HStack(spacing: 14) {
+                    recipeImage(size: 44)
+                    rowLabels
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
                 }
             }
-            Spacer(minLength: 4)
-            Image(systemName: "chevron.right")
-                .font(.caption.bold())
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
         }
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 86, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+    }
+
+    private var rowLabels: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(recipe.name)
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            if !recipe.category.isEmpty {
+                Label(recipe.category, systemImage: "tag.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(accent)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+            }
+        }
     }
 
     private var pickContent: some View {
@@ -431,6 +429,7 @@ struct CraftifyPicksHeader: View {
     let isExpanded: Bool
     let toggle: () -> Void
     @Environment(\.craftifyAccentColor) private var accent
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         Button(action: toggle) {
@@ -438,12 +437,14 @@ struct CraftifyPicksHeader: View {
                 Image(systemName: "sparkles")
                     .foregroundStyle(accent)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Craftify Picks")
+                    Text(dynamicTypeSize.isAccessibilitySize ? "Picks" : "Craftify Picks")
                         .font(.title3.bold())
                         .foregroundStyle(.primary)
-                    Text("A fresh handful from the recipe book")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if isExpanded {
+                        Text("A fresh handful from the recipe book")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
@@ -451,6 +452,7 @@ struct CraftifyPicksHeader: View {
                     .foregroundStyle(accent)
             }
             .contentShape(Rectangle())
+            .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isExpanded ? "Collapse Craftify Picks" : "Expand Craftify Picks")

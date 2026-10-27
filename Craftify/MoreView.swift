@@ -24,21 +24,13 @@ struct MoreView: View {
     }
 
     private var syncDetail: String {
-        guard let date = dataManager.lastUpdated else { return dataManager.syncStatus }
-        return "Last synced \(date.formatted(date: .abbreviated, time: .shortened))"
+        dataManager.syncStatus
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 24) {
-                    CraftifyHero(
-                        eyebrow: "Craftify Toolkit",
-                        title: "More Ways to Craft",
-                        detail: "Keep your recipe book current, find useful commands, personalize the app, and get help when you need it.",
-                        symbol: "hammer.circle.fill"
-                    )
-
                     syncCard
 
                     CraftifySectionHeader(
@@ -98,7 +90,10 @@ struct MoreView: View {
             } message: {
                 Text(dataManager.errorMessage ?? "Please try again.")
             }
-            .onAppear { dataManager.syncRecentSearches() }
+            .onAppear {
+                dataManager.syncRecentSearches()
+                if dataManager.isRecipeFetchOnCooldown() { beginCooldown() }
+            }
             .onDisappear { stopCooldown() }
         }
     }

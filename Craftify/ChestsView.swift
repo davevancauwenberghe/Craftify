@@ -11,6 +11,7 @@ struct ChestsView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @AppStorage("hasSeenChestsTutorial") private var hasSeenTutorial = false
     @State private var navigationPath = NavigationPath()
@@ -27,13 +28,6 @@ struct ChestsView: View {
                 if dataManager.chests.isEmpty {
                     ScrollView {
                         VStack(spacing: 24) {
-                            CraftifyHero(
-                                eyebrow: "Project Planning",
-                                title: "Build Your Chest Room",
-                                detail: "Collect recipes in Minecraft-sized chests and keep every build organized across your devices.",
-                                symbol: "shippingbox.fill"
-                            )
-
                             CraftifyEmptyState(
                                 symbol: "shippingbox",
                                 title: "Your Chest Room Is Empty",
@@ -55,12 +49,9 @@ struct ChestsView: View {
                 } else {
                     List {
                         Section {
-                            CraftifyHero(
-                                eyebrow: "Project Planning",
-                                title: "Your Chest Room",
-                                detail: "\(dataManager.chests.count) synced chest\(dataManager.chests.count == 1 ? "" : "s") ready for your next build.",
-                                symbol: "shippingbox.fill"
-                            )
+                            Text("\(dataManager.chests.count) saved chest\(dataManager.chests.count == 1 ? "" : "s") · Syncs with iCloud")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 12, trailing: 0))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -88,9 +79,11 @@ struct ChestsView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .frame(maxWidth: CraftifyLayout.contentMaxWidth)
-                    .frame(maxWidth: .infinity)
+                    // Inset first, then cap, so rows end up exactly as wide as the
+                    // cards on the other Chests screens (`craftifyContentWidth`).
                     .safeAreaPadding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                    .frame(maxWidth: CraftifyLayout.contentMaxWidth + 2 * CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                    .frame(maxWidth: .infinity)
                 }
             }
             .tint(Color.userAccentColor(for: accentColorPreference))
@@ -120,8 +113,8 @@ struct ChestsView: View {
             .sheet(item: $editor) { context in
                 ChestEditorView(context: context)
                     .environmentObject(dataManager)
-                    .presentationDetents([.medium])
-                    .presentationSizing(.page)
+                    .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+                    .craftifyFormSheet()
             }
             .sheet(isPresented: $showTutorial) {
                 tutorialSheet
@@ -160,20 +153,10 @@ struct ChestsView: View {
         )
     }
 
-    /// The presentation sizing styles have different concrete types. Keeping
-    /// them in separate result-builder branches avoids asking the compiler to
-    /// infer a common type for `.form` and `.page` in a ternary expression.
-    @ViewBuilder
     private var tutorialSheet: some View {
-        if horizontalSizeClass == .regular {
-            ChestsTutorialView()
-                .presentationDetents([.medium, .large])
-                .presentationSizing(.form)
-        } else {
-            ChestsTutorialView()
-                .presentationDetents([.medium, .large])
-                .presentationSizing(.page)
-        }
+        ChestsTutorialView()
+            .presentationDetents([.medium, .large])
+            .craftifyFormSheet()
     }
 
     private func deletePendingChest() {
@@ -263,6 +246,7 @@ struct ChestDetailView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let chestID: UUID
     @Binding var navigationPath: NavigationPath
@@ -270,17 +254,6 @@ struct ChestDetailView: View {
     @State private var chestName = ""
 
     @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var pagePadding: CGFloat = 16
-
-    private var gridColumns: [GridItem] {
-        if dynamicTypeSize.isAccessibilitySize {
-            return [GridItem(.flexible())]
-        }
-
-        // An adaptive grid keeps cards comfortably readable on iPhone while
-        // using the additional width available on iPad and in landscape.
-        return [GridItem(.adaptive(minimum: 156, maximum: 220), spacing: cardSpacing)]
-    }
 
     private var chest: RecipeChest? { dataManager.chests.first { $0.id == chestID } }
 
@@ -292,7 +265,7 @@ struct ChestDetailView: View {
                     LazyVStack(alignment: .leading, spacing: 24) {
                         ChestDetailHeader(
                             chest: chest,
-                            usedSlots: storedRecipes.count,
+                            usedSlots: chest.recipeIDs.count,
                             isEditing: editMode.isEditing,
                             name: $chestName
                         )
@@ -311,7 +284,9 @@ struct ChestDetailView: View {
                                     .font(.title2.bold())
                                     .accessibilityAddTraits(.isHeader)
 
-                                LazyVGrid(columns: gridColumns, spacing: cardSpacing) {
+                                // No maximum: a capped cell left cards narrower than the
+                                // header card above them in narrow iPad windows.
+                                CraftifyAdaptiveGrid(minimum: 156, maximum: .infinity, spacing: cardSpacing) {
                                     ForEach(Array(storedRecipes.enumerated()), id: \.element.id) { slot, recipe in
                                         ZStack(alignment: .topTrailing) {
                                             NavigationLink(value: recipe) {
@@ -338,9 +313,10 @@ struct ChestDetailView: View {
                             }
                         }
                     }
-                    .frame(maxWidth: 1200)
-                    .padding(pagePadding)
-                    .frame(maxWidth: .infinity)
+                    .craftifyContentWidth()
+                    .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
+                    .padding(.top, 12)
+                    .padding(.bottom, 32)
                 }
                 .background {
                     AppBackground()
@@ -348,7 +324,6 @@ struct ChestDetailView: View {
                 }
                 .tint(Color.userAccentColor(for: accentColorPreference))
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
                     Button(editMode.isEditing ? "Done" : "Edit", action: toggleEditMode)
                 }
@@ -403,6 +378,10 @@ private struct ChestDetailHeader: View {
     @Binding var name: String
     @Environment(\.craftifyAccentColor) private var accent
 
+    /// Only the stacked (centered) layout caps its controls. Beside the icon they
+    /// fill the card, like the capacity bar on the chest rows.
+    private static let centeredFieldWidth: CGFloat = 420
+
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 20) {
@@ -442,7 +421,7 @@ private struct ChestDetailHeader: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .frame(maxWidth: 400)
+                    .frame(maxWidth: centered ? Self.centeredFieldWidth : .infinity)
             } else {
                 Text(chest.name)
                     .font(.largeTitle.bold())
@@ -454,7 +433,7 @@ private struct ChestDetailHeader: View {
                 .foregroundStyle(.secondary)
             ProgressView(value: Double(usedSlots), total: Double(chest.size.rawValue))
                 .tint(accent)
-                .frame(maxWidth: 400)
+                .frame(maxWidth: centered ? Self.centeredFieldWidth : .infinity)
                 .accessibilityLabel("Chest capacity")
                 .accessibilityValue("\(usedSlots) of \(chest.size.rawValue) slots used")
         }
@@ -470,7 +449,9 @@ private struct ChestRecipeCard: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
-                AppBackground()
+                // A plain canvas fill: up to 54 cards each rendered a full
+                // `AppBackground` (gradient plus two motif grids) behind a small image.
+                Color(.systemGroupedBackground)
                 CraftImage(key: recipe.image)
                     .scaledToFit()
                     .padding(18)
@@ -511,6 +492,7 @@ enum ChestEditorContext: Identifiable {
 struct ChestEditorView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let context: ChestEditorContext
     let recipeToAdd: Recipe?
@@ -519,6 +501,7 @@ struct ChestEditorView: View {
     @State private var size: RecipeChest.Size
     @State private var symbol: String?
     @State private var showShrinkConfirmation = false
+    @FocusState private var isNameFocused: Bool
 
     init(context: ChestEditorContext, recipeToAdd: Recipe? = nil, onSave: (() -> Void)? = nil) {
         self.context = context
@@ -535,10 +518,23 @@ struct ChestEditorView: View {
         NavigationStack {
             Form {
                 Section("Chest details") {
-                    TextField("Chest name", text: $name).textInputAutocapitalization(.words)
-                    Picker("Capacity", selection: $size) {
-                        ForEach(RecipeChest.Size.allCases) { size in
-                            Text("\(size.title) · \(size.rawValue) slots").tag(size)
+                    TextField("Chest name", text: $name)
+                        .textInputAutocapitalization(.words)
+                        .focused($isNameFocused)
+                        .submitLabel(.done)
+                        .onSubmit { isNameFocused = false }
+                    if dynamicTypeSize.isAccessibilitySize {
+                        Picker("Capacity", selection: $size) {
+                            ForEach(RecipeChest.Size.allCases) { size in
+                                Text("\(size.rawValue) slots").tag(size)
+                            }
+                        }
+                        .pickerStyle(.inline)
+                    } else {
+                        Picker("Capacity", selection: $size) {
+                            ForEach(RecipeChest.Size.allCases) { size in
+                                Text("\(size.title) · \(size.rawValue) slots").tag(size)
+                            }
                         }
                     }
                     Picker("Symbol", selection: $symbol) {

@@ -9,6 +9,8 @@ on:
     paths:
       - "Craftify/**"
       - "Craftify.xcodeproj/**"
+      - "CraftifyTests/**"
+      - "CraftifyUITests/**"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
 
@@ -18,9 +20,14 @@ concurrency:
 
 jobs:
   build:
-    name: Build Craftify for iOS/iPadOS 18
-    runs-on: macos-26
-    timeout-minutes: 15
+    name: Build and test (${{ matrix.family }})
+    # Project format 110 requires the Xcode 27 toolchain.
+    runs-on: xcode-27
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        family: [iPhone, iPad]
 
     steps:
       - name: Check out repository
@@ -44,3 +51,102 @@ jobs:
             ENABLE_PREVIEWS=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
             ONLY_ACTIVE_ARCH=YES
+
+      - name: Select an available simulator
+        id: simulator
+        env:
+          DEVICE_FAMILY: ${{ matrix.family }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+
+          devices = json.loads(subprocess.check_output(
+              ["xcrun", "simctl", "list", "devices", "available", "--json"]
+          ))["devices"]
+          candidates = [
+              (tuple(map(int, re.findall(r"\d+", runtime))), device)
+              for runtime, group in devices.items()
+              if "iOS" in runtime
+              for device in group
+              if device["name"].startswith(os.environ["DEVICE_FAMILY"])
+          ]
+          if not candidates:
+              raise SystemExit("No matching iOS simulator is installed")
+          _, device = max(candidates, key=lambda candidate: candidate[0])
+          print(f"Testing on {device['name']}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"id={device['udid']}\n")
+          PY
+
+      - name: Boot simulator
+        # The first UI test launches the app on a freshly booted simulator, which
+        # can time out ("Timed out while launching application via Xcode").
+        # Wait for the simulator to finish booting before the tests start.
+        run: xcrun simctl bootstatus "${{ steps.simulator.outputs.id }}" -b
+
+      - name: Run regression and UI tests
+        run: |
+          xcodebuild test \
+            -project "Craftify.xcodeproj" \
+            -scheme "Craftify" \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
+            -derivedDataPath "$RUNNER_TEMP/CraftifyDerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/CraftifyTests.xcresult" \
+            -only-testing:CraftifyTests \
+            -only-testing:CraftifyUITests/CraftifyUITests \
+            -parallel-testing-enabled NO \
+            IPHONEOS_DEPLOYMENT_TARGET=18.0 \
+            CODE_SIGNING_ALLOWED=NO \
+            ENABLE_PREVIEWS=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Report failing tests
+        if: failure()
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          bundle = os.path.join(os.environ["RUNNER_TEMP"], "CraftifyTests.xcresult")
+
+          def test_results():
+              proc = subprocess.run(
+                  ["xcrun", "xcresulttool", "get", "test-results", "tests", "--path", bundle],
+                  capture_output=True, text=True,
+              )
+              return proc.stdout or proc.stderr
+
+          def escape(text):
+              return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          lines = []
+
+          def walk(node, trail):
+              if isinstance(node, dict):
+                  kind = node.get("nodeType", "")
+                  name = node.get("name", "")
+                  if kind == "Failure Message":
+                      lines.append(" / ".join(trail[-2:]) + ": " + name)
+                  here = trail + [name] if kind in ("Test Suite", "Test Case") else trail
+                  for child in node.get("children", []):
+                      walk(child, here)
+              elif isinstance(node, list):
+                  for item in node:
+                      walk(item, trail)
+
+          raw = test_results()
+          try:
+              walk(json.loads(raw).get("testNodes", []), [])
+          except Exception as error:
+              lines.append("Could not parse test results (" + str(error) + "). Raw output: " + raw[:1500])
+          if not lines:
+              lines.append("No failure messages found. Raw output: " + raw[:1500])
+          # Surfaced as a check annotation so a failure is readable without the full log.
+          print("::error title=Failing tests::" + escape("\n".join(lines)[:3500]))
+          PY

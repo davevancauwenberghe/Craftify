@@ -90,6 +90,13 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
+    ReleaseNote(version: "Version 1.0 - Build 125", changes: [
+        "Adaptive recipe navigation for iPhone Duo and resizable iPad windows, with hinge-aware chest grids on iOS 27.1.",
+        "A clearer recipe layout, counted ingredient lists, system detail sheets, and a more focused library.",
+        "Search alternate ingredients and keep your query when opening recipes.",
+        "Keep crafting during recipe sync, preserve legacy favorites, and recover chests and recent searches offline.",
+        "Fix report refreshes, sync status, and overlapping recipe and image downloads."
+    ]),
     ReleaseNote(version: "Version 1.0 - Build 122-123", changes: [
         "Experimental: Craftify Unified UI"
     ]),

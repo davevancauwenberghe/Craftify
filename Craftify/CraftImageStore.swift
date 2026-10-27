@@ -30,7 +30,8 @@ enum CraftImageAssetKey {
 final class CraftImageStore: ObservableObject {
     static let shared = CraftImageStore()
 
-    private let database: CKDatabase
+    private let containerIdentifier: String
+    private lazy var database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
     private let fileManager: FileManager
     private let defaults: UserDefaults
     private let imageDirectory: URL
@@ -51,7 +52,7 @@ final class CraftImageStore: ObservableObject {
         storageDirectory: URL? = nil,
         legacyCacheDirectory: URL? = nil
     ) {
-        self.database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
+        self.containerIdentifier = containerIdentifier
         self.fileManager = fileManager
         self.defaults = defaults
 
@@ -93,6 +94,9 @@ final class CraftImageStore: ObservableObject {
     }
 
     func load(_ assetKey: String) async {
+        #if DEBUG
+        guard !ProcessInfo.processInfo.isCraftifyTestProcess else { return }
+        #endif
         let trimmed = assetKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         let generation = storageGeneration
@@ -166,6 +170,14 @@ final class CraftImageStore: ObservableObject {
         let usableKeys = Set(keys.filter {
             !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         })
+        // A first-launch preparation must wait for prefetches already in flight;
+        // otherwise their images were counted as ready before they downloaded.
+        if force {
+            while !loadingKeys.isDisjoint(with: usableKeys) {
+                try? await Task.sleep(for: .milliseconds(50))
+                guard generation == storageGeneration, !Task.isCancelled else { return false }
+            }
+        }
         let now = Date()
         let dueKeys = usableKeys.filter { key in
             guard !loadingKeys.contains(key) else { return false }
@@ -182,7 +194,9 @@ final class CraftImageStore: ObservableObject {
 
         let requestedKeys = Set(dueKeys)
         loadingKeys.formUnion(requestedKeys)
-        defer { loadingKeys.subtract(requestedKeys) }
+        defer {
+            if generation == storageGeneration { loadingKeys.subtract(requestedKeys) }
+        }
 
         var allSucceeded = true
         let sortedKeys = requestedKeys.sorted()
@@ -287,8 +301,6 @@ final class CraftImageStore: ObservableObject {
         } catch {
             guard generation == storageGeneration else { return false }
 
-            let checkedAt = Date()
-            batch.forEach { lastChecked[$0] = checkedAt }
             print("Craft image sync failed: \(error.localizedDescription)")
             return false
         }
