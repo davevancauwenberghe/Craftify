@@ -85,7 +85,7 @@ struct ReleaseNote {
 }
 
 let releaseNotes: [ReleaseNote] = [
-    ReleaseNote(version: "Version 1.0 - Build 125", changes: [
+    ReleaseNote(version: "Version 1.0 - Build 125-126", changes: [
         "Adaptive recipe navigation for iPhone Duo and resizable iPad windows, with hinge-aware chest grids on iOS 27.1.",
         "A clearer recipe layout, counted ingredient lists, system detail sheets, and a more focused library.",
         "Search alternate ingredients and keep your query when opening recipes.",
