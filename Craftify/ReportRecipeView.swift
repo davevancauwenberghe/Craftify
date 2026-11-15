@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ReportRecipeView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
     @State private var viewMode: ViewMode = .submitReport
@@ -78,10 +77,8 @@ struct ReportRecipeView: View {
     private var isSubmissionOnCooldown: Bool { remainingSubmissionCooldown > 0 }
     var body: some View {
         ZStack {
-            AppBackground().ignoresSafeArea()
-
             ScrollView {
-                LazyVStack(spacing: 20) {
+                LazyVStack(spacing: CraftifyLayout.sectionSpacing) {
                     introHeader
                     modeSelector
 
@@ -112,11 +109,7 @@ struct ReportRecipeView: View {
                         )
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .frame(maxWidth: CraftifyLayout.contentMaxWidth)
-                .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-                .padding(.top, 12)
-                .padding(.bottom, 32)
+                .craftifyPageContent()
             }
             if showSubmissionPopup {
                 SubmissionPopup(state: submissionState, onDismiss: dismissSubmissionPopup)
@@ -485,7 +478,7 @@ private struct SubmitReportSection: View {
             }
         }
         .padding(18)
-        .craftifyCard(cornerRadius: 20)
+        .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
     }
 }
 
@@ -562,7 +555,7 @@ private struct MyReportsSection: View {
                 if let errorMessage {
                     InlineNotice(icon: "exclamationmark.circle", message: errorMessage, tint: .red)
                 }
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: CraftifyLayout.cardSpacing) {
                     ForEach(reports, id: \.id) { report in
                         ReportCard(report: report) { onDelete(report) }
                             .transition(.opacity.combined(with: .move(edge: .leading)))
@@ -582,7 +575,7 @@ private struct MyReportsSection: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .craftifyCard(cornerRadius: 20)
+        .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
         .accessibilityElement(children: .combine)
     }
 }
@@ -605,7 +598,7 @@ private struct EmptyReportState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 28).padding(.vertical, 34)
-        .craftifyCard(cornerRadius: 20)
+        .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
         .accessibilityElement(children: .combine)
     }
 }
@@ -676,7 +669,7 @@ private struct ReportCard: View {
             }
         }
         .padding(16)
-        .craftifyCard(cornerRadius: 20)
+        .craftifyCard(cornerRadius: CraftifyLayout.tileRadius)
         .overlay(alignment: .leading) {
             RoundedRectangle(cornerRadius: 3).fill(statusColor).frame(width: 4).padding(.vertical, 18)
         }

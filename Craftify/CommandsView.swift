@@ -10,7 +10,6 @@ import UIKit
 
 struct CommandsView: View {
     @EnvironmentObject private var dataManager: DataManager
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var searchText = ""
     @State private var editionFilter: EditionFilter = .all
@@ -51,7 +50,7 @@ struct CommandsView: View {
         CraftifyLayout.adaptiveColumns(
             minimum: dynamicTypeSize.isAccessibilitySize ? 300 : 310,
             maximum: 480,
-            spacing: 14,
+            spacing: CraftifyLayout.cardSpacing,
             dynamicTypeSize: dynamicTypeSize
         )
     }
@@ -59,7 +58,7 @@ struct CommandsView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 24) {
+                LazyVStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                     CraftifyHero(
                         eyebrow: "Minecraft Reference",
                         title: "Console Commands",
@@ -86,7 +85,7 @@ struct CommandsView: View {
                         )
                         .frame(maxWidth: .infinity)
                     } else {
-                        LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
+                        LazyVGrid(columns: columns, alignment: .leading, spacing: CraftifyLayout.cardSpacing) {
                             ForEach(filteredCommands) { command in
                                 CommandCard(
                                     command: command,
@@ -105,10 +104,7 @@ struct CommandsView: View {
                     OPLevelsCard()
                         .id("opExplanation")
                 }
-                .craftifyContentWidth()
-                .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-                .padding(.top, 12)
-                .padding(.bottom, 34)
+                .craftifyPageContent()
             }
             .refreshable { dataManager.fetchConsoleCommands() }
             .navigationTitle("Console Commands")
@@ -200,7 +196,7 @@ private struct CommandCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .craftifyCard(cornerRadius: 20)
+        .craftifyCard(cornerRadius: CraftifyLayout.tileRadius)
         .contextMenu {
             Button("Copy Command", systemImage: "doc.on.doc", action: onCopy)
         }
@@ -292,7 +288,7 @@ private struct OPLevelsCard: View {
             }
         }
         .padding(20)
-        .craftifyCard(cornerRadius: 24)
+        .craftifyCard(cornerRadius: CraftifyLayout.heroRadius)
     }
 
     private var bedrockLevels: [(String, String)] {

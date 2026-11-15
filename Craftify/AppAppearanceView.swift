@@ -76,7 +76,7 @@ struct AppAppearanceView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            LazyVStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                 CraftifyHero(
                     eyebrow: "Your Craftify",
                     title: "Make It Feel Like Yours",
@@ -88,10 +88,7 @@ struct AppAppearanceView: View {
                 accentSection
                 appIconSection
             }
-            .craftifyContentWidth()
-            .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-            .padding(.top, 12)
-            .padding(.bottom, 32)
+            .craftifyPageContent()
         }
         .navigationTitle("App Appearance")
         .navigationBarTitleDisplayMode(.large)
@@ -124,7 +121,7 @@ struct AppAppearanceView: View {
             .accessibilityHint("Choose System, Light, or Dark appearance")
         }
         .padding(18)
-        .craftifyCard(cornerRadius: 22)
+        .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
     }
 
     private var accentSection: some View {
@@ -142,7 +139,7 @@ struct AppAppearanceView: View {
             }
         }
         .padding(18)
-        .craftifyCard(cornerRadius: 22)
+        .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
     }
 
     private func accentButton(_ option: AccentColorOption) -> some View {
@@ -209,7 +206,7 @@ struct AppAppearanceView: View {
             }
         }
         .padding(18)
-        .craftifyCard(cornerRadius: 22)
+        .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
     }
 
     private func appIconButton(_ icon: AppIcon) -> some View {

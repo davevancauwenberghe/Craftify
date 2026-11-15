@@ -18,7 +18,7 @@ struct MoreView: View {
         CraftifyLayout.adaptiveColumns(
             minimum: dynamicTypeSize.isAccessibilitySize ? 280 : 260,
             maximum: 420,
-            spacing: 14,
+            spacing: CraftifyLayout.cardSpacing,
             dynamicTypeSize: dynamicTypeSize
         )
     }
@@ -30,7 +30,7 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 24) {
+                LazyVStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                     syncCard
 
                     CraftifySectionHeader(
@@ -38,7 +38,7 @@ struct MoreView: View {
                         detail: "Useful extras for Craftify and your Minecraft world."
                     )
 
-                    LazyVGrid(columns: dashboardColumns, spacing: 14) {
+                    LazyVGrid(columns: dashboardColumns, spacing: CraftifyLayout.cardSpacing) {
                         destination(
                             "Report an Issue",
                             detail: "Request a missing recipe or flag an error.",
@@ -77,10 +77,7 @@ struct MoreView: View {
                         .accessibilityHint("Opens Craftify’s introductory guide")
                     }
                 }
-                .craftifyContentWidth()
-                .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-                .padding(.top, 12)
-                .padding(.bottom, 32)
+                .craftifyPageContent()
             }
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.large)
@@ -154,7 +151,7 @@ struct MoreView: View {
             }
         }
         .padding(18)
-        .craftifyCard(cornerRadius: 24)
+        .craftifyCard(cornerRadius: CraftifyLayout.heroRadius)
     }
 
     @ViewBuilder
@@ -216,7 +213,7 @@ struct MoreView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
-        .craftifyCard(cornerRadius: 18)
+        .craftifyCard(cornerRadius: CraftifyLayout.tileRadius)
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
@@ -271,7 +268,7 @@ struct AboutView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            LazyVStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                 Group {
                     if dynamicTypeSize.isAccessibilitySize {
                         aboutIdentityVertical
@@ -288,10 +285,10 @@ struct AboutView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 28)
-                .craftifyCard(cornerRadius: 26)
+                .craftifyCard(cornerRadius: CraftifyLayout.heroRadius)
 
                 CraftifySectionHeader(title: "Information")
-                LazyVGrid(columns: linkColumns, spacing: 14) {
+                LazyVGrid(columns: linkColumns, spacing: CraftifyLayout.cardSpacing) {
                     aboutDestination("Release Notes", detail: "See what changed in every Craftify build.", symbol: "sparkles") {
                         ReleaseNotesView()
                     }
@@ -311,7 +308,7 @@ struct AboutView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(18)
-                .craftifyCard(cornerRadius: 22)
+                .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
 
                 Label(
                     "Craftify for Minecraft is an independent app and is not approved by or associated with Mojang or Microsoft.",
@@ -320,12 +317,9 @@ struct AboutView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .padding(16)
-                .craftifyCard(cornerRadius: 18)
+                .craftifyCard(cornerRadius: CraftifyLayout.tileRadius)
             }
-            .craftifyContentWidth()
-            .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-            .padding(.top, 12)
-            .padding(.bottom, 32)
+            .craftifyPageContent()
         }
         .navigationTitle("About Craftify")
         .navigationBarTitleDisplayMode(.large)
@@ -387,7 +381,7 @@ struct AboutView: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, minHeight: 86, alignment: .leading)
-            .craftifyCard(cornerRadius: 18)
+            .craftifyCard(cornerRadius: CraftifyLayout.tileRadius)
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens \(title)")

@@ -25,7 +25,7 @@ struct NewRecipesOverlayView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                     CraftifySectionHeader(
                         title: recipes.count == 1 ? "A New Recipe Arrived" : "\(recipes.count) New Recipes Arrived",
                         detail: "Added since your last successful recipe sync.",
@@ -64,7 +64,7 @@ struct NewRecipesOverlayView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                 }
-                .padding(24)
+                .craftifyPageContent()
             }
             .navigationTitle("New Recipes")
             .navigationBarTitleDisplayMode(.inline)
