@@ -39,6 +39,23 @@ Raised after the first iPad pass: the sidebar button sat on its own row above th
 
 These edits were made without a device or simulator. CI compiles them and runs the existing 22 tests on iPhone and iPad, but none of those tests measure layout, so the iPad appearance still needs a manual look: Recipes and Search with the sidebar open and in narrow windows, a filled chest at several window widths, the chest sheets on iPad, and the sidebar button and tab bar in both appearances.
 
+## Follow-up review of main (15 November 2026)
+
+A read-through of `main` after build 125 merged. These changes were made without a device or simulator; CI compiles them and runs the unit and UI suites, which cover the chest and report-name changes directly and none of the CloudKit, VoiceOver, or alert behavior.
+
+| Area | Previous behavior | Corrected behavior |
+| --- | --- | --- |
+| VoiceOver announcements | `accessibilityAnnouncement` was set in more than 25 places but nothing observed it, so sync, report, connectivity, and data-clearing results were never spoken. | `DataManager` posts each announcement to VoiceOver. |
+| "Unable to Sync" alert | The More tab's alert followed the shared `errorMessage`, so a failed report, a failed command download, or going offline raised it, and it closed itself after five seconds. | The alert follows `recipeSyncError`, set only when a sync started from More fails, and stays until dismissed. |
+| Error timeout | Each error scheduled its own five-second clear, so a timer from an earlier error removed the next one early. | One timer, restarted for every message. |
+| Search tab | Every appearance of the Search library (tab switch, or returning from a recipe in a compact window) re-downloaded the whole catalog once the 30-second cooldown had passed. | Search fetches only while nothing has synced in this session. The catalog also refreshes when the app returns to the foreground more than an hour after the last sync. |
+| Image checks | After the 15-minute freshness window, each image scrolled into view ran its own CloudKit query. | Requests that arrive together are checked in one batched query. |
+| Console commands | Pull-to-refresh ended immediately, and an empty or failed download read "No Commands Found — try another search term". | The refresh control stays until the request finishes, and an undownloaded list says so. |
+| Report recipe name | The field removed everything except ASCII letters, digits, and spaces as it was typed ("Jack o'Lantern" became "Jack oLantern"). | Letters and digits in any language plus `' ’ - . ( ) &` are kept. |
+| Chest sync | `syncChests()` republished an identical chest list on every view appearance. | It publishes only when the list changed. |
+
+Still to check by hand: VoiceOver speaking a sync result and a submitted report, a failed manual sync showing one alert that stays open, pull-to-refresh on Console Commands, and returning to the app after an hour in the background.
+
 ## Bugs fixed
 
 | Area | Previous behavior | Corrected behavior |

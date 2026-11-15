@@ -38,6 +38,8 @@ final class CraftImageStore: ObservableObject {
     private let legacyCacheDirectory: URL
     private let imageCache = NSCache<NSString, UIImage>()
     private var loadingKeys: Set<String> = []
+    private var pendingLoadKeys: Set<String> = []
+    private var pendingLoadTask: Task<Void, Never>?
     private var lastChecked: [String: Date] = [:]
     private var storageGeneration = 0
 
@@ -99,8 +101,23 @@ final class CraftImageStore: ObservableObject {
         #endif
         let trimmed = assetKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        let generation = storageGeneration
-        await synchronize(keys: [assetKey], generation: generation)
+        if let checked = lastChecked[assetKey],
+           Date().timeIntervalSince(checked) < refreshInterval {
+            return
+        }
+
+        // Every visible image asks for itself. Collect the requests that arrive
+        // together and check them in one query instead of one query per image.
+        pendingLoadKeys.insert(assetKey)
+        guard pendingLoadTask == nil else { return }
+        pendingLoadTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(80))
+            guard let self else { return }
+            let keys = self.pendingLoadKeys
+            self.pendingLoadKeys.removeAll()
+            self.pendingLoadTask = nil
+            await self.synchronize(keys: keys, generation: self.storageGeneration)
+        }
     }
 
     func refresh(recipes: [Recipe]) async {
@@ -375,6 +392,7 @@ final class CraftImageStore: ObservableObject {
 
     func clearDownloadedImages() throws {
         storageGeneration += 1
+        pendingLoadKeys.removeAll()
         loadingKeys.removeAll()
         lastChecked.removeAll()
         imageCache.removeAllObjects()

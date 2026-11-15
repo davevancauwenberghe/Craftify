@@ -7,6 +7,20 @@
 
 import SwiftUI
 
+enum RecipeReportInput {
+    /// Letters and digits in any language, plus the punctuation item names use
+    /// ("Jack o'Lantern"). The previous ASCII-only list removed those as typed.
+    private static let allowedCharacters = CharacterSet.alphanumerics
+        .union(CharacterSet(charactersIn: " '’-.()&"))
+
+    static func sanitizedName(_ text: String, maxLength: Int) -> String {
+        let filtered = text.filter { character in
+            character.unicodeScalars.allSatisfy { allowedCharacters.contains($0) }
+        }
+        return String(filtered.prefix(maxLength))
+    }
+}
+
 struct ReportRecipeView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -314,7 +328,6 @@ private struct SubmitReportSection: View {
     ]
     private let maxRecipeNameLength = 100
     private let maxAdditionalInfoLength = 500
-    private let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ")
 
     private var activeName: Binding<String> {
         reportType == .missingRecipe ? $recipeName : $recipeErrorName
@@ -435,10 +448,8 @@ private struct SubmitReportSection: View {
                     .focused($focusedField, equals: .name)
                     .onSubmit { focusedField = .details }
                     .onChange(of: activeName.wrappedValue) { _, newValue in
-                        let filtered = newValue.filter { character in
-                            character.unicodeScalars.allSatisfy { allowedCharacters.contains($0) }
-                        }
-                        activeName.wrappedValue = String(filtered.prefix(maxRecipeNameLength))
+                        let sanitized = RecipeReportInput.sanitizedName(newValue, maxLength: maxRecipeNameLength)
+                        if sanitized != newValue { activeName.wrappedValue = sanitized }
                     }
             }
 
