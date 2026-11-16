@@ -18,7 +18,7 @@ struct SupportView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            LazyVStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                 CraftifyHero(
                     eyebrow: "Help & Control",
                     title: "Support & Privacy",
@@ -38,7 +38,7 @@ struct SupportView: View {
                         .accessibilityHint("Opens the Mail app")
                 }
                 .padding(18)
-                .craftifyCard(cornerRadius: 22)
+                .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
 
                 CraftifySectionHeader(
                     title: "Data Management",
@@ -84,12 +84,9 @@ struct SupportView: View {
                     .onChange(of: isPrivacyExpanded) { _, _ in HapticFeedback.selection() }
                 }
                 .padding(18)
-                .craftifyCard(cornerRadius: 22)
+                .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
             }
-            .craftifyContentWidth()
-            .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-            .padding(.top, 12)
-            .padding(.bottom, 34)
+            .craftifyPageContent()
         }
         .navigationTitle("Support & Privacy")
         .navigationBarTitleDisplayMode(.large)
@@ -154,7 +151,7 @@ struct SupportView: View {
             }
         }
         .padding(18)
-        .craftifyCard(cornerRadius: 22)
+        .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
     }
 
     private func contactSupport() {

@@ -8,8 +8,6 @@
 import SwiftUI
 
 struct ReleaseNotesView: View {
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "33"
@@ -18,7 +16,7 @@ struct ReleaseNotesView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: CraftifyLayout.cardSpacing) {
                 CraftifyHero(
                     eyebrow: appVersion,
                     title: "What’s New in Craftify",
@@ -30,10 +28,7 @@ struct ReleaseNotesView: View {
                     ReleaseNoteCard(note: note, isCurrent: index == 0)
                 }
             }
-            .craftifyContentWidth()
-            .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-            .padding(.top, 12)
-            .padding(.bottom, 34)
+            .craftifyPageContent()
         }
         .navigationTitle("Release Notes")
         .navigationBarTitleDisplayMode(.large)
@@ -74,7 +69,7 @@ private struct ReleaseNoteCard: View {
             }
         }
         .padding(18)
-        .craftifyCard(cornerRadius: 22)
+        .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
         .overlay(alignment: .leading) {
             RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .fill(isCurrent ? accent : accent.opacity(0.28))

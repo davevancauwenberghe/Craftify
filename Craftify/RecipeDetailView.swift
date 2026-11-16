@@ -67,7 +67,7 @@ struct RecipeDetailView: View {
                                 navigationPath: $navigationPath,
                                 onOpenRecipe: { self.selectedDetail = nil }
                             )
-                            .padding(16)
+                            .craftifyPageContent()
                         }
                         .navigationTitle("Item Details")
                         .navigationBarTitleDisplayMode(.inline)
@@ -95,7 +95,7 @@ struct RecipeDetailView: View {
 
     private var recipeContent: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 20) {
+            LazyVStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                 RecipeIdentityHeader(recipe: recipe, output: currentOutput)
 
                 AlternateRecipesSelector(
@@ -116,10 +116,7 @@ struct RecipeDetailView: View {
                 ingredientsList
                 RemarkAndCategoryView(recipe: recipe)
             }
-            .craftifyContentWidth()
-            .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-            .padding(.top, 12)
-            .padding(.bottom, 36)
+            .craftifyPageContent()
         }
         .accessibilityIdentifier("recipe-detail")
     }
@@ -144,7 +141,7 @@ struct RecipeDetailView: View {
                 .accessibilityElement(children: .combine)
             }
         }
-        .padding(16)
+        .padding(18)
         .craftifyCard()
     }
 }
@@ -179,7 +176,7 @@ private struct RecipeIdentityHeader: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity)
-        .craftifyCard(cornerRadius: 26)
+        .craftifyCard(cornerRadius: CraftifyLayout.heroRadius)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(recipe.name), \(recipe.category), crafting output \(output)")
     }
@@ -361,7 +358,7 @@ struct AlternateRecipesSelector: View {
                 }
             }
             .padding(18)
-            .craftifyCard(cornerRadius: 22)
+            .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
         }
     }
 }
@@ -405,7 +402,7 @@ private struct CraftingRecipeCard: View {
                 .foregroundStyle(.secondary)
         }
         .padding(20)
-        .craftifyCard(cornerRadius: 24)
+        .craftifyCard(cornerRadius: CraftifyLayout.heroRadius)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
         .accessibilityIdentifier("crafting-layout")
     }
@@ -566,7 +563,7 @@ struct IngredientDetailPopup: View {
             }
         }
         .padding(18)
-        .craftifyCard(cornerRadius: 22)
+        .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
         .accessibilityElement(children: .contain)
     }
 
@@ -656,7 +653,7 @@ struct RemarkAndCategoryView: View {
                 }
             }
             .padding(18)
-            .craftifyCard(cornerRadius: 22)
+            .craftifyCard(cornerRadius: CraftifyLayout.sectionRadius)
         }
     }
 

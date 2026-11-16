@@ -38,7 +38,7 @@ struct RecipeSearchView: View {
             HapticFeedback.impact(.light)
         }) { selectedID, openRecipe in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 24) {
+                LazyVStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                     if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         inactiveContent(openRecipe: openRecipe)
                     } else if filteredRecipes.isEmpty {
@@ -51,10 +51,7 @@ struct RecipeSearchView: View {
                         resultsContent(selectedID: selectedID, openRecipe: openRecipe)
                     }
                 }
-                .craftifyContentWidth()
-                .padding(.horizontal, CraftifyLayout.sidebarPadding)
-                .padding(.top, 12)
-                .padding(.bottom, 34)
+                .craftifyLibraryContent()
             }
             .scrollDismissesKeyboard(.interactively)
             .craftifyLibraryTitle("Search")
@@ -85,7 +82,7 @@ struct RecipeSearchView: View {
             }
             .overlay {
                 if dataManager.isLoading && dataManager.recipes.isEmpty {
-                    loadingState
+                    CraftifyLoadingState(title: "Loading Recipes…")
                 }
             }
             .craftifyPage()
@@ -161,7 +158,7 @@ struct RecipeSearchView: View {
                         .foregroundStyle(accent)
                         .accessibilityAddTraits(.isHeader)
 
-                    LazyVGrid(columns: resultColumns, alignment: .leading, spacing: 12) {
+                    LazyVGrid(columns: resultColumns, alignment: .leading, spacing: CraftifyLayout.cardSpacing) {
                         ForEach(filteredRecipes[letter] ?? []) { recipe in
                             Button { openRecipe(recipe) } label: {
                                 RecipeCell(recipe: recipe, isCraftifyPick: false, isSelected: recipe.id == selectedID)
@@ -182,17 +179,6 @@ struct RecipeSearchView: View {
         CraftifyEmptyState(symbol: symbol, title: title, detail: detail)
             .frame(maxWidth: .infinity)
             .padding(.top, 8)
-    }
-
-    private var loadingState: some View {
-        VStack(spacing: 14) {
-            ProgressView().controlSize(.large).tint(accent)
-            Text("Loading Recipes…").font(.headline)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background { AppBackground().ignoresSafeArea() }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Loading recipes")
     }
 
     private func updateFilteredRecipes() {
@@ -238,8 +224,8 @@ struct RecentSearchItem: View {
         }
         .padding(13)
         .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-        .craftifyCard(cornerRadius: 17)
-        .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .craftifyCard(cornerRadius: CraftifyLayout.tileRadius)
+        .contentShape(RoundedRectangle(cornerRadius: CraftifyLayout.tileRadius, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(recipe.name), recent search")
         .accessibilityHint("Opens the crafting recipe")
@@ -254,7 +240,7 @@ struct RecentSearchesList: View {
     private let columns = [GridItem(.flexible())]
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
+        LazyVGrid(columns: columns, spacing: CraftifyLayout.cardSpacing) {
             ForEach(recipes) { recipe in
                 Button { openRecipe(recipe) } label: {
                     RecentSearchItem(recipe: recipe)

@@ -12,7 +12,6 @@ struct ChestsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     @AppStorage("hasSeenChestsTutorial") private var hasSeenTutorial = false
     @State private var navigationPath = NavigationPath()
     @State private var editor: ChestEditorContext?
@@ -22,12 +21,12 @@ struct ChestsView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
+            // One container for both states, so the sheets attached below keep
+            // their anchor when the first chest replaces the empty state.
             ZStack {
-                AppBackground().ignoresSafeArea()
-
                 if dataManager.chests.isEmpty {
                     ScrollView {
-                        VStack(spacing: 24) {
+                        VStack(spacing: CraftifyLayout.sectionSpacing) {
                             CraftifyEmptyState(
                                 symbol: "shippingbox",
                                 title: "Your Chest Room Is Empty",
@@ -41,10 +40,7 @@ struct ChestsView: View {
                             .buttonStyle(.borderedProminent)
                             .controlSize(.large)
                         }
-                        .craftifyContentWidth()
-                        .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-                        .padding(.top, 12)
-                        .padding(.bottom, 32)
+                        .craftifyPageContent()
                     }
                 } else {
                     List {
@@ -52,7 +48,10 @@ struct ChestsView: View {
                             Text("\(dataManager.chests.count) saved chest\(dataManager.chests.count == 1 ? "" : "s") · Syncs with iCloud")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 12, trailing: 0))
+                            .listRowInsets(EdgeInsets(
+                                top: CraftifyLayout.pageTopPadding, leading: 0,
+                                bottom: CraftifyLayout.cardSpacing / 2, trailing: 0
+                            ))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                         }
@@ -65,7 +64,10 @@ struct ChestsView: View {
                                     onEdit: { editor = .edit(chest) },
                                     onDelete: { chestPendingDeletion = chest }
                                 )
-                                .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                                .listRowInsets(EdgeInsets(
+                                    top: CraftifyLayout.cardSpacing / 2, leading: 0,
+                                    bottom: CraftifyLayout.cardSpacing / 2, trailing: 0
+                                ))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                             }
@@ -86,7 +88,6 @@ struct ChestsView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            .tint(Color.userAccentColor(for: accentColorPreference))
             .navigationTitle("Chests")
             .navigationBarTitleDisplayMode(.large)
             .toolbar(.visible, for: .navigationBar)
@@ -134,7 +135,7 @@ struct ChestsView: View {
             }
             .animation(reduceMotion ? nil : .snappy, value: dataManager.chests)
             .environment(\.editMode, $editMode)
-            .craftifyNavigationBar()
+            .craftifyPage()
         }
     }
 
@@ -187,8 +188,8 @@ private struct ChestListRow: View {
     var body: some View {
         rowContent
             .padding(14)
-            .craftifyCard(cornerRadius: 20)
-            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .craftifyCard(cornerRadius: CraftifyLayout.tileRadius)
+            .contentShape(RoundedRectangle(cornerRadius: CraftifyLayout.tileRadius, style: .continuous))
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button("Delete", role: .destructive, action: onDelete)
                     .tint(.red)
@@ -226,7 +227,7 @@ private struct ChestRow: View {
                 .font(.title2)
                 .foregroundStyle(accent)
                 .frame(width: 44, height: 44)
-                .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(chest.name).font(.headline)
@@ -246,14 +247,12 @@ struct ChestDetailView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let chestID: UUID
     @Binding var navigationPath: NavigationPath
     @State private var editMode: EditMode = .inactive
     @State private var chestName = ""
 
-    @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = CraftifyLayout.cardSpacing
 
     private var chest: RecipeChest? { dataManager.chests.first { $0.id == chestID } }
 
@@ -262,14 +261,14 @@ struct ChestDetailView: View {
             if let chest {
                 let storedRecipes = dataManager.recipes(in: chest)
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                         ChestDetailHeader(
                             chest: chest,
                             usedSlots: chest.recipeIDs.count,
                             isEditing: editMode.isEditing,
                             name: $chestName
                         )
-                        .craftifyCard(cornerRadius: 26)
+                        .craftifyCard(cornerRadius: CraftifyLayout.heroRadius)
                         if storedRecipes.isEmpty {
                             CraftifyEmptyState(
                                 symbol: "square.grid.3x3",
@@ -277,7 +276,6 @@ struct ChestDetailView: View {
                                 detail: "Open a recipe and use the add button to store it in this chest."
                             )
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 36)
                         } else {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Stored Recipes")
@@ -313,16 +311,8 @@ struct ChestDetailView: View {
                             }
                         }
                     }
-                    .craftifyContentWidth()
-                    .padding(.horizontal, CraftifyLayout.pagePadding(for: horizontalSizeClass))
-                    .padding(.top, 12)
-                    .padding(.bottom, 32)
+                    .craftifyPageContent()
                 }
-                .background {
-                    AppBackground()
-                        .ignoresSafeArea()
-                }
-                .tint(Color.userAccentColor(for: accentColorPreference))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     Button(editMode.isEditing ? "Done" : "Edit", action: toggleEditMode)
@@ -343,7 +333,7 @@ struct ChestDetailView: View {
         .navigationDestination(for: Recipe.self) { recipe in
             RecipeDetailView(recipe: recipe, navigationPath: $navigationPath)
         }
-        .craftifyNavigationBar()
+        .craftifyPage()
     }
 
     private func toggleEditMode() {
@@ -474,9 +464,9 @@ private struct ChestRecipeCard: View {
             .padding(12)
             .background(Color(.secondarySystemGroupedBackground))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(accent.opacity(0.4), lineWidth: 1) }
-        .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: CraftifyLayout.tileRadius, style: .continuous))
+        // The same border and shadow as every other tile in the app.
+        .craftifyCard(cornerRadius: CraftifyLayout.tileRadius)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Slot \(slot), \(recipe.name), \(recipe.category)")
         .accessibilityHint("Opens recipe details")
@@ -493,7 +483,6 @@ struct ChestEditorView: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @AppStorage("accentColorPreference") private var accentColorPreference = "default"
     let context: ChestEditorContext
     let recipeToAdd: Recipe?
     let onSave: (() -> Void)?
@@ -546,7 +535,6 @@ struct ChestEditorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background { AppBackground().ignoresSafeArea() }
             .navigationTitle(context.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -567,8 +555,7 @@ struct ChestEditorView: View {
             } message: {
                 Text("A small chest holds 27 recipes. Shrinking will permanently remove the last \(overflowCount) recipes from this chest and sync the change to iCloud.")
             }
-            .tint(Color.userAccentColor(for: accentColorPreference))
-            .craftifyNavigationBar()
+            .craftifyPage()
         }
     }
 
@@ -612,7 +599,7 @@ struct ChestsTutorialView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: CraftifyLayout.sectionSpacing) {
                     CraftifyHero(
                         eyebrow: "Getting Started",
                         title: "Welcome to Chests",
@@ -626,8 +613,7 @@ struct ChestsTutorialView: View {
                     Text("Your chest room syncs through iCloud, so its order, names, and recipes follow you across devices.")
                         .font(.callout).foregroundStyle(.secondary)
                 }
-                .craftifyContentWidth()
-                .padding(24)
+                .craftifyPageContent()
             }
             .toolbar { Button("Done") { dismiss() }.fontWeight(.semibold) }
             .craftifyPage()
@@ -643,7 +629,7 @@ private struct TutorialStep: View {
             VStack(alignment: .leading, spacing: 4) { Text(title).font(.headline); Text(text).foregroundStyle(.secondary) }
         }
         .padding(14)
-        .craftifyCard(cornerRadius: 18)
+        .craftifyCard(cornerRadius: CraftifyLayout.tileRadius)
         .accessibilityElement(children: .combine)
     }
 }

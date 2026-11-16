@@ -45,6 +45,21 @@ enum CraftifyLayout {
     /// the window's size class the way full-width pages do.
     static let sidebarPadding: CGFloat = 16
 
+    /// Space above the first and below the last element of a scrolling page.
+    static let pageTopPadding: CGFloat = 12
+    static let pageBottomPadding: CGFloat = 32
+
+    /// Vertical gap between the sections of a page.
+    static let sectionSpacing: CGFloat = 24
+    /// Gap between sibling cards in a grid or list.
+    static let cardSpacing: CGFloat = 14
+
+    /// Corner radii, by role. Header cards open a page, section cards group
+    /// content, tiles are the repeated rows and grid cells.
+    static let heroRadius: CGFloat = 24
+    static let sectionRadius: CGFloat = 22
+    static let tileRadius: CGFloat = 18
+
     static func adaptiveColumns(
         minimum: CGFloat,
         maximum: CGFloat = 440,
@@ -259,7 +274,7 @@ struct CraftifyHero: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity)
-        .craftifyCard(cornerRadius: 24)
+        .craftifyCard(cornerRadius: CraftifyLayout.heroRadius)
         .accessibilityElement(children: .combine)
     }
 
@@ -345,7 +360,7 @@ struct CraftifyEmptyState: View {
         .frame(maxWidth: 520)
         .padding(.horizontal, 28)
         .padding(.vertical, 34)
-        .craftifyCard(cornerRadius: 24)
+        .craftifyCard(cornerRadius: CraftifyLayout.heroRadius)
         .accessibilityElement(children: .combine)
     }
 }
@@ -474,6 +489,54 @@ private struct CraftifyLibraryTitleModifier: ViewModifier {
     }
 }
 
+/// The insets every scrolling page shares: capped width, side margins that
+/// follow the window, and the same space above and below the content.
+private struct CraftifyPageContentModifier: ViewModifier {
+    let isLibrary: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    func body(content: Content) -> some View {
+        content
+            .craftifyContentWidth()
+            .padding(
+                .horizontal,
+                isLibrary ? CraftifyLayout.sidebarPadding : CraftifyLayout.pagePadding(for: horizontalSizeClass)
+            )
+            .padding(.top, CraftifyLayout.pageTopPadding)
+            .padding(.bottom, CraftifyLayout.pageBottomPadding)
+    }
+}
+
+/// Shown over a library while its first download is still running.
+struct CraftifyLoadingState: View {
+    let title: String
+    var detail: String?
+    @Environment(\.craftifyAccentColor) private var accent
+
+    var body: some View {
+        VStack(spacing: CraftifyLayout.cardSpacing) {
+            CraftifyAppMark(size: 72)
+            ProgressView()
+                .controlSize(.large)
+                .tint(accent)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.headline)
+                .multilineTextAlignment(.center)
+            if let detail {
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.horizontal, CraftifyLayout.sidebarPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background { AppBackground().ignoresSafeArea() }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 private struct CraftifyPageModifier: ViewModifier {
     @AppStorage("accentColorPreference") private var accentColorPreference = "default"
 
@@ -494,15 +557,15 @@ private struct CraftifyPageModifier: ViewModifier {
 }
 
 extension View {
-    func craftifyCard(cornerRadius: CGFloat = 20) -> some View {
+    func craftifyCard(cornerRadius: CGFloat = CraftifyLayout.sectionRadius) -> some View {
         modifier(CraftifyCardModifier(cornerRadius: cornerRadius))
     }
 
-    func craftifyAccentCard(cornerRadius: CGFloat = 20) -> some View {
+    func craftifyAccentCard(cornerRadius: CGFloat = CraftifyLayout.sectionRadius) -> some View {
         modifier(CraftifyAccentCardModifier(cornerRadius: cornerRadius))
     }
 
-    func craftifyFloatingSurface(cornerRadius: CGFloat = 24) -> some View {
+    func craftifyFloatingSurface(cornerRadius: CGFloat = CraftifyLayout.heroRadius) -> some View {
         modifier(CraftifyFloatingSurfaceModifier(cornerRadius: cornerRadius))
     }
 
@@ -512,6 +575,17 @@ extension View {
 
     func craftifyPage() -> some View {
         modifier(CraftifyPageModifier())
+    }
+
+    /// Apply to the stack inside a page's `ScrollView`.
+    func craftifyPageContent() -> some View {
+        modifier(CraftifyPageContentModifier(isLibrary: false))
+    }
+
+    /// The same insets for the recipe library, which is a sidebar column or a
+    /// compact window and so keeps a fixed side margin.
+    func craftifyLibraryContent() -> some View {
+        modifier(CraftifyPageContentModifier(isLibrary: true))
     }
 
     func craftifyLibraryTitle(_ title: String) -> some View {

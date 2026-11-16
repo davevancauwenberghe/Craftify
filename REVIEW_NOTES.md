@@ -26,6 +26,19 @@ These changes follow Apple's [preparation guidance](https://developer.apple.com/
 - New-recipe announcements list readable names and categories; their Explore action returns to the Recipes library.
 - Preserved native tab announcements instead of posting a second VoiceOver announcement for every tab change.
 
+## Layout consistency pass (15 November 2026)
+
+Screens had drifted apart in small ways that add up to an uneven look across window sizes. Shared values now live in `CraftifyLayout` and every screen uses them.
+
+- **Page insets.** Twelve screens each repeated width cap, side margin, top and bottom padding, with bottoms of 32, 34, or 36 pt and a library top of 8 pt. They now call `craftifyPageContent()` (or `craftifyLibraryContent()` in the sidebar). Sheets (chest tutorial, new recipes, item details) used 24 or 16 pt on all sides and use the same modifier.
+- **Chests.** The chest list, chest detail, and chest editor built their own background, tint, and navigation bar instead of `craftifyPage()`. Chest cards drew their own heavier accent border and shadow; they use the standard card now. Chest rows sit `cardSpacing` apart like other card lists.
+- **Spacing.** Sections are `sectionSpacing` (24 pt) apart everywhere; recipe detail and the report form used 20. Card grids and lists use `cardSpacing` (14 pt); the library, search, and chest list used 12 and release notes 16.
+- **Corner radii.** Cards used 16, 17, 18, 20, 22, 24, and 26 pt with no pattern. Three roles remain: `heroRadius` 24 (page header cards), `sectionRadius` 22 (section cards), `tileRadius` 18 (rows and grid cells).
+- **ContentView.** The file held the tab structure plus the whole recipe library. The library views moved to `RecipeLibraryView.swift` unchanged apart from the tokens above. The category bar reads the shared accent from the environment like other views, and both library loading overlays use one `CraftifyLoadingState`.
+- The report screen drew `AppBackground` twice (its own and `craftifyPage()`'s).
+
+Made without a device or simulator. CI compiles it and the UI tests still find every control, but no test measures spacing, so each screen needs a look on iPhone, iPad (full, split, and narrow windows), and Duo.
+
 ## iPad layout follow-up
 
 Raised after the first iPad pass: the sidebar button sat on its own row above the large "Craftify" title, system-drawn controls were a different green from the app, and widths differed across the Chests screens.
