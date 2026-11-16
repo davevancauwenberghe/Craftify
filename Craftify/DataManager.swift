@@ -46,6 +46,9 @@ final class DataManager: ObservableObject {
     @Published var selectedCategory: String? = nil
     @Published var lastUpdated: Date? = nil
     @Published var errorMessage: String? = nil
+    /// The failure of a sync the user started themselves. `errorMessage` is shared
+    /// by every CloudKit request and clears itself, so it cannot drive an alert.
+    @Published private(set) var recipeSyncError: String? = nil
     @Published var cacheClearedMessage: String? = nil
     @Published var isLoading: Bool = false
     @Published var isManualSyncing: Bool = false
@@ -64,6 +67,8 @@ final class DataManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let reportStatusFetchInterval: TimeInterval = 30
     private let recipeFetchInterval: TimeInterval = 30
+    private let recipeStalenessInterval: TimeInterval = 60 * 60
+    private let errorDisplayDuration: Duration = .seconds(5)
     private let networkMonitor = NWPathMonitor()
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
     private let keyValueStore: any KeyValueStore
@@ -71,6 +76,7 @@ final class DataManager: ObservableObject {
     private let defaults: UserDefaults
     private let startsServices: Bool
     private var recipeLoadTask: Task<Void, Never>?
+    private var errorDismissTask: Task<Void, Never>?
     private(set) var cachedRecipeReports: [RecipeReport] = []
     private var recipeFetchGeneration = 0
     private var shouldPersistRecipeBookLoadingError = false
@@ -135,21 +141,33 @@ final class DataManager: ObservableObject {
 
         $errorMessage
             .sink { [weak self] message in
-                if message != nil {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                        guard self?.shouldPersistRecipeBookLoadingError != true else {
-                            return
-                        }
-                        self?.errorMessage = nil
-                    }
+                // Restart the timer for every message. A timer left over from an
+                // earlier error used to clear the next one after a second or two.
+                self?.errorDismissTask?.cancel()
+                self?.errorDismissTask = nil
+                guard message != nil, let duration = self?.errorDisplayDuration else { return }
+                self?.errorDismissTask = Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: duration)
+                    guard !Task.isCancelled, let self,
+                          !self.shouldPersistRecipeBookLoadingError else { return }
+                    self.errorMessage = nil
                 }
+            }
+            .store(in: &cancellables)
+
+        $accessibilityAnnouncement
+            .compactMap { $0 }
+            .sink { message in
+                // Nothing observed this property before, so VoiceOver never spoke
+                // sync, report, or data-clearing results.
+                UIAccessibility.post(notification: .announcement, argument: message)
             }
             .store(in: &cancellables)
 
         $cacheClearedMessage
             .sink { [weak self] message in
-                if let message = message {
-                    self?.accessibilityAnnouncement = message
+                if message != nil {
+                    // Callers announce the result themselves.
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                         self?.cacheClearedMessage = nil
                         self?.accessibilityAnnouncement = nil
@@ -184,7 +202,22 @@ final class DataManager: ObservableObject {
             keyValueStore.synchronize()
             syncChests()
             syncRecentSearches()
+            refreshRecipesIfStale()
         }
+    }
+
+    /// Picks up catalog changes when the app returns after a long time in the
+    /// background. Requires an earlier success in this process so it cannot race
+    /// the launch fetch, which may be the first-launch download that waits for images.
+    private func refreshRecipesIfStale() {
+        guard startsServices, isConnected, !isLoading,
+              let lastRecipeFetch,
+              Date().timeIntervalSince(lastRecipeFetch) >= recipeStalenessInterval else { return }
+        fetchRecipes()
+    }
+
+    func dismissRecipeSyncError() {
+        recipeSyncError = nil
     }
 
     var syncStatus: String {
@@ -279,7 +312,8 @@ final class DataManager: ObservableObject {
     func syncChests() {
         if let data = keyValueStore.data(forKey: iCloudChestsKey),
            let decoded = try? JSONDecoder().decode([RecipeChest].self, from: data) {
-            chests = decoded
+            // Views call this whenever they appear; only publish a real change.
+            if chests != decoded { chests = decoded }
             defaults.set(data, forKey: iCloudChestsKey)
         } else if keyValueStore.object(forKey: iCloudChestsKey) == nil,
                   chests.isEmpty,
@@ -417,6 +451,7 @@ final class DataManager: ObservableObject {
         if isManual { isManualSyncing = true }
         shouldPersistRecipeBookLoadingError = false
         errorMessage = nil
+        recipeSyncError = nil
 
         let database = CKContainer(identifier: "iCloud.craftifydb").publicCloudDatabase
         let query = CKQuery(recordType: "Recipe", predicate: NSPredicate(value: true))
@@ -517,6 +552,7 @@ final class DataManager: ObservableObject {
                 let type = errorType(for: error)
                 shouldPersistRecipeBookLoadingError = waitForImages
                 errorMessage = type.rawValue
+                if isManual { recipeSyncError = type.rawValue }
                 accessibilityAnnouncement = type.rawValue
                 isLoading = false
                 isManualSyncing = false
@@ -774,6 +810,7 @@ final class DataManager: ObservableObject {
         recipeLoadTask = nil
         isLoading = false
         isManualSyncing = false
+        recipeSyncError = nil
 
         let fileURL = getCacheDirectory().appendingPathComponent(localCacheFileName())
 
@@ -959,6 +996,13 @@ final class DataManager: ObservableObject {
                 accessibilityAnnouncement = errorMessage
                 completion()
             }
+        }
+    }
+
+    /// Completes when the request does, so pull-to-refresh shows its progress.
+    func refreshConsoleCommands() async {
+        await withCheckedContinuation { continuation in
+            fetchConsoleCommands { continuation.resume() }
         }
     }
 

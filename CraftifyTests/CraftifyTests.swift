@@ -5,6 +5,7 @@
 //  Created by Dave Van Cauwenberghe on 07/02/2025.
 //
 
+import Combine
 import Testing
 @testable import Craftify
 import SwiftUI
@@ -401,5 +402,34 @@ extension CraftifyTests {
             imageremark: nil,
             remarks: nil
         )
+    }
+}
+
+extension CraftifyTests {
+    @MainActor
+    @Test func syncingUnchangedChestsDoesNotRepublishThem() {
+        let context = DataTestContext()
+        defer { context.cleanUp() }
+        context.manager.createChest(name: "Build", size: .small)
+
+        var publishCount = 0
+        let subscription = context.manager.$chests.dropFirst().sink { _ in publishCount += 1 }
+        defer { subscription.cancel() }
+
+        context.manager.syncChests()
+        #expect(publishCount == 0)
+
+        let second = DataManager(keyValueStore: context.store, defaults: context.defaults, startsServices: false)
+        second.createChest(name: "Remote", size: .large)
+        context.manager.syncChests()
+        #expect(publishCount == 1)
+        #expect(context.manager.chests.map(\.name) == ["Build", "Remote"])
+    }
+
+    @Test func reportNamesKeepItemPunctuationAndDropEverythingElse() {
+        #expect(RecipeReportInput.sanitizedName("Jack o'Lantern", maxLength: 100) == "Jack o'Lantern")
+        #expect(RecipeReportInput.sanitizedName("Crème (Block) & Co.", maxLength: 100) == "Crème (Block) & Co.")
+        #expect(RecipeReportInput.sanitizedName("<b>Torch</b>\n🔥", maxLength: 100) == "bTorchb")
+        #expect(RecipeReportInput.sanitizedName("Copper Torch", maxLength: 6) == "Copper")
     }
 }

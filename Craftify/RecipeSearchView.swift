@@ -94,7 +94,11 @@ struct RecipeSearchView: View {
             .onAppear {
                 dataManager.syncChests()
                 dataManager.syncRecentSearches()
-                dataManager.fetchRecipes(isManual: false)
+                // This runs every time the tab or the sidebar reappears. Retry only
+                // while nothing has synced yet; a full download per visit is wasteful.
+                if dataManager.lastRecipeFetch == nil {
+                    dataManager.fetchRecipes(isManual: false)
+                }
                 updateFilteredRecipes()
             }
         }

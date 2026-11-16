@@ -78,7 +78,16 @@ struct CommandsView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    if filteredCommands.isEmpty {
+                    if dataManager.consoleCommands.isEmpty {
+                        CraftifyEmptyState(
+                            symbol: dataManager.isConnected ? "terminal" : "wifi.slash",
+                            title: "Commands Not Downloaded Yet",
+                            detail: dataManager.isConnected
+                                ? "Pull down to load the command reference."
+                                : "Connect to the internet, then pull down to load the command reference."
+                        )
+                        .frame(maxWidth: .infinity)
+                    } else if filteredCommands.isEmpty {
                         CraftifyEmptyState(
                             symbol: "terminal",
                             title: "No Commands Found",
@@ -110,7 +119,7 @@ struct CommandsView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 34)
             }
-            .refreshable { dataManager.fetchConsoleCommands() }
+            .refreshable { await dataManager.refreshConsoleCommands() }
             .navigationTitle("Console Commands")
             .navigationBarTitleDisplayMode(.large)
             .searchable(

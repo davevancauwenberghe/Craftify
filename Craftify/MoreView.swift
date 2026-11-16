@@ -86,9 +86,9 @@ struct MoreView: View {
             .navigationBarTitleDisplayMode(.large)
             .craftifyPage()
             .alert("Unable to Sync", isPresented: errorBinding) {
-                Button("OK", role: .cancel) { dataManager.errorMessage = nil }
+                Button("OK", role: .cancel) { dataManager.dismissRecipeSyncError() }
             } message: {
-                Text(dataManager.errorMessage ?? "Please try again.")
+                Text(dataManager.recipeSyncError ?? "Please try again.")
             }
             .onAppear {
                 dataManager.syncRecentSearches()
@@ -177,9 +177,11 @@ struct MoreView: View {
     }
 
     private var errorBinding: Binding<Bool> {
+        // Only a sync started here. The shared `errorMessage` also carries report,
+        // command, and connectivity errors, and clears itself after a few seconds.
         Binding(
-            get: { dataManager.errorMessage != nil },
-            set: { if !$0 { dataManager.errorMessage = nil } }
+            get: { dataManager.recipeSyncError != nil },
+            set: { if !$0 { dataManager.dismissRecipeSyncError() } }
         )
     }
 
